@@ -1,0 +1,20 @@
+{% load corpus_tags %}
+{% if not result.label %}<p class="error">Podaj lemma=, strong= lub form=.</p>{% else %}
+<h2>{{ result.label }} <span class="muted">— {{ result.total }} wystąpień</span></h2>
+{% if lexeme %}<p class="muted">{{ lexeme.strong }} · {{ lexeme.lemma }} ({{ lexeme.transliteration }}) · <b>{{ lexeme.gloss }}</b>{% if lexeme.meaning %} — {{ lexeme.meaning|truncatechars:240 }}{% endif %} <span style="font-size:10px">[STEPBible CC BY]</span></p>{% endif %}
+<div class="bybook">{% for b in result.by_book %}<span>{{ b.abbr }} {{ b.n }}</span>{% endfor %}</div>
+<ul class="hits">
+{% for t in page %}
+  <li>
+    <span class="ref"><a hx-get="{% url 'corpus:reference' %}?q={{ t.verse_text.verse|urlencode }}" hx-target="#panel" hx-push-url="true" href="#">{{ t.verse_text.verse }}</a></span>
+    <span class="muted">{{ t.verse_text.work.code }} · {{ t.morph }}</span><br>
+    <span class="{{ t.verse_text.work.language|dir_for }} {{ t.verse_text.work.language }}">{{ t.verse_text.text|highlight:t.surface }}</span>
+  </li>
+{% endfor %}
+</ul>
+<nav class="pager">
+  {% if page.has_previous %}<a hx-get="{% url 'corpus:concordance' %}?{% for k,v in params.items %}{% if v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page.previous_page_number }}" hx-target="#panel" href="#">← poprzednie</a>{% endif %}
+  <span class="muted">strona {{ page.number }} / {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a hx-get="{% url 'corpus:concordance' %}?{% for k,v in params.items %}{% if v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page.next_page_number }}" hx-target="#panel" href="#">następne →</a>{% endif %}
+</nav>
+{% endif %}

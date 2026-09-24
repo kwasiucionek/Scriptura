@@ -1,0 +1,14 @@
+django>=5.2
+opensearch-py>=2.6
+pymupdf>=1.24
+whitenoise>=6.6
+
+[dev]
+ruff
+pytest
+pytest-django
+fonttools
+
+[prod]
+psycopg[binary]
+gunicorn

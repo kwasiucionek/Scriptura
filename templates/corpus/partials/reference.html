@@ -1,0 +1,40 @@
+{% load corpus_tags %}
+{% if error %}<p class="error">{{ error }}</p>{% else %}
+<h2>{{ refs|join:"; " }}</h2>
+<div class="works">
+  {% for w in all_works %}
+  <label><input type="checkbox" name="works" value="{{ w.code }}" {% if w.code in selected %}checked{% endif %}
+    onchange="scripturaReload(this)"> {{ w.code }}</label>
+  {% endfor %}
+</div>
+<script>
+function scripturaReload(el){
+  const codes=[...el.closest('.works').querySelectorAll('input:checked')].map(i=>i.value).join(',');
+  htmx.ajax('GET', "{% url 'corpus:reference' %}?q={{ q|urlencode }}&works="+codes, {target:'#panel', pushUrl:true});
+  document.querySelectorAll('input[name=works][type=hidden]').forEach(h=>h.value=codes);
+}
+</script>
+<table class="parallel">
+  <thead><tr><th></th>{% for w in works %}<th>{{ w.code }} <span class="muted">{{ w.language }}</span></th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for row in rows %}
+  <tr>
+    <td class="ref">{{ row.verse }}</td>
+    {% for w in works %}
+      <td class="{{ w.language|dir_for }} {{ w.language }}">
+        {% with vt=row.texts|dict_get:w.code %}{% if vt %}{% render_tokens vt %}{% else %}<span class="muted">—</span>{% endif %}{% endwith %}
+      </td>
+    {% endfor %}
+  </tr>
+  {% empty %}
+  <tr><td colspan="{{ works|length|add:1 }}" class="muted">Brak wersetów w wybranych dziełach (zaimportuj księgę).</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% if related %}
+<section class="related" style="margin-top:18px">
+  <h3 style="font-size:13px;margin:0 0 6px">Powiązane wersety <span class="muted">(OpenBible cross-references, CC BY; wg głosów)</span></h3>
+  {% for r in related %}<div style="font-size:13px;margin:3px 0"><a href="{% url 'corpus:reference' %}?q={{ r.ref|urlencode }}" hx-get="{% url 'corpus:reference' %}?q={{ r.ref|urlencode }}" hx-target="#results" hx-push-url="true"><b>{{ r.ref }}</b></a> <span class="muted">{{ r.work }} · {{ r.votes }}</span> — {{ r.text|truncatechars:160 }}</div>{% endfor %}
+</section>
+{% endif %}

@@ -1,0 +1,11 @@
+# /etc/systemd/system/scriptura-update.timer — co tydzień w nocy
+[Unit]
+Description=Scriptura — cotygodniowa aktualizacja korpusu
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+RandomizedDelaySec=30m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

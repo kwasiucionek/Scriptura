@@ -1,0 +1,40 @@
+# Usługi pomocnicze. OpenSearch masz natywnie (pacman) — tu pod profilem, na wypadek innego hosta:
+#   docker compose --profile opensearch up -d
+# Reranker na CPU (TEI). Na maszynie z GPU zamiast tego: services/reranker_rocm/ (to samo API).
+services:
+  reranker:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
+    container_name: scriptura-reranker
+    command: --model-id BAAI/bge-reranker-v2-m3 --max-client-batch-size 64 --max-batch-tokens 16384
+    environment:
+      - HF_HUB_CACHE=/data
+    ports:
+      - "127.0.0.1:8081:80"
+    volumes:
+      - tei-cache:/data
+    restart: unless-stopped
+
+  opensearch:
+    profiles: ["opensearch"]
+    build: docker/opensearch
+    container_name: scriptura-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      retries: 12
+
+volumes:
+  tei-cache:
+  opensearch-data:

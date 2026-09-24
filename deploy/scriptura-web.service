@@ -1,0 +1,24 @@
+# /etc/systemd/system/scriptura-web.service
+# Django + gunicorn (gthread: SSE trzyma połączenie, więc wątki zamiast sync workerów)
+[Unit]
+Description=Scriptura — RAG teologii biblijnej (web)
+After=network.target docker.service ollama.service
+Wants=docker.service
+
+[Service]
+User=scriptura
+Group=scriptura
+WorkingDirectory=/opt/scriptura
+EnvironmentFile=/opt/scriptura/.env
+ExecStartPre=/opt/scriptura/.venv/bin/python manage.py migrate --noinput
+ExecStart=/opt/scriptura/.venv/bin/gunicorn config.wsgi:application \
+  --bind 127.0.0.1:8534 --workers 2 --worker-class gthread --threads 8 \
+  --timeout 300 --graceful-timeout 30 --keep-alive 5 \
+  --access-logfile - --error-logfile -
+ExecStartPost=/bin/sh -c 'sleep 5; /opt/scriptura/.venv/bin/python /opt/scriptura/manage.py warmup || true'
+Restart=on-failure
+RestartSec=5
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><title>Konto — Scriptura</title>
+<style>
+  :root{--bg:#f8f6f2;--panel:#fff;--line:#e6dfd6;--text:#241f1c;--muted:#6f6660;--accent:#7a1f2b;--accent-soft:#f3e4e5;--ok:#2f6f4f}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}
+  header{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--panel);border-bottom:1px solid var(--line)}
+  header .brand{font:650 18px Georgia,serif;color:var(--accent)} header a{color:var(--accent);text-decoration:none;font-size:13px}
+  main{max-width:960px;margin:24px auto;padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  section.wide{grid-column:1/-1} h2{font:650 15px system-ui;margin:0 0 12px}
+  label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px} input,select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+  button{margin-top:12px;padding:9px 14px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:600 12px system-ui;cursor:pointer}
+  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  .msg{padding:10px 14px;border-radius:10px;margin-bottom:12px;background:#e7f2ec;color:var(--ok);font-size:13px} .msg.error{background:#fbe9e7;color:#a14b20}
+  .err{color:#a14b20;font-size:12px} ul.errorlist{margin:4px 0 0;padding-left:16px;color:#a14b20;font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:13px} td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top} th{font-size:11px;color:var(--muted);font-weight:600}
+  .muted{color:var(--muted);font-size:12px} .badge{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:10px}
+  @media (max-width:760px){main{grid-template-columns:1fr}}
+</style></head><body>
+<header><span class="brand">Scriptura</span><a href="{% url 'rag:index' %}">← Czat</a><a href="{% url 'corpus:index' %}">Tekst i konkordancja</a><span style="flex:1"></span><span class="muted">{{ user.get_username }} · dostęp: {{ access_levels|join:", " }}</span></header>
+<main>
+  {% if messages %}<div class="wide">{% for m in messages %}<div class="msg {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}</div>{% endif %}
+
+  <section>
+    <h2>Dane konta</h2>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="profile">
+      {% for f in profile_form %}<label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{{ f.errors }}{% endfor %}
+      <button>Zapisz dane</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Zmiana hasła</h2>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="password">
+      {% for f in password_form %}<label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{{ f.errors }}{% endfor %}
+      <button>Zmień hasło</button>
+    </form>
+  </section>
+
+  <section class="wide">
+    <h2>Moje materiały <span class="muted">— widoczne tylko dla Ciebie, także w odpowiedziach RAG · limit {{ limits.docs }} plików po {{ limits.mb }} MB</span></h2>
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="upload">
+      {% if upload_form.non_field_errors %}<div class="err">{{ upload_form.non_field_errors }}</div>{% endif %}
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px">
+        <div><label>{{ upload_form.title.label }}</label>{{ upload_form.title }}{{ upload_form.title.errors }}</div>
+        <div><label>{{ upload_form.author.label }}</label>{{ upload_form.author }}</div>
+        <div><label>{{ upload_form.year.label }}</label>{{ upload_form.year }}</div>
+        <div><label>{{ upload_form.file.label }}</label>{{ upload_form.file }}{{ upload_form.file.errors }}</div>
+        <div><label>{{ upload_form.doc_type.label }}</label>{{ upload_form.doc_type }}</div>
+        <div><label>{{ upload_form.register.label }}</label>{{ upload_form.register }}</div>
+        <div style="grid-column:1/-1"><label>{{ upload_form.note.label }}</label>{{ upload_form.note }}</div>
+      </div>
+      <button>Wgraj i zaindeksuj</button>
+      <div class="muted" style="margin-top:6px">Wgrywaj tylko materiały, do których masz prawo użytku własnego. Nie trafiają do wspólnego korpusu.</div>
+    </form>
+    {% if docs %}
+    <table style="margin-top:16px">
+      <tr><th>Tytuł</th><th>Autor</th><th>Typ / rejestr</th><th>Fragmenty</th><th>Dodano</th><th>Status</th><th></th></tr>
+      {% for d in docs %}
+      <tr>
+        <td>{{ d.title }}</td>
+        <td>{% for a in d.authors.all %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+        <td><span class="badge">{{ d.get_doc_type_display }}</span> <span class="badge">{{ d.get_register_display }}</span></td>
+        <td>{{ d.chunk_count }}</td>
+        <td class="muted">{{ d.created|date:"Y-m-d" }}</td>
+        <td>{% if d.access == "licensed" %}<span class="badge" style="background:#e7f2ec;color:var(--ok)">we wspólnym korpusie</span>{% else %}<span class="badge">osobisty</span>{% endif %}</td>
+        <td style="white-space:nowrap">
+          {% if d.access == "personal" %}
+          <details><summary style="cursor:pointer;color:var(--accent);font-size:12px">Udostępnij</summary>
+            <form method="post" style="margin-top:8px;max-width:420px">{% csrf_token %}<input type="hidden" name="action" value="share"><input type="hidden" name="doc_id" value="{{ d.id }}">
+              <div class="muted" style="white-space:normal;font-size:11px;padding:8px;background:var(--bg);border-radius:8px">{{ consent_statement }}</div>
+              <label>{{ share_form.register.label }}</label>{{ share_form.register }}
+              <label>{{ share_form.license.label }}</label>{{ share_form.license }}
+              <label style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" name="accept" value="on" style="width:auto"> {{ share_form.accept.label }}</label>
+              <button type="submit">Udostępnij do wspólnego korpusu</button>
+            </form>
+          </details>
+          {% else %}
+          <form method="post" style="display:inline" onsubmit="return confirm('Wycofać zgodę? Materiał wróci do Twoich osobistych.')">{% csrf_token %}<input type="hidden" name="action" value="unshare"><input type="hidden" name="doc_id" value="{{ d.id }}"><button class="ghost" type="submit">Wycofaj zgodę</button></form>
+          {% endif %}
+          <form method="post" style="display:inline" onsubmit="return confirm('Usunąć „{{ d.title|escapejs }}”?')">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="doc_id" value="{{ d.id }}"><button class="ghost" type="submit">Usuń</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted" style="margin-top:12px">Nie masz jeszcze własnych materiałów.</p>{% endif %}
+  </section>
+</main>
+</body></html>

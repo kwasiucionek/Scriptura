@@ -1,0 +1,5 @@
+# torch instalowany osobno pod właściwy backend (rocm6.2 / cu124 / cpu):
+#   pip install torch --index-url https://download.pytorch.org/whl/rocm6.2
+sentence-transformers>=3.0
+fastapi>=0.110
+uvicorn>=0.29

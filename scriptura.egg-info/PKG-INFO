@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: scriptura
+Version: 0.1.0
+Summary: RAG teologii biblijnej — korpus, sigla, retrieval
+Requires-Python: >=3.11
+Requires-Dist: django>=5.2
+Requires-Dist: opensearch-py>=2.6
+Requires-Dist: pymupdf>=1.24
+Requires-Dist: whitenoise>=6.6
+Provides-Extra: dev
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-django; extra == "dev"
+Requires-Dist: fonttools; extra == "dev"
+Provides-Extra: prod
+Requires-Dist: psycopg[binary]; extra == "prod"
+Requires-Dist: gunicorn; extra == "prod"

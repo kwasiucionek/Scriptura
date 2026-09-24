@@ -1,0 +1,14 @@
+# /etc/systemd/system/scriptura-update.service  (+ scriptura-update.timer)
+# Aktualizacja korpusu: harvest -> kurator -> ingestia -> audyt -> przekład -> reindeks; raport w data/manifests/
+[Unit]
+Description=Scriptura — aktualizacja korpusu (update_corpus)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=scriptura
+WorkingDirectory=/opt/scriptura
+EnvironmentFile=/opt/scriptura/.env
+ExecStart=/opt/scriptura/.venv/bin/python manage.py update_corpus
+Nice=10
+TimeoutStartSec=6h

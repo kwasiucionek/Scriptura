@@ -1,0 +1,20 @@
+{% load corpus_tags %}
+<h2>Szukaj: <i>{{ q }}</i> <span class="muted">— {{ result.total }} wersetów</span></h2>
+<p class="muted">Dzieła: {{ selected|join:", " }}. Składnia: słowa (AND), "fraza", -wykluczone, a NEAR/3 b, H430 / G746, lemma:λόγος.{% if backend != "opensearch" %} Tryb bez OpenSearch: NEAR działa jak AND, bez fleksji.{% endif %}</p>
+<div class="bybook">{% for b in result.by_book %}<span>{{ b.abbr }} {{ b.n }}</span>{% endfor %}</div>
+<ul class="hits">
+{% for h in result.hits %}
+  <li>
+    <span class="ref"><a hx-get="{% url 'corpus:reference' %}?q={{ h.ref|urlencode }}" hx-target="#panel" hx-push-url="true" href="#">{{ h.ref }}</a></span>
+    <span class="muted">{{ h.work }}</span><br>
+    <span class="{{ h.language|dir_for }} {{ h.language }}">{{ h.html|safe }}</span>
+  </li>
+{% empty %}<li class="muted">Brak wyników.</li>{% endfor %}
+</ul>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a hx-get="{% url 'corpus:search' %}?q={{ q|urlencode }}&works={{ selected|join:',' }}&page={{ page|add:-1 }}" hx-target="#panel" href="#">← poprzednie</a>{% endif %}
+  <span class="muted">strona {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a hx-get="{% url 'corpus:search' %}?q={{ q|urlencode }}&works={{ selected|join:',' }}&page={{ page|add:1 }}" hx-target="#panel" href="#">następne →</a>{% endif %}
+</nav>
+{% endif %}

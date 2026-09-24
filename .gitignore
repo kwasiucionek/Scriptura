@@ -1,0 +1,26 @@
+# środowisko
+.venv/
+.env
+.env.*
+!.env.example
+.cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+staticfiles/
+
+# dane (nie należą do repo — przenoszone rsync/deploy.sh --data)
+db.sqlite3
+db.sqlite3-*
+data/*
+!data/authors.example.jsonl
+!data/eval/
+data/eval/*.jsonl
+!data/eval/README.md
+data/manifests/report-*.md
+
+# lokalne
+*.log
+/tmp/
+.DS_Store

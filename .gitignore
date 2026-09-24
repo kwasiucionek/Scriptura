@@ -24,3 +24,5 @@ data/manifests/report-*.md
 /tmp/
 .DS_Store
 *.egg-info/
+.ssh/
+.gunicorn/

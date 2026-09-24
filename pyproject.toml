@@ -13,6 +13,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["ruff", "pytest", "pytest-django", "fonttools"]  # fonttools: scripts/legacy_fonts.py
 prod = ["psycopg[binary]", "gunicorn"]
+harvest = ["yt-dlp"]  # harvest youtube (napisy i rozdziały wykładów)
 
 [build-system]
 requires = ["setuptools>=68"]

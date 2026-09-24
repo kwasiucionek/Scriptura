@@ -1,6 +1,0 @@
-ane
-config
-corpus
-library
-patristics
-rag

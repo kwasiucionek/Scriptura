@@ -7,7 +7,7 @@ set -euo pipefail
 HOST="root@steve141.mikrus.xyz"; PORT=10141
 APP=/opt/scriptura; DATA=/cytrus/scriptura/data
 SSH="ssh -p $PORT"
-BRANCH=${BRANCH:-main}
+BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "!! niezacommitowane zmiany — commit albo stash, potem deploy"; exit 1

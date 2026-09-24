@@ -1,7 +1,6 @@
 # środowisko
 .venv/
-.env
-.env.*
+.env*
 !.env.example
 .cache/
 __pycache__/

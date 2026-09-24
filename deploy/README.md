@@ -42,11 +42,11 @@ Kod żyje w repo (GitHub, prywatne); serwer ma klon w `/opt/scriptura` z kluczem
 Pierwsze ustawienie:
 ```bash
 # lokalnie (w katalogu projektu):
-git init -b main && git add -A && git commit -m "Scriptura: sprint 26" && gh repo create scriptura --private --source . --push
+git init && git add -A && git commit -m "Scriptura: sprint 26" && git remote add origin https://github.com/kwasiucionek/Scriptura.git && git push -u origin master
 # na serwerze (jako root): klucz deploy dla użytkownika scriptura i klon
 sudo -u scriptura ssh-keygen -t ed25519 -N "" -f /opt/scriptura/.ssh/id_ed25519 -C scriptura@steve141
 cat /opt/scriptura/.ssh/id_ed25519.pub     # -> GitHub: repo -> Settings -> Deploy keys (read-only)
-mv /opt/scriptura /opt/scriptura.rsync-backup && sudo -u scriptura git clone git@github.com:kwasiucionek/scriptura.git /opt/scriptura
+mv /opt/scriptura /opt/scriptura.rsync-backup && sudo -u scriptura git clone git@github.com:kwasiucionek/Scriptura.git /opt/scriptura
 cp /opt/scriptura.rsync-backup/.env /opt/scriptura/.env && mv /opt/scriptura.rsync-backup/.venv /opt/scriptura/.venv && chown -R scriptura:scriptura /opt/scriptura
 ```
 Potem każde wdrożenie to `./deploy/deploy.sh` (commit → push → pull na serwerze → migrate → restart);

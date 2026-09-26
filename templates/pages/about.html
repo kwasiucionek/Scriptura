@@ -1,0 +1,68 @@
+{% extends "site.html" %}
+{% block title %}O projekcie — Scriptura{% endblock %}
+{% block content %}
+<div class="eyebrow">O PROJEKCIE</div>
+<h1>Asystent biblijny, który nie odpowiada <span>z pamięci</span>.</h1>
+<p class="lead">Ogólne modele językowe mówią o Biblii płynnie, ale bez źródeł: mieszają tradycje, wymyślają cytaty, nie odróżniają egzegezy naukowej od popularyzacji ani interpretacji Ojców od współczesnego komentarza. Scriptura odwraca tę logikę.</p>
+
+<div class="cards">
+  <div class="card"><h3>Tylko ze źródeł</h3><p>Model dostaje wyłącznie fragmenty wyszukane pod konkretne pytanie i każde zdanie musi podeprzeć przypisem. Jeśli źródła milczą — mówi to wprost.</p></div>
+  <div class="card"><h3>Trzy głosy osobno</h3><p>Tekst biblijny, ustalenia egzegetów i Tradycja (Ojcowie Kościoła) są oznaczone inaczej. Czytelnik zawsze wie, na co patrzy.</p></div>
+  <div class="card"><h3>Prowadzi do tekstu</h3><p>Każda odpowiedź linkuje do oryginału: artykułu w repozytorium, wpisu na stronie autora, minuty wykładu. System ma prowadzić do lektury, nie ją zastępować.</p></div>
+</div>
+
+<h2>Po co to powstało</h2>
+<p>Punktem wyjścia jest polska biblistyka. System zbudowano na otwartych publikacjach biblistów z Papieskiego Wydziału Teologicznego we Wrocławiu i Uniwersytetu Papieskiego Jana Pawła II — tych, które w repozytoriach OPEN i theo‑logos mają wolne licencje (Creative Commons). Wszystko, co takiej licencji nie ma, jest w systemie zamknięte, dopóki autor nie wyrazi zgody. Aktualny skład korpusu i liczby są na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>.</p>
+<p>Scriptura jest prototypem badawczym: sprawdza, czy asystent oparty na źródłach może być pomocą w studium biblijnym — dla studenta, katechety, duszpasterza i czytelnika, który chce wiedzieć, <em>kto</em> tak twierdzi i <em>gdzie</em> to napisał.</p>
+
+<h2>Co system ma w środku</h2>
+<table class="stats">
+  <tr><th>Warstwa</th><th>Źródło</th><th>Licencja</th><th>Co daje</th></tr>
+  <tr><td>Tekst biblijny</td><td>Kodeks Leningradzki (OSHB/WLC), SBL Greek NT, Septuaginta Rahlfsa, Biblia Gdańska 1632</td><td>wolne / domena publiczna</td><td>wersety w oryginale i przekładzie, tokeny z lematami i numerami Stronga, konkordancja, widok równoległy</td></tr>
+  <tr><td>Leksykon</td><td>STEPBible (Tyndale House, Cambridge)</td><td>CC BY</td><td>hasła: lemat, transliteracja, glosa, definicja — także dla pytań o słowa zapisane po polsku (<em>hesed</em>, <em>szalom</em>, <em>logos</em>)</td></tr>
+  <tr><td>Odsyłacze</td><td>OpenBible.info cross‑references</td><td>CC BY</td><td>„powiązane wersety” dla każdego miejsca</td></tr>
+  <tr><td>Literatura</td><td>artykuły, monografie, skrypty, recenzje, wpisy blogowe, wykłady (OPEN, theo‑logos, OpenAlex, strony autorów, YouTube)</td><td>wg pozycji</td><td>cytowanie z numerem i stroną; weryfikacja cytatów; wykłady z linkiem do minuty</td></tr>
+  <tr><td>Ojcowie Kościoła</td><td>Ante‑Nicene / Nicene and Post‑Nicene Fathers (CCEL)</td><td>domena publiczna</td><td>„co Ojcowie mówią o tym wersecie” — po odsyłaczach biblijnych w tekście, nie po podobieństwie słów</td></tr>
+  <tr><td>Starożytny Bliski Wschód</td><td>electronic Babylonian Library (LMU München): Gilgamesz, Enuma Elisz…</td><td>CC BY‑NC‑SA</td><td>teksty porównawcze cytowane z tabliczką i linią</td></tr>
+</table>
+<p class="small muted">Trzy ostatnie warstwy są bazami powiązanymi, nie zmieszanymi z literaturą: mają osobne indeksy, osobne miejsce w odpowiedzi (<code>[1]</code> literatura, <code>[P1]</code> Ojcowie, <code>[A1]</code> teksty ANE) i osobne grupy w panelu źródeł.</p>
+
+<h2>Jak powstaje odpowiedź</h2>
+<ol class="steps">
+  <li><strong>Rozpoznanie pytania</strong>Sigla (także mówione: „Powtórzonego Prawa 32 8”), terminy oryginalne po hebrajsku, grecku lub w transliteracji, przekład zapytania dla źródeł obcojęzycznych.</li>
+  <li><strong>Wyszukiwanie czterokanałowe</strong>Po siglach, po lematach, po transliteracjach i po treści (leksykalnie i semantycznie). Potem model ocenia trafność kandydatów i odrzuca nietrafione; z jednej publikacji trafia do kontekstu najwyżej kilka fragmentów.</li>
+  <li><strong>Kontekst dla modelu</strong>Źródła <code>[1]…[n]</code>, wersety w oryginale i przekładzie, hasła leksykonu, powiązane wersety, Ojcowie <code>[P1]…</code>, teksty ANE <code>[A1]…</code>.</li>
+  <li><strong>Generacja na wybranym poziomie</strong>Naukowym (aparat, terminy, hierarchia: publikacja recenzowana przed popularyzacją) albo popularnym (prosty język, te same źródła).</li>
+  <li><strong>Weryfikacja po stronie systemu</strong>Czy przypisy istnieją, czy sigla są w źródłach, czy cudzysłowy odpowiadają tekstowi. Cytat zmieniony przez model jest oznaczany, sigla spoza korpusu — wypisywane.</li>
+  <li><strong>Panel źródeł</strong>Fragmenty, linki do oryginałów i eksport cytowań do BibTeX / RIS.</li>
+</ol>
+<p>Szczegóły obsługi — sigla, tryby, opcje, czytanie przypisów — są w <a href="{% url 'pages:guide' %}">instrukcji korzystania</a>.</p>
+
+<h2>Zasady, które się nie zmieniają</h2>
+<ul>
+  <li><strong>Żadne źródło bez wolnej licencji nie jest publiczne bez zgody autora.</strong> Zgoda jest zapisywana z datą i treścią oświadczenia i można ją wycofać jednym kliknięciem z własnego konta. Więcej: <a href="{% url 'pages:for_authors' %}">Dla autorów</a>.</li>
+  <li><strong>Model nie odpowiada z pamięci.</strong> Brak źródeł oznacza jawną odmowę, nie zgadywanie.</li>
+  <li><strong>Materiały osobiste są osobiste.</strong> Każdy użytkownik może mieć własne notatki i teksty, widoczne tylko dla siebie — i sam decyduje, czy coś z nich udostępnić.</li>
+  <li><strong>Odpowiedź zawsze linkuje do oryginału.</strong> Artykuł w repozytorium, wpis na stronie autora, minuta wykładu.</li>
+</ul>
+
+<h2>Technika</h2>
+<p>Aplikacja w Pythonie (Django), indeks hybrydowy (BM25 + wektory) w OpenSearch, modele językowe przez Ollama: generacja i ocena trafności — <code>gemma4</code>, osadzenia — <code>snowflake‑arctic‑embed2</code>. Baza danych SQLite w trybie WAL, serwer własny. Kod źródłowy jest otwarty{% if site_github_url %} — <a href="{{ site_github_url }}" rel="noopener" target="_blank">repozytorium na GitHubie</a>{% endif %}, dziennik zmian w pliku <code>CHANGELOG.md</code>.</p>
+
+<h2>Kierunki rozwoju</h2>
+<h3>Blisko</h3>
+<ul>
+  <li>Pełne repozytoria: wszystkie tomy Ojców (37) z polskim przekładem pomocniczym; więcej tekstów ANE (Atrahasis, Ugarit — w miarę dostępności otwartych edycji); komplet publikacji autorów z theo‑logos.</li>
+  <li>Kanał dydaktyczny: pytania testowe generowane z lektury, sprawdzanie odpowiedzi studenta na tle źródeł, zestawy lektur do zajęć.</li>
+  <li>Historia interpretacji dla wersetu: jedna strona zbierająca Ojców, literaturę, odsyłacze i teksty porównawcze dla wybranego miejsca.</li>
+</ul>
+<h3>Dalej — z opiekunem merytorycznym</h3>
+<ul>
+  <li>Wybór i hierarchizacja źródeł: które komentarze, słowniki i serie są kanonem dla polskiej biblistyki; co wchodzi jako tekst naukowy, co jako popularyzacja.</li>
+  <li>Aparat krytyczny: warianty tekstowe (Qumran, LXX, Wulgata) przy wersecie, z literaturą o każdym wariancie.</li>
+  <li>Ekumeniczna warstwa przekładów (Biblia Tysiąclecia, Warszawska, Paulistów, Ekumeniczna) — o ile wydawcy wyrażą zgodę; technicznie system jest na to gotowy.</li>
+  <li>Współpraca z ośrodkiem akademickim: konta dla studentów i pracowników, materiały osobiste i wspólne, statystyki pytań jako materiał badawczy.</li>
+</ul>
+
+<div class="callout"><span aria-hidden="true">✉</span><p>Projekt szuka dwóch rzeczy: spojrzenia biblisty na jakość odpowiedzi (co trafne, co naiwne, czego brakuje) oraz — jeśli okaże się wart czasu — merytorycznego opiekuna decydującego o źródłach i kierunku. Strona techniczna pozostaje po stronie autora. <a href="{% url 'pages:author' %}">Kontakt</a>.</p></div>
+{% endblock %}

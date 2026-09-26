@@ -1,0 +1,29 @@
+{% extends "site.html" %}
+{% block title %}Autor i kontakt — Scriptura{% endblock %}
+{% block content %}
+<div class="eyebrow">AUTOR I KONTAKT</div>
+<h1>Krzysztof <span>Wasiucionek</span></h1>
+<p class="lead">Scriptura jest projektem jednej osoby: pomysł, kod, serwer i dobór źródeł. Nie stoi za nią firma, uczelnia ani finansowanie — stoi pytanie, czy asystent językowy może być w studium biblijnym uczciwym narzędziem, a nie kolejnym źródłem zmyśleń.</p>
+
+<h2>O autorze</h2>
+<p>Zawodowo zajmuję się systemami przetwarzania tekstu w Pythonie — od rozpoznawania nazw i anonimizacji dokumentów prawnych po systemy odpowiadające na pytania z dokumentów (RAG) dla języka polskiego. Z wykształcenia jestem bibliotekoznawcą (informacja naukowa i bibliotekoznawstwo, specjalność biblioteki cyfrowe, Uniwersytet Wrocławski) i programistą back‑endu; mieszkam pod Wrocławiem.</p>
+<p>Biblią zajmuję się prywatnie, od lat, jako czytelnik — i z tego czytania wzięło się to narzędzie. Chciałem mieć asystenta, który przy pytaniu o werset powie, <em>kto</em> tak twierdzi i <em>gdzie</em>, a gdy nie wie — przyzna to. Scriptura jest próbą zbudowania go z otwartych źródeł polskiej biblistyki, tekstu oryginalnego i Tradycji, z poszanowaniem praw autorów.</p>
+
+<h2>Czego szukam</h2>
+<ul>
+  <li><strong>Spojrzenia biblisty</strong> na jakość odpowiedzi: co jest trafne, co naiwne, czego brakuje, które źródła powinny mieć pierwszeństwo.</li>
+  <li><strong>Autorów gotowych udostępnić swoje teksty</strong> — na warunkach, które sami określą (<a href="{% url 'pages:for_authors' %}">Dla autorów</a>).</li>
+  <li><strong>Opiekuna merytorycznego</strong>, jeśli projekt okaże się wart czasu: kogoś, kto decyduje o kanonie źródeł i kierunku, podczas gdy strona techniczna pozostaje po mojej stronie. Forma dowolna — od uwag mailem po wspólny projekt naukowy lub dydaktyczny.</li>
+</ul>
+
+<h2>Kontakt</h2>
+<div class="cards">
+  {% if site_contact_email %}<div class="card"><h3>E‑mail</h3><p><a href="mailto:{{ site_contact_email }}">{{ site_contact_email }}</a></p></div>{% endif %}
+  <div class="card"><h3>Strona</h3><p><a href="https://kwasiucionek.cytr.us" rel="noopener" target="_blank">kwasiucionek.cytr.us</a></p></div>
+  <div class="card"><h3>GitHub</h3><p><a href="https://github.com/kwasiucionek" rel="noopener" target="_blank">github.com/kwasiucionek</a>{% if site_github_url %} · <a href="{{ site_github_url }}" rel="noopener" target="_blank">kod Scriptury</a>{% endif %}</p></div>
+</div>
+<p class="small muted">Zgłaszając uwagę do odpowiedzi, dołącz treść pytania i — jeśli to możliwe — rozwinięty <code>JSON</code> spod odpowiedzi; zawiera listę źródeł, które dostał model, i pozwala odtworzyć problem.</p>
+
+<h2>Stan projektu</h2>
+<p>Prototyp badawczy, rozwijany od września 2026. Działa na własnym serwerze; korzystanie jest bezpłatne, bez reklam i bez skryptów śledzących. Treści pytań użytkowników anonimowych nie są zapisywane; zalogowani mają historię rozmów tylko na własne potrzeby i mogą ją usuwać. Szczegóły: <a href="{% url 'pages:about' %}">O projekcie</a>, <a href="{% url 'pages:guide' %}">Jak korzystać</a>, <a href="{% url 'pages:corpus' %}">Korpus</a>.</p>
+{% endblock %}

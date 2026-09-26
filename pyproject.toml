@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 # projekt Django w układzie płaskim — pakiety Pythona to tylko te katalogi (z podpakietami);
 # templates/, data/, docker/, scripts/, services/ nie są kodem i nie wchodzą do dystrybucji
 where = ["."]
-include = ["config*", "corpus*", "library*", "rag*", "ane*", "patristics*"]
+include = ["config*", "corpus*", "library*", "rag*", "ane*", "patristics*", "pages*"]
 exclude = ["*.tests*", "data*", "docker*", "templates*", "scripts*", "services*"]
 
 [tool.ruff]

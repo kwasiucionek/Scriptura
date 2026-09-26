@@ -1,0 +1,81 @@
+{% extends "site.html" %}
+{% block title %}Korpus — Scriptura{% endblock %}
+{% block page_class %}wide{% endblock %}
+{% block content %}
+<div class="eyebrow">KORPUS</div>
+<h1>Z czego system <span>odpowiada</span></h1>
+<p class="lead">Wszystko, co asystent może zacytować, jest tu wyliczone. Liczby pochodzą z bazy i odświeżają się co godzinę.{% if extended %} Widzisz stan dla swojego poziomu dostępu ({{ levels|join:", " }}).{% else %} Widzisz materiały publiczne; zalogowani z rozszerzonym dostępem widzą także pozycje udostępnione za zgodą autorów.{% endif %}</p>
+
+<div class="cards">
+  <div class="card"><span class="num">{{ s.docs_total }}</span><h3>publikacji w literaturze</h3><p>{{ s.chunks_total }} fragmentów do cytowania{% if s.docs_hidden %} · {{ s.docs_hidden }} pozycji poza Twoim dostępem (bez zgody autora lub demo prywatne){% endif %}</p></div>
+  <div class="card"><span class="num">{{ s.verses }}</span><h3>wersetów</h3><p>{{ s.works|length }} dzieł, {{ s.tokens }} tokenów z lematami i morfologią</p></div>
+  <div class="card"><span class="num">{{ s.lexemes }}</span><h3>haseł leksykonu</h3><p>{{ s.lexemes_hbo }} hebrajskich i aramejskich, {{ s.lexemes_grc }} greckich · {{ s.links }} odsyłaczy między wersetami</p></div>
+  <div class="card"><span class="num">{{ s.pat_passages }}</span><h3>pasaży Ojców Kościoła</h3><p>{{ s.pat_works_n }} dzieł w {{ s.pat_volumes|length }} tomach, {{ s.pat_refs }} odsyłaczy biblijnych</p></div>
+  <div class="card"><span class="num">{{ s.ane_lines }}</span><h3>linii tekstów ANE</h3><p>{{ s.ane_texts|length }} tekstów mezopotamskich z eBL</p></div>
+</div>
+
+<h2>Literatura</h2>
+<p>Publikacje biblistów: artykuły, monografie, skrypty, recenzje, wpisy i wykłady. Do korpusu publicznego trafiają tylko pozycje z wolną licencją (Creative Commons, open access z prawem do ponownego użycia) albo takie, na które autor wyraził zgodę. Pozostałe — jeśli zostały przygotowane — czekają zamknięte i nie są tu wymieniane z nazwiska.</p>
+<table class="stats">
+  <tr><th>Autor</th><th>Afiliacja</th><th class="n">Publikacji{% if extended %} (w tym otwartych){% endif %}</th></tr>
+  {% for a in s.authors %}
+  <tr><td>{{ a.name }}</td><td class="muted">{{ a.affiliation|default:"—" }}</td><td class="n">{{ a.n_visible }}{% if extended and a.n_open != a.n_visible %} <span class="muted">({{ a.n_open }})</span>{% endif %}</td></tr>
+  {% empty %}
+  <tr><td colspan="3" class="muted">Brak publikacji w korpusie.</td></tr>
+  {% endfor %}
+</table>
+{% if s.type_rows %}
+<p class="small muted">Wg typu: {% for t in s.type_rows %}{{ t.label }} — {{ t.n }}{% if not forloop.last %} · {% endif %}{% endfor %}.</p>
+{% endif %}
+{% if s.recent %}
+<details class="more"><summary>Ostatnio dodane</summary>
+<table class="stats">
+  <tr><th>Tytuł</th><th>Autor</th><th>Rok</th><th>Typ</th><th>Licencja</th></tr>
+  {% for d in s.recent %}
+  <tr><td>{% if d.url %}<a href="{{ d.url }}" rel="noopener" target="_blank">{{ d.title }}</a>{% else %}{{ d.title }}{% endif %}</td><td>{% for a in d.authors.all %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td class="n">{{ d.year|default:"—" }}</td><td><span class="tag">{{ d.get_doc_type_display }}</span></td><td class="muted small">{{ d.license|default:"—" }}{% if d.access != "open" %} <span class="tag warn">{{ d.get_access_display }}</span>{% endif %}</td></tr>
+  {% endfor %}
+</table></details>
+{% endif %}
+
+<h2>Tekst biblijny</h2>
+<table class="stats">
+  <tr><th>Kod</th><th>Dzieło</th><th>Język</th><th>Rodzaj</th><th>Licencja</th></tr>
+  {% for w in s.works %}
+  <tr><td><code>{{ w.code }}</code></td><td>{% if w.source_url %}<a href="{{ w.source_url }}" rel="noopener" target="_blank">{{ w.name }}</a>{% else %}{{ w.name }}{% endif %}{% if w.year %} <span class="muted">({{ w.year }})</span>{% endif %}</td><td class="muted">{{ w.language }}</td><td>{{ w.get_kind_display }}</td><td class="muted small">{{ w.license|default:"—" }}</td></tr>
+  {% endfor %}
+</table>
+<p class="small muted">Tokeny tekstów oryginalnych mają lemat, numer Stronga i kod morfologiczny (OSHM dla hebrajskiego, MorphGNT dla greckiego); to one łączą konkordancję, leksykon i pytania o słowa. Leksykon: STEPBible TBESH/TBESG (Tyndale House, CC BY). Odsyłacze: OpenBible.info (CC BY).</p>
+
+<h2>Ojcowie Kościoła</h2>
+<p>Wydanie <em>Ante‑Nicene Fathers</em> / <em>Nicene and Post‑Nicene Fathers</em> w cyfrowej edycji Christian Classics Ethereal Library (domena publiczna). Pasaże są indeksowane po odsyłaczach biblijnych zawartych w tekście — pytanie o werset zwraca miejsca, w których Ojcowie ten werset komentują. {% if s.pat_translated %}Polski przekład pomocniczy (maszynowy, tylko do wyszukiwania i podglądu) ma {{ s.pat_translated }} z {{ s.pat_passages }} pasaży.{% endif %}</p>
+<table class="stats">
+  <tr><th>Tom</th><th class="n">Dzieł</th><th class="n">Pasaży</th></tr>
+  {% for v in s.pat_volumes %}
+  <tr><td>{{ v.series }} {{ v.volume }}</td><td class="n">{{ v.n_works }}</td><td class="n">{{ v.n_passages }}</td></tr>
+  {% empty %}
+  <tr><td colspan="3" class="muted">Brak zaimportowanych tomów.</td></tr>
+  {% endfor %}
+</table>
+{% if s.pat_works %}
+<details class="more"><summary>Lista dzieł ({{ s.pat_works_n }})</summary>
+<table class="stats">
+  <tr><th>Autor</th><th>Dzieło</th><th>Tom</th></tr>
+  {% for w in s.pat_works %}
+  <tr><td>{{ w.author_pl|default:w.author }}</td><td>{% if w.url %}<a href="{{ w.url }}" rel="noopener" target="_blank">{{ w.title_pl|default:w.title }}</a>{% else %}{{ w.title_pl|default:w.title }}{% endif %}{% if w.title_pl %} <span class="muted small">{{ w.title }}</span>{% endif %}</td><td class="muted">{{ w.series }} {{ w.volume }}</td></tr>
+  {% endfor %}
+</table></details>
+{% endif %}
+
+<h2>Starożytny Bliski Wschód</h2>
+<p>Teksty porównawcze z electronic Babylonian Library (LMU München, CC BY‑NC‑SA): transliteracja znormalizowana i przekład angielski, cytowane z tabliczką i linią. Włączają się przy pytaniach o stworzenie, potop, Babilon lub na życzenie.</p>
+<table class="stats">
+  <tr><th>Tekst</th><th>Język</th><th class="n">Linii</th><th>Licencja</th></tr>
+  {% for t in s.ane_texts %}
+  <tr><td>{% if t.url %}<a href="{{ t.url }}" rel="noopener" target="_blank">{{ t.name_pl|default:t.name }}</a>{% else %}{{ t.name_pl|default:t.name }}{% endif %}{% if t.name_pl %} <span class="muted small">{{ t.name }}</span>{% endif %}</td><td class="muted">{{ t.language }}</td><td class="n">{{ t.n_lines }}</td><td class="muted small">{{ t.license|default:"—" }}</td></tr>
+  {% empty %}
+  <tr><td colspan="4" class="muted">Brak zaimportowanych tekstów.</td></tr>
+  {% endfor %}
+</table>
+
+<div class="callout"><span aria-hidden="true">＋</span><p>Brakuje Twoich publikacji albo chcesz, żeby coś tu było? Zobacz <a href="{% url 'pages:for_authors' %}">Dla autorów</a> — zgoda, licencja, udostępnienie własnych materiałów z konta.</p></div>
+{% endblock %}

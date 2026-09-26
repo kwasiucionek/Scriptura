@@ -1,0 +1,86 @@
+{% extends "site.html" %}
+{% block title %}Jak korzystać — Scriptura{% endblock %}
+{% block content %}
+<div class="eyebrow">INSTRUKCJA</div>
+<h1>Jak <span>pytać</span> i jak czytać odpowiedź</h1>
+<p class="lead">Scriptura nie jest wyszukiwarką ani „czatem o Biblii”. Odpowiada tylko z tego, co ma w korpusie, i pokazuje, skąd co wzięła. Kilka nawyków sprawia, że odpowiedzi są dużo lepsze.</p>
+
+<h2>1. Zadawanie pytania</h2>
+<ol class="steps">
+  <li><strong>Pytaj pełnym zdaniem, o jedną rzecz</strong>Lepiej „Jak Ojcowie Kościoła rozumieli «uczyńmy człowieka» z Rdz 1,26?” niż „Rdz 1,26 Ojcowie”. Model dostaje wyłącznie fragmenty dobrane pod to jedno pytanie.</li>
+  <li><strong>Podaj siglum, jeśli pytasz o miejsce</strong>„Mk 16,9‑20”, „Rdz 1–3”, „J 3,16nn”, „1 Kor 13,4‑7”. Wersety trafią do kontekstu w oryginale i przekładzie, a literatura zostanie zawężona do publikacji, które <em>to miejsce</em> omawiają. Rozumiane są skróty Biblii Tysiąclecia oraz zapisy mówione („Powtórzonego Prawa 32, 8”, „pierwsza Koryntian 13”).</li>
+  <li><strong>Słowa oryginalne można pisać po polsku</strong>„Co znaczy hebrajskie <em>hesed</em>?”, „<em>szalom</em>”, „<em>logos</em> u Jana”. Transliteracja trafia do leksykonu STEPBible i do konkordancji; można też wpisać hebrajski lub grekę wprost (חסד, λόγος).</li>
+  <li><strong>Każde pytanie jest samodzielne</strong>System nie czyta poprzednich odpowiedzi w rozmowie. „A co z tym u Pawła?” nie zadziała — napisz: „Jak Paweł rozumie usprawiedliwienie z wiary w Rz 3?”. Historia rozmów (dla zalogowanych) służy do wracania do odpowiedzi, nie do kontekstu.</li>
+  <li><strong>Skrót</strong><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> wysyła pytanie. Przykładowe pytania pod nagłówkiem strony startowej można kliknąć.</li>
+</ol>
+
+<h2>2. Poziom odpowiedzi i opcje</h2>
+<h3>Tryb</h3>
+<ul>
+  <li><strong>popularnonaukowy</strong> — prosty język, te same źródła; system chętniej sięga po wpisy blogowe i wykłady, ale nadal cytuje z numerem.</li>
+  <li><strong>naukowy</strong> — aparat, terminy oryginalne, hierarchia źródeł: publikacja recenzowana przed popularyzacją, monografia przed wpisem.{% if anon_popular_only %} Dostępny po zalogowaniu.{% endif %}</li>
+</ul>
+<h3>Pod polem pytania</h3>
+<ul>
+  <li><strong>Autor</strong> — zawęża literaturę do jednego biblisty („co Rosik pisze o…”). Bez wyboru szukamy u wszystkich.</li>
+  <li><strong>Wersety w kontekście</strong> — które dzieła mają być cytowane przy siglach: {% for w in works %}<code>{{ w.code }}</code> ({{ w.name }}){% if not forloop.last %}, {% endif %}{% endfor %}.</li>
+  <li><strong>Ojcowie Kościoła</strong> — Tradycja włącza się sama przy pytaniach o Ojców, Justyna, Ireneusza, Barnabę, Didache itd.; zaznaczenie wymusza ją także dla zwykłych pytań o werset („co Ojcowie mówią o Rdz 1,26” — po odsyłaczach w ich tekstach).</li>
+  <li><strong>Teksty ANE</strong> — teksty mezopotamskie (Gilgamesz, Enuma Elisz…) włączają się przy pytaniach o potop, stworzenie, Babilon; zaznaczenie wymusza porównanie.</li>
+  <li><strong>Tylko moje materiały</strong> (zalogowani) — odpowiedź z własnych, wgranych tekstów, bez wspólnego korpusu.</li>
+</ul>
+
+<h2>3. Czytanie odpowiedzi</h2>
+<p>Przypisy w tekście są klikalne i prowadzą do fragmentu w panelu <strong>Źródła</strong>:</p>
+<ul>
+  <li><code>[1]</code>, <code>[2]</code>… — literatura: artykuł, monografia, skrypt, wpis, wykład (z minutą nagrania);</li>
+  <li><code>[P1]</code>… — Ojcowie Kościoła (przekład maszynowy z angielskiego wydania, oryginał do rozwinięcia);</li>
+  <li><code>[A1]</code>… — teksty starożytnego Bliskiego Wschodu, cytowane z tabliczką i linią;</li>
+  <li>sigla w odpowiedzi (podkreślone kropkami) otwierają tekst w widoku równoległym.</li>
+</ul>
+<p>Pod odpowiedzią są <strong>znaczki weryfikacji</strong> — to system sprawdza model, nie odwrotnie:</p>
+<table class="stats">
+  <tr><th>Znaczek</th><th>Znaczenie</th></tr>
+  <tr><td><span class="tag ok">odpowiedź ze źródeł</span></td><td>model odpowiedział na podstawie kontekstu; każdy akapit ma przypis</td></tr>
+  <tr><td><span class="tag warn">odmowa — brak podstaw w źródłach</span></td><td>korpus nie zawiera nic trafnego; to <em>poprawne</em> zachowanie, nie błąd — spróbuj inaczej sformułować pytanie lub sprawdź na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>, czy temat w ogóle jest pokryty</td></tr>
+  <tr><td><span class="tag ok">sigla zweryfikowane</span></td><td>wszystkie sigla z odpowiedzi występują w cytowanych źródłach lub w tekście biblijnym</td></tr>
+  <tr><td><span class="tag warn">sigla spoza korpusu</span></td><td>model podał miejsca, których nie ma w kontekście — traktuj ostrożnie i sprawdź w widoku tekstu</td></tr>
+  <tr><td><span class="tag ok">cytaty zgodne z korpusem</span></td><td>tekst w cudzysłowach porównano dosłownie ze źródłem; <span class="tag warn">cytat zmieniony</span> znaczy, że model sparafrazował — obok jest najbliższe prawdziwe brzmienie</td></tr>
+  <tr><td><span class="tag">cytatów z tradycji</span></td><td>cytaty z Ojców i tekstów ANE to przekład modelu z angielskiego — nie są weryfikowane dosłownie</td></tr>
+</table>
+<p class="small muted">Dalej w tej linii: tryb, model, liczba tokenów i czasy poszczególnych etapów (tłumaczenie, osadzenie, wyszukiwanie, ocena trafności, model). Rozwijany <code>JSON</code> pokazuje pełny wynik — przydatny przy zgłaszaniu uwag.</p>
+
+<h2>4. Panel źródeł</h2>
+<ul>
+  <li>Grupy (<strong>Literatura</strong>, <strong>Wersety</strong>, <strong>Ojcowie Kościoła</strong>, <strong>Teksty ANE</strong>, <strong>Powiązane wersety</strong>) są domyślnie zwinięte; stan zwinięcia pamiętany jest między odpowiedziami. Fragmenty użyte w odpowiedzi mają kolorowy pasek z lewej.</li>
+  <li>Każda pozycja ma <strong>„pokaż fragment”</strong> (dokładny tekst, który dostał model) i link <strong>„źródło”</strong> do oryginału: PDF w repozytorium, wpis na stronie, nagranie od właściwej minuty.</li>
+  <li>Znaczki przy pozycji: <span class="tag">popularne</span> (rejestr popularnonaukowy), <span class="tag">wykład</span>, <span class="tag">blog</span>, <span class="tag">recenzja</span>, <span class="tag ok">moje</span> (materiał osobisty).</li>
+  <li><strong>Eksport cytowań</strong> — BibTeX lub RIS dla pozycji przywołanych w odpowiedzi (literatura, Ojcowie jako rozdziały w tomach ANF/NPNF, teksty ANE), do Zotero, JabRef, EndNote.</li>
+  <li><strong>Powiązane wersety</strong> pochodzą z OpenBible (głosy społeczności) — to podpowiedź do dalszej lektury, nie teza systemu.</li>
+</ul>
+
+<h2>5. Tekst i konkordancja</h2>
+<p>Zakładka <a href="{% url 'corpus:index' %}">Tekst i konkordancja</a> działa niezależnie od asystenta:</p>
+<ul>
+  <li><strong>siglum</strong> („Mk 1,1‑8”, „Rdz 1–3”, „J 3,16nn”) otwiera widok równoległy: hebrajski / grecki obok przekładu, z wyborem dzieł;</li>
+  <li><strong>szukaj</strong>: <code>słowo</code>, <code>"dokładna fraza"</code>, <code>-wykluczone</code>, numer Stronga <code>H430</code> / <code>G3056</code>, <code>lemma:λόγος</code>;</li>
+  <li>kliknięcie słowa w tekście oryginalnym otwiera <strong>konkordancję</strong> tego lematu: hasło leksykonu, glosa i wszystkie wystąpienia.</li>
+</ul>
+
+<h2>6. Konto</h2>
+<ul>
+  <li><strong>Bez logowania</strong>{% if allow_anonymous %} można pytać w trybie popularnonaukowym z literatury otwartej; limit <strong>{{ rate_anon }} pytań na godzinę</strong> z jednego adresu.{% else %} korzystanie nie jest możliwe — poproś o konto.{% endif %}</li>
+  <li><strong>Po zalogowaniu</strong>: tryb naukowy, historia rozmów, limit {{ rate_user }} pytań na godzinę oraz — zależnie od nadanych uprawnień — materiały udostępnione za zgodą autorów.</li>
+  <li><strong>Moje materiały</strong> (strona konta): własne PDF‑y, notatki, skrypty — indeksowane tylko dla Ciebie i widoczne w odpowiedziach ze znaczkiem <span class="tag ok">moje</span>. Można je udostępnić do wspólnego korpusu; zasady na stronie <a href="{% url 'pages:for_authors' %}">Dla autorów</a>.</li>
+  <li>Pytanie może mieć do {{ question_max }} znaków.</li>
+</ul>
+
+<h2>7. Czego system nie robi</h2>
+<ul>
+  <li>Nie odpowiada z własnej wiedzy modelu — jeśli czegoś nie ma w korpusie, odmawia. Zakres pokrycia zależy od tego, którzy autorzy i które ich prace są otwarte.</li>
+  <li>Nie streszcza całych książek ani nie zastępuje lektury — pokazuje fragmenty i prowadzi do oryginału.</li>
+  <li>Nie rozstrzyga sporów teologicznych — referuje, kto co twierdzi, oddzielając tekst, egzegezę i Tradycję.</li>
+  <li>Nie pamięta poprzednich pytań w rozmowie (zob. pkt 1).</li>
+</ul>
+
+<div class="callout"><span aria-hidden="true">✎</span><p>Odpowiedź niepełna, niecelna albo zła? Rozwiń <code>JSON</code> pod odpowiedzią, skopiuj treść pytania i prześlij uwagę — <a href="{% url 'pages:author' %}">kontakt</a>. Każde takie zgłoszenie poprawia dobór źródeł.</p></div>
+{% endblock %}

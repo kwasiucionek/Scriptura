@@ -1,0 +1,17 @@
+{% comment %}Pasek górny: marka + nawigacja główna. `active` = ask | text | guide | corpus | about | authors | author;
+dla warstwy tekstu (namespace corpus) podświetlenie wynika z adresu, więc widoki korpusu nic nie przekazują.{% endcomment %}
+{% with ns=request.resolver_match.namespace %}
+<a class="brand" href="{% url 'rag:index' %}">
+  <div class="brand-mark" aria-hidden="true">S</div>
+  <div><h1>Scriptura<span class="edition">TEOLOGIA BIBLIJNA</span></h1><div class="sub">Tekst, egzegeza, interpretacja — z odsyłaczem do źródła.</div></div>
+</a>
+<nav class="mainnav" aria-label="Nawigacja główna">
+  <a href="{% url 'rag:index' %}" {% if active == "ask" %}class="on" aria-current="page"{% endif %}>Asystent</a>
+  <a href="{% url 'corpus:index' %}" {% if active == "text" or ns == "corpus" %}class="on" aria-current="page"{% endif %}>Tekst i konkordancja</a>
+  <a href="{% url 'pages:guide' %}" {% if active == "guide" %}class="on" aria-current="page"{% endif %}>Jak korzystać</a>
+  <a href="{% url 'pages:corpus' %}" {% if active == "corpus" %}class="on" aria-current="page"{% endif %}>Korpus</a>
+  <a href="{% url 'pages:about' %}" {% if active == "about" %}class="on" aria-current="page"{% endif %}>O projekcie</a>
+  <a href="{% url 'pages:for_authors' %}" {% if active == "authors" %}class="on" aria-current="page"{% endif %}>Dla autorów</a>
+  <a href="{% url 'pages:author' %}" {% if active == "author" %}class="on" aria-current="page"{% endif %}>Autor</a>
+</nav>
+{% endwith %}

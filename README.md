@@ -156,13 +156,15 @@ library/      literatura: modele, harvest/, ingestia, chunkowanie, fonty legacy,
 rag/          serwis RAG, prompt, weryfikacja cytatów, konta, materiały osobiste, zgody, eksport cytowań, GUI (SSE)
 ane/          baza powiązana: teksty ANE (eBL)
 patristics/   baza powiązana: Ojcowie Kościoła (CCEL ThML)
+pages/        podstrony informacyjne: o projekcie, jak korzystać, korpus (żywe liczby), dla autorów, autor; procesor kontekstu (stopka, commit)
+static/       site.css — wspólne tokeny, pasek nawigacji i stopka
 deploy/       systemd, nginx, skrypty wdrożeniowe
 services/     reranker ROCm/CUDA (FastAPI, API zgodne z TEI)
 scripts/      narzędzia jednorazowe (fonty legacy, place_downloads, eval)
-templates/    GUI: czat, konto, tekst i konkordancja
+templates/    GUI: site.html (szkielet), partials/ (pasek, użytkownik), czat, konto, logowanie, tekst i konkordancja, pages/
 ```
 
-Testy: `pytest` (129, backendy zastępcze bez OpenSearcha i Ollamy); styl: `ruff format && ruff check`.
+Testy: `pytest` (141, backendy zastępcze bez OpenSearcha i Ollamy); styl: `ruff format && ruff check`.
 
 ## Stan i plan
 

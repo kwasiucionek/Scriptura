@@ -3,6 +3,7 @@
 Nazwa robocza. Cel: teologia biblijna na poziomie naukowym dla każdego (etap 1),
 z możliwością rozszerzenia o korpus naukowy po uzyskaniu praw (etap 2).
 
+
 ## Sprint 1 (ten) — warstwa tekstu kanonicznego
 
 Co jest:
@@ -549,6 +550,22 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
   akapitu), badge „wykład” / „blog”.
 - Przykłady w GUI zależne od dostępu (`access` w EXAMPLES): 9 dla anonimów na korpusie
   open, 12 dla kont `licensed`; wyzwalacze Ojców + Barnaba, Hermas, Didache, Kodeks Synajski.
+
+## Sprint 27 — strona jako całość
+
+- **`pages/`** — podstrony: *O projekcie* (`/o-projekcie/`), *Jak korzystać* (`/jak-korzystac/`, instrukcja:
+  pytania, sigla, tryby, opcje, znaczki weryfikacji, panel źródeł, konkordancja, konto, limity),
+  *Korpus* (`/korpus/`, liczby z bazy w cache 1 h: autorzy i ich publikacje wg dostępu użytkownika,
+  materiały bez zgody tylko zbiorczo, dzieła tekstu, leksykon, odsyłacze, tomy i dzieła Ojców, teksty ANE),
+  *Dla autorów* (`/dla-autorow/`, licencje, zgoda i jej wycofanie, treść oświadczenia, wydawcy),
+  *Autor* (`/autor/`, biogram i kontakt). Testy w `pages/tests/`.
+- **Wspólny szkielet**: `static/site.css` (tokeny jasne/ciemne, pasek `.topbar`, `.mainnav`, stopka,
+  typografia podstron), `templates/site.html`, `partials/topbar.html` (podświetlenie z `active` lub
+  namespace URL), `partials/userbox.html`. Czat (`rag/index.html`), tekst (`base.html` → `site.html`
+  z paskiem sigla/szukaj), konto i logowanie używają tego samego paska i stopki.
+- **Procesor kontekstu** `pages.context.site`: `site_commit` (skrót z `.git/HEAD`, bez subprocessu —
+  stopka pokazuje wdrożoną wersję), `site_github_url`, `site_contact_email`, `access_levels`, `allow_anonymous`.
+- Ustawienia: `STATICFILES_DIRS`, `SITE_GITHUB_URL`, `SITE_CONTACT_EMAIL` (.env; pusty = bez adresu na stronie).
 
 ## Plan kolejnych sprintów
 

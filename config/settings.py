@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "rag",
     "ane",
     "patristics",
+    "pages",
 ]
 
 MIDDLEWARE = [
@@ -86,6 +87,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "pages.context.site",
             ],
         },
     },
@@ -142,6 +144,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]  # site.css — wspólne style podstron i paska
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
@@ -283,3 +286,7 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
 }
+
+# --- Strony informacyjne (stopka, kontakt) ---
+SITE_GITHUB_URL = env("SITE_GITHUB_URL", "https://github.com/kwasiucionek/Scriptura")
+SITE_CONTACT_EMAIL = env("SITE_CONTACT_EMAIL", "")  # pusty = bez adresu na stronie „Autor”

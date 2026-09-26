@@ -1,0 +1,32 @@
+{% load static %}<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Scriptura{% endblock %}</title>
+<meta name="description" content="{% block description %}Scriptura — asystent teologii biblijnej odpowiadający wyłącznie ze źródeł: polska biblistyka, tekst hebrajski i grecki, Ojcowie Kościoła, teksty starożytnego Bliskiego Wschodu.{% endblock %}">
+<link rel="stylesheet" href="{% static 'site.css' %}">
+{% block head %}{% endblock %}
+</head>
+<body class="site">
+<header class="topbar">
+  {% include "partials/topbar.html" %}
+  <div class="right">{% block tools %}{% endblock %}{% include "partials/userbox.html" %}</div>
+</header>
+{% block subbar %}{% endblock %}
+<main class="page {% block page_class %}{% endblock %}">
+{% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <div class="inner">
+    <span>Scriptura · prototyp badawczy · <a href="{% url 'pages:about' %}">o projekcie</a></span>
+    <a href="{% url 'pages:for_authors' %}">zasady źródeł i zgody autorów</a>
+    <a href="{% url 'pages:author' %}">kontakt</a>
+    {% if site_github_url %}<a href="{{ site_github_url }}" rel="noopener" target="_blank">kod na GitHubie</a>{% endif %}
+    <span class="fill"></span>
+    <span title="wersja wdrożenia">{% if site_commit %}<code>{{ site_commit }}</code>{% endif %} {% now "Y" %}</span>
+  </div>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

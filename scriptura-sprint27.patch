@@ -1,0 +1,1262 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 784e292..265e66d 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -3,6 +3,7 @@
+ Nazwa robocza. Cel: teologia biblijna na poziomie naukowym dla każdego (etap 1),
+ z możliwością rozszerzenia o korpus naukowy po uzyskaniu praw (etap 2).
+ 
++
+ ## Sprint 1 (ten) — warstwa tekstu kanonicznego
+ 
+ Co jest:
+@@ -550,6 +551,22 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
+ - Przykłady w GUI zależne od dostępu (`access` w EXAMPLES): 9 dla anonimów na korpusie
+   open, 12 dla kont `licensed`; wyzwalacze Ojców + Barnaba, Hermas, Didache, Kodeks Synajski.
+ 
++## Sprint 27 — strona jako całość
++
++- **`pages/`** — podstrony: *O projekcie* (`/o-projekcie/`), *Jak korzystać* (`/jak-korzystac/`, instrukcja:
++  pytania, sigla, tryby, opcje, znaczki weryfikacji, panel źródeł, konkordancja, konto, limity),
++  *Korpus* (`/korpus/`, liczby z bazy w cache 1 h: autorzy i ich publikacje wg dostępu użytkownika,
++  materiały bez zgody tylko zbiorczo, dzieła tekstu, leksykon, odsyłacze, tomy i dzieła Ojców, teksty ANE),
++  *Dla autorów* (`/dla-autorow/`, licencje, zgoda i jej wycofanie, treść oświadczenia, wydawcy),
++  *Autor* (`/autor/`, biogram i kontakt). Testy w `pages/tests/`.
++- **Wspólny szkielet**: `static/site.css` (tokeny jasne/ciemne, pasek `.topbar`, `.mainnav`, stopka,
++  typografia podstron), `templates/site.html`, `partials/topbar.html` (podświetlenie z `active` lub
++  namespace URL), `partials/userbox.html`. Czat (`rag/index.html`), tekst (`base.html` → `site.html`
++  z paskiem sigla/szukaj), konto i logowanie używają tego samego paska i stopki.
++- **Procesor kontekstu** `pages.context.site`: `site_commit` (skrót z `.git/HEAD`, bez subprocessu —
++  stopka pokazuje wdrożoną wersję), `site_github_url`, `site_contact_email`, `access_levels`, `allow_anonymous`.
++- Ustawienia: `STATICFILES_DIRS`, `SITE_GITHUB_URL`, `SITE_CONTACT_EMAIL` (.env; pusty = bez adresu na stronie).
++
+ ## Plan kolejnych sprintów
+ 
+ 5. **Dalsze korpusy**: LXX Rahlfs (Eliran Wong, CC BY-NC-SA), UBG, Wujek,
+diff --git a/README.md b/README.md
+index 4a1dfaa..3fbaa03 100644
+--- a/README.md
++++ b/README.md
+@@ -156,13 +156,15 @@ library/      literatura: modele, harvest/, ingestia, chunkowanie, fonty legacy,
+ rag/          serwis RAG, prompt, weryfikacja cytatów, konta, materiały osobiste, zgody, eksport cytowań, GUI (SSE)
+ ane/          baza powiązana: teksty ANE (eBL)
+ patristics/   baza powiązana: Ojcowie Kościoła (CCEL ThML)
++pages/        podstrony informacyjne: o projekcie, jak korzystać, korpus (żywe liczby), dla autorów, autor; procesor kontekstu (stopka, commit)
++static/       site.css — wspólne tokeny, pasek nawigacji i stopka
+ deploy/       systemd, nginx, skrypty wdrożeniowe
+ services/     reranker ROCm/CUDA (FastAPI, API zgodne z TEI)
+ scripts/      narzędzia jednorazowe (fonty legacy, place_downloads, eval)
+-templates/    GUI: czat, konto, tekst i konkordancja
++templates/    GUI: site.html (szkielet), partials/ (pasek, użytkownik), czat, konto, logowanie, tekst i konkordancja, pages/
+ ```
+ 
+-Testy: `pytest` (129, backendy zastępcze bez OpenSearcha i Ollamy); styl: `ruff format && ruff check`.
++Testy: `pytest` (141, backendy zastępcze bez OpenSearcha i Ollamy); styl: `ruff format && ruff check`.
+ 
+ ## Stan i plan
+ 
+diff --git a/config/settings.py b/config/settings.py
+index 7eaa014..70c5d31 100644
+--- a/config/settings.py
++++ b/config/settings.py
+@@ -61,6 +61,7 @@ INSTALLED_APPS = [
+     "rag",
+     "ane",
+     "patristics",
++    "pages",
+ ]
+ 
+ MIDDLEWARE = [
+@@ -86,6 +87,7 @@ TEMPLATES = [
+                 "django.template.context_processors.request",
+                 "django.contrib.auth.context_processors.auth",
+                 "django.contrib.messages.context_processors.messages",
++                "pages.context.site",
+             ],
+         },
+     },
+@@ -142,6 +144,7 @@ USE_TZ = True
+ 
+ STATIC_URL = "static/"
+ STATIC_ROOT = BASE_DIR / "staticfiles"
++STATICFILES_DIRS = [BASE_DIR / "static"]  # site.css — wspólne style podstron i paska
+ STORAGES = {
+     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+     "staticfiles": {
+@@ -283,3 +286,7 @@ LOGGING = {
+     "handlers": {"console": {"class": "logging.StreamHandler"}},
+     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+ }
++
++# --- Strony informacyjne (stopka, kontakt) ---
++SITE_GITHUB_URL = env("SITE_GITHUB_URL", "https://github.com/kwasiucionek/Scriptura")
++SITE_CONTACT_EMAIL = env("SITE_CONTACT_EMAIL", "")  # pusty = bez adresu na stronie „Autor”
+diff --git a/config/urls.py b/config/urls.py
+index aa70680..556d5d1 100644
+--- a/config/urls.py
++++ b/config/urls.py
+@@ -5,4 +5,5 @@ urlpatterns = [
+     path("admin/", admin.site.urls),
+     path("", include("rag.urls")),
+     path("text/", include("corpus.urls")),
++    path("", include("pages.urls")),
+ ]
+diff --git a/deploy/env.production.example b/deploy/env.production.example
+index 9c094c6..cd7b179 100644
+--- a/deploy/env.production.example
++++ b/deploy/env.production.example
+@@ -54,3 +54,7 @@ TRANSLATE_MODEL=gemma4:31b-cloud
+ CURATE_MODEL=
+ CURATE_REVIEW_CONFIDENCE=0.5
+ HARVEST_MAILTO=
++
++# Strony informacyjne (stopka, strona „Autor”)
++SITE_GITHUB_URL=https://github.com/kwasiucionek/Scriptura
++SITE_CONTACT_EMAIL=
+diff --git a/pages/__init__.py b/pages/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/pages/apps.py b/pages/apps.py
+new file mode 100644
+index 0000000..2b7e321
+--- /dev/null
++++ b/pages/apps.py
+@@ -0,0 +1,7 @@
++from django.apps import AppConfig
++
++
++class PagesConfig(AppConfig):
++    default_auto_field = "django.db.models.BigAutoField"
++    name = "pages"
++    verbose_name = "Strony informacyjne"
+diff --git a/pages/context.py b/pages/context.py
+new file mode 100644
+index 0000000..d3c7db3
+--- /dev/null
++++ b/pages/context.py
+@@ -0,0 +1,43 @@
++"""Procesor kontekstu: dane wspólne dla wszystkich szablonów (stopka, pasek, kontakt).
++
++`site_commit` czytany z .git bez subprocessu — na serwerze repo jest klonem,
++więc stopka pokazuje, która wersja jest wdrożona (odróżnia lokalne od produkcji).
++"""
++
++from functools import lru_cache
++
++from django.conf import settings
++
++from rag.access import access_for_user
++
++
++@lru_cache(maxsize=1)
++def git_commit() -> str:
++    head = settings.BASE_DIR / ".git" / "HEAD"
++    try:
++        ref = head.read_text(encoding="utf-8").strip()
++        if ref.startswith("ref:"):
++            ref_path = settings.BASE_DIR / ".git" / ref.split(" ", 1)[1].strip()
++            if ref_path.exists():
++                return ref_path.read_text(encoding="utf-8").strip()[:7]
++            packed = settings.BASE_DIR / ".git" / "packed-refs"
++            if packed.exists():
++                for line in packed.read_text(encoding="utf-8").splitlines():
++                    if line.endswith(" " + ref.split(" ", 1)[1].strip()):
++                        return line.split(" ", 1)[0][:7]
++            return ""
++        return ref[:7]
++    except OSError:
++        return ""
++
++
++def site(request) -> dict:
++    user = request.user if request.user.is_authenticated else None
++    return {
++        "site_commit": git_commit(),
++        "site_github_url": settings.SITE_GITHUB_URL,
++        "site_contact_email": settings.SITE_CONTACT_EMAIL,
++        "site_host": request.get_host(),
++        "access_levels": access_for_user(user),
++        "allow_anonymous": settings.ALLOW_ANONYMOUS,
++    }
+diff --git a/pages/tests/__init__.py b/pages/tests/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/pages/tests/test_pages.py b/pages/tests/test_pages.py
+new file mode 100644
+index 0000000..969779d
+--- /dev/null
++++ b/pages/tests/test_pages.py
+@@ -0,0 +1,34 @@
++"""Podstrony informacyjne renderują się dla anonima i zalogowanego; pasek i stopka są wspólne."""
++
++import pytest
++from django.contrib.auth.models import User
++from django.urls import reverse
++
++PAGES = ["pages:about", "pages:guide", "pages:corpus", "pages:for_authors", "pages:author"]
++
++
++@pytest.mark.django_db
++@pytest.mark.parametrize("name", PAGES)
++def test_pages_render_anonymous(client, name):
++    r = client.get(reverse(name))
++    assert r.status_code == 200
++    body = r.content.decode()
++    assert 'class="topbar"' in body and 'class="site-footer"' in body
++    assert "Zaloguj" in body
++
++
++@pytest.mark.django_db
++def test_corpus_page_for_superuser_shows_extended_levels(client):
++    user = User.objects.create_superuser("root", "r@x.pl", "x")
++    client.force_login(user)
++    r = client.get(reverse("pages:corpus"))
++    assert r.status_code == 200
++    assert "licensed" in r.content.decode()
++    assert "Wyloguj" in r.content.decode()
++
++
++@pytest.mark.django_db
++def test_chat_and_text_share_topbar(client):
++    for url in [reverse("rag:index"), reverse("corpus:index"), reverse("rag:login")]:
++        body = client.get(url).content.decode()
++        assert 'class="mainnav"' in body, url
+diff --git a/pages/urls.py b/pages/urls.py
+new file mode 100644
+index 0000000..b1a6888
+--- /dev/null
++++ b/pages/urls.py
+@@ -0,0 +1,13 @@
++from django.urls import path
++
++from pages import views
++
++app_name = "pages"
++
++urlpatterns = [
++    path("o-projekcie/", views.about, name="about"),
++    path("jak-korzystac/", views.guide, name="guide"),
++    path("korpus/", views.corpus, name="corpus"),
++    path("dla-autorow/", views.for_authors, name="for_authors"),
++    path("autor/", views.author, name="author"),
++]
+diff --git a/pages/views.py b/pages/views.py
+new file mode 100644
+index 0000000..cf97b8a
+--- /dev/null
++++ b/pages/views.py
+@@ -0,0 +1,153 @@
++"""Podstrony informacyjne: o projekcie, korpus (żywe liczby), dla autorów, autor.
++
++Statystyki korpusu liczone z bazy i trzymane w cache (STATS_TTL); anonim widzi
++tylko materiały `open`, zalogowany z rozszerzonym dostępem — także swoje poziomy.
++Autorzy materiałów bez zgody nie są wymieniani z nazwiska — tylko liczba zbiorcza.
++"""
++
++from django.conf import settings
++from django.core.cache import cache
++from django.db.models import Count, Q
++from django.http import HttpRequest, HttpResponse
++from django.shortcuts import render
++
++from ane.models import AneLine, AneText
++from corpus.models import Lexeme, Token, Verse, VerseLink, Work
++from library.models import Author, DocType, Document
++from patristics.models import PatPassage, PatRef, PatWork
++from rag.access import access_for_user
++
++STATS_TTL = 3600
++
++
++def _corpus_stats(levels: list[str]) -> dict:
++    key = "pages:corpus-stats:" + "-".join(sorted(levels))
++    data = cache.get(key)
++    if data:
++        return data
++
++    shared = Document.objects.filter(owner__isnull=True)  # bez materiałów osobistych
++    visible = shared.filter(access__in=levels)
++    by_type = dict(
++        visible.values_list("doc_type")
++        .annotate(n=Count("id"))
++        .values_list("doc_type", "n")
++    )
++    type_rows = [
++        {"label": DocType(code).label, "n": by_type.get(code, 0)}
++        for code in DocType.values
++        if by_type.get(code)
++    ]
++    authors = (
++        Author.objects.annotate(
++            n_open=Count(
++                "documents",
++                filter=Q(documents__access="open", documents__owner__isnull=True),
++            ),
++            n_visible=Count(
++                "documents",
++                filter=Q(documents__access__in=levels, documents__owner__isnull=True),
++            ),
++        )
++        .filter(n_visible__gt=0)
++        .order_by("-n_visible", "name")
++    )
++    hidden = shared.exclude(
++        access__in=levels
++    ).count()  # oczekujące na zgodę / demo prywatne
++    recent = list(visible.prefetch_related("authors").order_by("-created")[:6])
++
++    works = sorted(Work.objects.all(), key=lambda w: (w.kind != "original", w.code))
++    pat_volumes = (
++        PatWork.objects.values("series", "volume")
++        .annotate(n_works=Count("id"), n_passages=Count("passages", distinct=True))
++        .order_by("series", "volume")
++    )
++    pat_works = list(PatWork.objects.order_by("series", "volume", "author", "title"))
++    ane_texts = list(
++        AneText.objects.annotate(n_lines=Count("chapters__lines")).order_by("name")
++    )
++
++    data = {
++        "docs_total": visible.count(),
++        "docs_open": shared.filter(access="open").count(),
++        "docs_hidden": hidden,
++        "chunks_total": sum(visible.values_list("chunk_count", flat=True)),
++        "type_rows": type_rows,
++        "authors": list(authors),
++        "recent": recent,
++        "works": works,
++        "verses": Verse.objects.count(),
++        "tokens": Token.objects.count(),
++        "lexemes": Lexeme.objects.count(),
++        "lexemes_hbo": Lexeme.objects.filter(language__in=["hbo", "arc"]).count(),
++        "lexemes_grc": Lexeme.objects.filter(language="grc").count(),
++        "links": VerseLink.objects.count(),
++        "pat_volumes": list(pat_volumes),
++        "pat_works": pat_works,
++        "pat_works_n": len(pat_works),
++        "pat_passages": PatPassage.objects.count(),
++        "pat_refs": PatRef.objects.count(),
++        "pat_translated": PatPassage.objects.exclude(text_pl="").count(),
++        "ane_texts": ane_texts,
++        "ane_lines": AneLine.objects.count(),
++    }
++    cache.set(key, data, STATS_TTL)
++    return data
++
++
++def about(request: HttpRequest) -> HttpResponse:
++    return render(request, "pages/about.html", {"active": "about"})
++
++
++def guide(request: HttpRequest) -> HttpResponse:
++    return render(
++        request,
++        "pages/guide.html",
++        {
++            "active": "guide",
++            "rate_anon": settings.RATE_LIMIT_ANON,
++            "rate_user": settings.RATE_LIMIT_USER,
++            "question_max": settings.QUESTION_MAX_CHARS,
++            "allow_anonymous": settings.ALLOW_ANONYMOUS,
++            "anon_popular_only": settings.ANONYMOUS_POPULAR_ONLY,
++            "works": sorted(
++                Work.objects.all(), key=lambda w: (w.kind != "original", w.code)
++            ),
++        },
++    )
++
++
++def corpus(request: HttpRequest) -> HttpResponse:
++    levels = access_for_user(request.user if request.user.is_authenticated else None)
++    return render(
++        request,
++        "pages/corpus.html",
++        {
++            "active": "corpus",
++            "levels": levels,
++            "extended": levels != ["open"],
++            "s": _corpus_stats(levels),
++        },
++    )
++
++
++def for_authors(request: HttpRequest) -> HttpResponse:
++    from rag.personal import CONSENT_STATEMENT
++
++    return render(
++        request,
++        "pages/for_authors.html",
++        {
++            "active": "authors",
++            "consent_statement": CONSENT_STATEMENT,
++            "limits": {
++                "docs": settings.PERSONAL_MAX_DOCS,
++                "mb": settings.PERSONAL_MAX_MB,
++            },
++        },
++    )
++
++
++def author(request: HttpRequest) -> HttpResponse:
++    return render(request, "pages/author.html", {"active": "author"})
+diff --git a/pyproject.toml b/pyproject.toml
+index 173a2ca..b209464 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
+ # projekt Django w układzie płaskim — pakiety Pythona to tylko te katalogi (z podpakietami);
+ # templates/, data/, docker/, scripts/, services/ nie są kodem i nie wchodzą do dystrybucji
+ where = ["."]
+-include = ["config*", "corpus*", "library*", "rag*", "ane*", "patristics*"]
++include = ["config*", "corpus*", "library*", "rag*", "ane*", "patristics*", "pages*"]
+ exclude = ["*.tests*", "data*", "docker*", "templates*", "scripts*", "services*"]
+ 
+ [tool.ruff]
+diff --git a/static/site.css b/static/site.css
+new file mode 100644
+index 0000000..b427739
+--- /dev/null
++++ b/static/site.css
+@@ -0,0 +1,121 @@
++/* Scriptura — wspólne tokeny, pasek nawigacji, stopka i typografia podstron.
++   Czat (rag/index.html) dokłada własne style aplikacji; podstrony korzystają z site.html. */
++
++:root {
++  color-scheme: light;
++  --bg: #f8f6f2; --panel: #ffffff; --text: #241f1c; --muted: #6f6660; --line: #e6dfd6;
++  --accent: #7a1f2b; --accent-soft: #f6e9ea; --ok: #2f6b3a; --ok-soft: #e8f2ea; --warn: #a14b20; --warn-soft: #fff2e8;
++  --user: #f1ebe3; --hl: #fff1c2;
++  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++  --serif: Georgia, "Noto Serif", "Source Serif 4", serif;
++  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
++  --shadow: 0 8px 30px #3a1c1c10;
++}
++@media (prefers-color-scheme: dark) {
++  :root { color-scheme: dark; --bg: #16120f; --panel: #1f1916; --text: #ece5dd; --muted: #a79c92; --line: #3a302a;
++          --accent: #e08a95; --accent-soft: #3b2226; --ok: #8bd39a; --ok-soft: #223a28; --warn: #f0ac7b; --warn-soft: #3a2b21;
++          --user: #2b231e; --hl: #4a3a1a; --shadow: 0 8px 30px #00000030; }
++}
++
++* { box-sizing: border-box; }
++html { -webkit-text-size-adjust: 100%; }
++body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); }
++a { color: var(--accent); }
++:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
++.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
++
++/* ---------- pasek górny (wspólny dla czatu i podstron) ---------- */
++.topbar { display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; padding: 14px clamp(16px, 3vw, 32px); border-bottom: 1px solid var(--line); background: var(--panel); }
++.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
++.brand-mark { width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; background: var(--accent); color: var(--panel); display: flex; align-items: center; justify-content: center; font: 700 24px/1 var(--serif); }
++.brand h1 { display: flex; align-items: center; gap: 12px; font: 650 22px/1.1 var(--serif); letter-spacing: -.8px; margin: 0; }
++.brand .edition { font: 500 9px/1 var(--sans); letter-spacing: 1.1px; border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; color: var(--muted); }
++.brand .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
++.mainnav { display: flex; gap: 2px; flex-wrap: wrap; margin-left: clamp(0px, 2vw, 28px); }
++.mainnav a { color: var(--muted); font-size: 13px; text-decoration: none; padding: 8px 11px; border-radius: 9px; white-space: nowrap; }
++.mainnav a.on { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
++.topbar .right { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
++.topbar .right a, .topbar .right summary { color: var(--muted); font-size: 12px; text-decoration: none; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; }
++.topbar .right .who { border: 0; padding: 9px 4px; }
++.topbar form.inline { display: inline; margin: 0; padding: 0; background: transparent; grid-area: auto; }
++.topbar button.ghost { font: 12px var(--sans); cursor: pointer; border-radius: 10px; padding: 9px 12px; color: var(--text); background: transparent; border: 1px solid var(--line); }
++@media (hover: hover) {
++  .mainnav a:hover, .topbar .right a:hover, .topbar .right summary:hover, .topbar button.ghost:hover { background: var(--accent-soft); color: var(--accent); }
++}
++@media (max-width: 1400px) { .brand .sub { display: none; } }
++@media (max-width: 720px) {
++  .brand .edition { display: none; }
++  .mainnav { order: 3; width: 100%; margin-left: 0; overflow-x: auto; scrollbar-width: none; }
++  .mainnav a { font-size: 12px; padding: 7px 9px; }
++}
++
++/* ---------- podstrony (site.html) ---------- */
++.site { min-height: 100dvh; display: flex; flex-direction: column; }
++.page { flex: 1; width: 100%; max-width: 900px; margin: 0 auto; padding: 36px clamp(16px, 4vw, 40px) 64px; }
++.page.wide { max-width: 1200px; }
++.page h1 { font: 650 clamp(30px, 4vw, 42px)/1.15 var(--serif); letter-spacing: -1px; margin: 0 0 10px; }
++.page h1 span { color: var(--accent); font-style: italic; }
++.page h2 { font: 650 22px/1.25 var(--serif); letter-spacing: -.4px; margin: 42px 0 12px; }
++.page h3 { font: 650 15px/1.3 var(--sans); margin: 26px 0 8px; }
++.page .lead { font-size: 17px; line-height: 1.7; color: var(--muted); margin: 0 0 26px; max-width: 700px; }
++.page p, .page li { line-height: 1.75; }
++.page p { margin: 0 0 14px; }
++.page ul, .page ol { padding-left: 22px; margin: 0 0 14px; }
++.page li { margin-bottom: 6px; }
++.page code { font: 13px var(--mono); background: var(--user); padding: 1px 5px; border-radius: 4px; }
++.page kbd { font: 12px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; background: var(--panel); }
++.page blockquote { margin: 14px 0; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 10px 10px 0; color: var(--muted); font-size: 14px; }
++.eyebrow { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: 1.8px; color: var(--accent); margin-bottom: 14px; }
++.eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
++.muted { color: var(--muted); }
++.small { font-size: 12px; }
++
++.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 16px 0 8px; }
++.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
++.card h3 { margin: 0 0 6px; font-size: 14px; }
++.card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
++.card .num { display: block; font: 650 30px/1.1 var(--serif); letter-spacing: -1px; color: var(--accent); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
++.card a { text-decoration: none; }
++
++.steps { counter-reset: step; list-style: none; padding: 0; margin: 16px 0; }
++.steps li { position: relative; padding: 0 0 18px 48px; margin: 0; }
++.steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: -2px; width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font: 700 14px/32px var(--sans); text-align: center; }
++.steps li strong { display: block; margin-bottom: 2px; }
++
++table.stats { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 10px 0 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
++table.stats th, table.stats td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
++table.stats th { font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--bg); }
++table.stats tr:last-child td { border-bottom: 0; }
++table.stats td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
++table.stats a { text-decoration: none; }
++.tag { display: inline-block; border-radius: 5px; font-size: 10.5px; padding: 2px 7px; font-weight: 600; background: var(--accent-soft); color: var(--accent); vertical-align: middle; }
++.tag.ok { background: var(--ok-soft); color: var(--ok); }
++.tag.warn { background: var(--warn-soft); color: var(--warn); }
++
++.callout { display: flex; gap: 14px; padding: 16px 18px; margin: 18px 0; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
++.callout > span { color: var(--accent); font-size: 22px; line-height: 1; }
++.callout p { margin: 0; font-size: 14px; }
++.callout.warn { border-left: 4px solid var(--warn); }
++
++details.more { margin: 8px 0 16px; }
++details.more > summary { cursor: pointer; color: var(--accent); font-size: 13px; padding: 6px 0; list-style: none; }
++details.more > summary::-webkit-details-marker { display: none; }
++details.more > summary::before { content: "▸ "; color: var(--muted); }
++details.more[open] > summary::before { content: "▾ "; }
++
++.cta { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: var(--panel); text-decoration: none; padding: 11px 18px; border-radius: 11px; font-weight: 600; font-size: 14px; margin: 6px 10px 6px 0; }
++.cta.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
++
++.form-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 28px 32px; width: min(360px, 100%); margin: 40px auto; box-shadow: var(--shadow); }
++.form-card label { display: block; font-size: 11px; color: var(--muted); margin: 10px 0 4px; }
++.form-card input { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--bg); color: var(--text); }
++.form-card button { margin-top: 16px; width: 100%; padding: 11px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: 600 13px var(--sans); cursor: pointer; }
++.form-card .err { color: var(--warn); font-size: 12px; margin-top: 8px; }
++
++/* ---------- stopka ---------- */
++.site-footer { border-top: 1px solid var(--line); background: var(--panel); padding: 22px clamp(16px, 3vw, 32px); color: var(--muted); font-size: 12px; }
++.site-footer .inner { max-width: 1200px; margin: 0 auto; display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; }
++.site-footer a { color: var(--muted); text-decoration: none; }
++.site-footer a:hover { color: var(--accent); }
++.site-footer .fill { flex: 1; }
++.site-footer code { font: 11px var(--mono); }
+diff --git a/templates/base.html b/templates/base.html
+index 10f32a1..7e9d4ab 100644
+--- a/templates/base.html
++++ b/templates/base.html
+@@ -1,59 +1,54 @@
+-<!doctype html>
+-<html lang="pl">
+-<head>
+-<meta charset="utf-8">
+-<meta name="viewport" content="width=device-width, initial-scale=1">
+-<title>{% block title %}Scriptura{% endblock %}</title>
++{% extends "site.html" %}
++{# Warstwa tekstu: wspólny pasek witryny + własny pasek sigla/szukaj (htmx), panel wyników w bloku `panel`. #}
++{% block title %}Tekst i konkordancja — Scriptura{% endblock %}
++{% block page_class %}wide text{% endblock %}
++{% block head %}
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/2.0.4/htmx.min.js"></script>
+ <style>
+-  :root { --bg:#fbfaf7; --fg:#1e1e1e; --muted:#6b6b6b; --line:#e3ded4; --accent:#7a1f1f; --hl:#fff1c2; }
+-  * { box-sizing:border-box; }
+-  body { margin:0; font:16px/1.55 Georgia, "Noto Serif", serif; background:var(--bg); color:var(--fg); }
+-  header { border-bottom:1px solid var(--line); padding:.6rem 1rem; display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap; }
+-  header h1 { font-size:1.1rem; margin:0; letter-spacing:.06em; }
+-  header h1 a { color:var(--accent); text-decoration:none; }
+-  header form { display:flex; gap:.4rem; align-items:center; flex:1; min-width:280px; }
+-  input[type=text] { flex:1; font:inherit; padding:.35rem .6rem; border:1px solid var(--line); border-radius:4px; background:#fff; }
+-  button { font:inherit; padding:.35rem .8rem; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:4px; cursor:pointer; }
+-  main { padding:1rem; max-width:1400px; margin:0 auto; }
+-  .works { font-size:.85rem; color:var(--muted); display:flex; gap:.8rem; flex-wrap:wrap; margin:.4rem 0 1rem; }
+-  .works label { cursor:pointer; }
+-  table.parallel { width:100%; border-collapse:collapse; }
+-  table.parallel th { text-align:left; font-weight:normal; color:var(--muted); font-size:.8rem; border-bottom:1px solid var(--line); padding:.3rem .5rem; }
+-  table.parallel td { vertical-align:top; padding:.45rem .5rem; border-bottom:1px solid var(--line); }
+-  td.ref { white-space:nowrap; color:var(--muted); font-size:.85rem; width:5.5rem; }
+-  .rtl { direction:rtl; text-align:right; font-family:"SBL Hebrew","Ezra SIL","Noto Serif Hebrew",serif; font-size:1.2rem; }
+-  .grc { font-family:"SBL Greek","Gentium Plus","Noto Serif",serif; }
+-  a.tok { color:inherit; text-decoration:none; border-bottom:1px dotted #bbb; cursor:pointer; }
+-  a.tok:hover { background:var(--hl); }
+-  .error { color:var(--accent); }
+-  .muted { color:var(--muted); font-size:.85rem; }
+-  .bybook { display:flex; gap:.6rem; flex-wrap:wrap; margin:.5rem 0 1rem; font-size:.85rem; }
+-  .bybook span { border:1px solid var(--line); border-radius:3px; padding:.05rem .4rem; background:#fff; }
+-  ul.hits { list-style:none; padding:0; margin:0; }
+-  ul.hits li { padding:.4rem 0; border-bottom:1px solid var(--line); }
+-  ul.hits .ref a { color:var(--accent); text-decoration:none; }
+-  mark { background:var(--hl); }
+-  nav.pager { margin:1rem 0; display:flex; gap:1rem; font-size:.9rem; }
+-  .htmx-request { opacity:.5; }
++  .subbar { border-bottom: 1px solid var(--line); padding: .6rem clamp(16px, 3vw, 32px); display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; background: var(--bg); }
++  .subbar form { display: flex; gap: .4rem; align-items: center; flex: 1; min-width: 280px; margin: 0; }
++  .subbar input[type=text] { flex: 1; font: 14px var(--sans); padding: .45rem .7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); }
++  .subbar button { font: 600 13px var(--sans); padding: .45rem .9rem; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 8px; cursor: pointer; }
++  main.text { font: 16px/1.55 var(--serif); padding-top: 1rem; }
++  main.text p { line-height: 1.55; }
++  .works { font: .85rem var(--sans); color: var(--muted); display: flex; gap: .8rem; flex-wrap: wrap; margin: .4rem 0 1rem; }
++  .works label { cursor: pointer; }
++  table.parallel { width: 100%; border-collapse: collapse; }
++  table.parallel th { text-align: left; font: .8rem var(--sans); color: var(--muted); border-bottom: 1px solid var(--line); padding: .3rem .5rem; }
++  table.parallel td { vertical-align: top; padding: .45rem .5rem; border-bottom: 1px solid var(--line); }
++  td.ref { white-space: nowrap; color: var(--muted); font-size: .85rem; width: 5.5rem; }
++  .rtl { direction: rtl; text-align: right; font-family: "SBL Hebrew", "Ezra SIL", "Noto Serif Hebrew", serif; font-size: 1.2rem; }
++  .grc { font-family: "SBL Greek", "Gentium Plus", "Noto Serif", serif; }
++  a.tok { color: inherit; text-decoration: none; border-bottom: 1px dotted #bbb; cursor: pointer; }
++  a.tok:hover { background: var(--hl); }
++  .error { color: var(--accent); }
++  .muted { color: var(--muted); font-size: .85rem; }
++  .bybook { display: flex; gap: .6rem; flex-wrap: wrap; margin: .5rem 0 1rem; font: .85rem var(--sans); }
++  .bybook span { border: 1px solid var(--line); border-radius: 3px; padding: .05rem .4rem; background: var(--panel); }
++  ul.hits { list-style: none; padding: 0; margin: 0; }
++  ul.hits li { padding: .4rem 0; border-bottom: 1px solid var(--line); }
++  ul.hits .ref a { color: var(--accent); text-decoration: none; }
++  mark { background: var(--hl); color: inherit; }
++  nav.pager { margin: 1rem 0; display: flex; gap: 1rem; font: .9rem var(--sans); }
++  .htmx-request { opacity: .5; }
+ </style>
+-</head>
+-<body>
+-<header>
+-  <h1><a href="{% url 'corpus:index' %}">SCRIPTURA</a></h1>
++{% endblock %}
++{% block subbar %}
++<div class="subbar">
+   <form hx-get="{% url 'corpus:reference' %}" hx-target="#panel" hx-push-url="true">
+-    <input type="text" name="q" value="{{ q|default:'' }}" placeholder="siglum: Mk 1,1-8 · Rdz 1–3 · J 3,16nn" autofocus>
++    <label class="sr-only" for="ref-q">Siglum</label>
++    <input type="text" id="ref-q" name="q" value="{{ q|default:'' }}" placeholder="siglum: Mk 1,1-8 · Rdz 1–3 · J 3,16nn" autofocus>
+     <input type="hidden" name="works" value="{{ selected|join:',' }}">
+     <button>Otwórz</button>
+   </form>
+   <form hx-get="{% url 'corpus:search' %}" hx-target="#panel" hx-push-url="true">
+-    <input type="text" name="q" placeholder='szukaj: słowo "fraza" -bez H430 lemma:λόγος'>
++    <label class="sr-only" for="search-q">Szukaj</label>
++    <input type="text" id="search-q" name="q" placeholder='szukaj: słowo "fraza" -bez H430 lemma:λόγος'>
+     <input type="hidden" name="works" value="{{ selected|join:',' }}">
+     <button>Szukaj</button>
+   </form>
+-</header>
+-<main>
+-  <div id="panel">{% block panel %}{% endblock %}</div>
+-</main>
+-</body>
+-</html>
++</div>
++{% endblock %}
++{% block content %}
++<div id="panel">{% block panel %}{% endblock %}</div>
++{% endblock %}
+diff --git a/templates/pages/about.html b/templates/pages/about.html
+new file mode 100644
+index 0000000..ddc50d7
+--- /dev/null
++++ b/templates/pages/about.html
+@@ -0,0 +1,68 @@
++{% extends "site.html" %}
++{% block title %}O projekcie — Scriptura{% endblock %}
++{% block content %}
++<div class="eyebrow">O PROJEKCIE</div>
++<h1>Asystent biblijny, który nie odpowiada <span>z pamięci</span>.</h1>
++<p class="lead">Ogólne modele językowe mówią o Biblii płynnie, ale bez źródeł: mieszają tradycje, wymyślają cytaty, nie odróżniają egzegezy naukowej od popularyzacji ani interpretacji Ojców od współczesnego komentarza. Scriptura odwraca tę logikę.</p>
++
++<div class="cards">
++  <div class="card"><h3>Tylko ze źródeł</h3><p>Model dostaje wyłącznie fragmenty wyszukane pod konkretne pytanie i każde zdanie musi podeprzeć przypisem. Jeśli źródła milczą — mówi to wprost.</p></div>
++  <div class="card"><h3>Trzy głosy osobno</h3><p>Tekst biblijny, ustalenia egzegetów i Tradycja (Ojcowie Kościoła) są oznaczone inaczej. Czytelnik zawsze wie, na co patrzy.</p></div>
++  <div class="card"><h3>Prowadzi do tekstu</h3><p>Każda odpowiedź linkuje do oryginału: artykułu w repozytorium, wpisu na stronie autora, minuty wykładu. System ma prowadzić do lektury, nie ją zastępować.</p></div>
++</div>
++
++<h2>Po co to powstało</h2>
++<p>Punktem wyjścia jest polska biblistyka. System zbudowano na otwartych publikacjach biblistów z Papieskiego Wydziału Teologicznego we Wrocławiu i Uniwersytetu Papieskiego Jana Pawła II — tych, które w repozytoriach OPEN i theo‑logos mają wolne licencje (Creative Commons). Wszystko, co takiej licencji nie ma, jest w systemie zamknięte, dopóki autor nie wyrazi zgody. Aktualny skład korpusu i liczby są na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>.</p>
++<p>Scriptura jest prototypem badawczym: sprawdza, czy asystent oparty na źródłach może być pomocą w studium biblijnym — dla studenta, katechety, duszpasterza i czytelnika, który chce wiedzieć, <em>kto</em> tak twierdzi i <em>gdzie</em> to napisał.</p>
++
++<h2>Co system ma w środku</h2>
++<table class="stats">
++  <tr><th>Warstwa</th><th>Źródło</th><th>Licencja</th><th>Co daje</th></tr>
++  <tr><td>Tekst biblijny</td><td>Kodeks Leningradzki (OSHB/WLC), SBL Greek NT, Septuaginta Rahlfsa, Biblia Gdańska 1632</td><td>wolne / domena publiczna</td><td>wersety w oryginale i przekładzie, tokeny z lematami i numerami Stronga, konkordancja, widok równoległy</td></tr>
++  <tr><td>Leksykon</td><td>STEPBible (Tyndale House, Cambridge)</td><td>CC BY</td><td>hasła: lemat, transliteracja, glosa, definicja — także dla pytań o słowa zapisane po polsku (<em>hesed</em>, <em>szalom</em>, <em>logos</em>)</td></tr>
++  <tr><td>Odsyłacze</td><td>OpenBible.info cross‑references</td><td>CC BY</td><td>„powiązane wersety” dla każdego miejsca</td></tr>
++  <tr><td>Literatura</td><td>artykuły, monografie, skrypty, recenzje, wpisy blogowe, wykłady (OPEN, theo‑logos, OpenAlex, strony autorów, YouTube)</td><td>wg pozycji</td><td>cytowanie z numerem i stroną; weryfikacja cytatów; wykłady z linkiem do minuty</td></tr>
++  <tr><td>Ojcowie Kościoła</td><td>Ante‑Nicene / Nicene and Post‑Nicene Fathers (CCEL)</td><td>domena publiczna</td><td>„co Ojcowie mówią o tym wersecie” — po odsyłaczach biblijnych w tekście, nie po podobieństwie słów</td></tr>
++  <tr><td>Starożytny Bliski Wschód</td><td>electronic Babylonian Library (LMU München): Gilgamesz, Enuma Elisz…</td><td>CC BY‑NC‑SA</td><td>teksty porównawcze cytowane z tabliczką i linią</td></tr>
++</table>
++<p class="small muted">Trzy ostatnie warstwy są bazami powiązanymi, nie zmieszanymi z literaturą: mają osobne indeksy, osobne miejsce w odpowiedzi (<code>[1]</code> literatura, <code>[P1]</code> Ojcowie, <code>[A1]</code> teksty ANE) i osobne grupy w panelu źródeł.</p>
++
++<h2>Jak powstaje odpowiedź</h2>
++<ol class="steps">
++  <li><strong>Rozpoznanie pytania</strong>Sigla (także mówione: „Powtórzonego Prawa 32 8”), terminy oryginalne po hebrajsku, grecku lub w transliteracji, przekład zapytania dla źródeł obcojęzycznych.</li>
++  <li><strong>Wyszukiwanie czterokanałowe</strong>Po siglach, po lematach, po transliteracjach i po treści (leksykalnie i semantycznie). Potem model ocenia trafność kandydatów i odrzuca nietrafione; z jednej publikacji trafia do kontekstu najwyżej kilka fragmentów.</li>
++  <li><strong>Kontekst dla modelu</strong>Źródła <code>[1]…[n]</code>, wersety w oryginale i przekładzie, hasła leksykonu, powiązane wersety, Ojcowie <code>[P1]…</code>, teksty ANE <code>[A1]…</code>.</li>
++  <li><strong>Generacja na wybranym poziomie</strong>Naukowym (aparat, terminy, hierarchia: publikacja recenzowana przed popularyzacją) albo popularnym (prosty język, te same źródła).</li>
++  <li><strong>Weryfikacja po stronie systemu</strong>Czy przypisy istnieją, czy sigla są w źródłach, czy cudzysłowy odpowiadają tekstowi. Cytat zmieniony przez model jest oznaczany, sigla spoza korpusu — wypisywane.</li>
++  <li><strong>Panel źródeł</strong>Fragmenty, linki do oryginałów i eksport cytowań do BibTeX / RIS.</li>
++</ol>
++<p>Szczegóły obsługi — sigla, tryby, opcje, czytanie przypisów — są w <a href="{% url 'pages:guide' %}">instrukcji korzystania</a>.</p>
++
++<h2>Zasady, które się nie zmieniają</h2>
++<ul>
++  <li><strong>Żadne źródło bez wolnej licencji nie jest publiczne bez zgody autora.</strong> Zgoda jest zapisywana z datą i treścią oświadczenia i można ją wycofać jednym kliknięciem z własnego konta. Więcej: <a href="{% url 'pages:for_authors' %}">Dla autorów</a>.</li>
++  <li><strong>Model nie odpowiada z pamięci.</strong> Brak źródeł oznacza jawną odmowę, nie zgadywanie.</li>
++  <li><strong>Materiały osobiste są osobiste.</strong> Każdy użytkownik może mieć własne notatki i teksty, widoczne tylko dla siebie — i sam decyduje, czy coś z nich udostępnić.</li>
++  <li><strong>Odpowiedź zawsze linkuje do oryginału.</strong> Artykuł w repozytorium, wpis na stronie autora, minuta wykładu.</li>
++</ul>
++
++<h2>Technika</h2>
++<p>Aplikacja w Pythonie (Django), indeks hybrydowy (BM25 + wektory) w OpenSearch, modele językowe przez Ollama: generacja i ocena trafności — <code>gemma4</code>, osadzenia — <code>snowflake‑arctic‑embed2</code>. Baza danych SQLite w trybie WAL, serwer własny. Kod źródłowy jest otwarty{% if site_github_url %} — <a href="{{ site_github_url }}" rel="noopener" target="_blank">repozytorium na GitHubie</a>{% endif %}, dziennik zmian w pliku <code>CHANGELOG.md</code>.</p>
++
++<h2>Kierunki rozwoju</h2>
++<h3>Blisko</h3>
++<ul>
++  <li>Pełne repozytoria: wszystkie tomy Ojców (37) z polskim przekładem pomocniczym; więcej tekstów ANE (Atrahasis, Ugarit — w miarę dostępności otwartych edycji); komplet publikacji autorów z theo‑logos.</li>
++  <li>Kanał dydaktyczny: pytania testowe generowane z lektury, sprawdzanie odpowiedzi studenta na tle źródeł, zestawy lektur do zajęć.</li>
++  <li>Historia interpretacji dla wersetu: jedna strona zbierająca Ojców, literaturę, odsyłacze i teksty porównawcze dla wybranego miejsca.</li>
++</ul>
++<h3>Dalej — z opiekunem merytorycznym</h3>
++<ul>
++  <li>Wybór i hierarchizacja źródeł: które komentarze, słowniki i serie są kanonem dla polskiej biblistyki; co wchodzi jako tekst naukowy, co jako popularyzacja.</li>
++  <li>Aparat krytyczny: warianty tekstowe (Qumran, LXX, Wulgata) przy wersecie, z literaturą o każdym wariancie.</li>
++  <li>Ekumeniczna warstwa przekładów (Biblia Tysiąclecia, Warszawska, Paulistów, Ekumeniczna) — o ile wydawcy wyrażą zgodę; technicznie system jest na to gotowy.</li>
++  <li>Współpraca z ośrodkiem akademickim: konta dla studentów i pracowników, materiały osobiste i wspólne, statystyki pytań jako materiał badawczy.</li>
++</ul>
++
++<div class="callout"><span aria-hidden="true">✉</span><p>Projekt szuka dwóch rzeczy: spojrzenia biblisty na jakość odpowiedzi (co trafne, co naiwne, czego brakuje) oraz — jeśli okaże się wart czasu — merytorycznego opiekuna decydującego o źródłach i kierunku. Strona techniczna pozostaje po stronie autora. <a href="{% url 'pages:author' %}">Kontakt</a>.</p></div>
++{% endblock %}
+diff --git a/templates/pages/author.html b/templates/pages/author.html
+new file mode 100644
+index 0000000..d286696
+--- /dev/null
++++ b/templates/pages/author.html
+@@ -0,0 +1,29 @@
++{% extends "site.html" %}
++{% block title %}Autor i kontakt — Scriptura{% endblock %}
++{% block content %}
++<div class="eyebrow">AUTOR I KONTAKT</div>
++<h1>Krzysztof <span>Wasiucionek</span></h1>
++<p class="lead">Scriptura jest projektem jednej osoby: pomysł, kod, serwer i dobór źródeł. Nie stoi za nią firma, uczelnia ani finansowanie — stoi pytanie, czy asystent językowy może być w studium biblijnym uczciwym narzędziem, a nie kolejnym źródłem zmyśleń.</p>
++
++<h2>O autorze</h2>
++<p>Zawodowo zajmuję się systemami przetwarzania tekstu w Pythonie — od rozpoznawania nazw i anonimizacji dokumentów prawnych po systemy odpowiadające na pytania z dokumentów (RAG) dla języka polskiego. Z wykształcenia jestem bibliotekoznawcą (informacja naukowa i bibliotekoznawstwo, specjalność biblioteki cyfrowe, Uniwersytet Wrocławski) i programistą back‑endu; mieszkam pod Wrocławiem.</p>
++<p>Biblią zajmuję się prywatnie, od lat, jako czytelnik — i z tego czytania wzięło się to narzędzie. Chciałem mieć asystenta, który przy pytaniu o werset powie, <em>kto</em> tak twierdzi i <em>gdzie</em>, a gdy nie wie — przyzna to. Scriptura jest próbą zbudowania go z otwartych źródeł polskiej biblistyki, tekstu oryginalnego i Tradycji, z poszanowaniem praw autorów.</p>
++
++<h2>Czego szukam</h2>
++<ul>
++  <li><strong>Spojrzenia biblisty</strong> na jakość odpowiedzi: co jest trafne, co naiwne, czego brakuje, które źródła powinny mieć pierwszeństwo.</li>
++  <li><strong>Autorów gotowych udostępnić swoje teksty</strong> — na warunkach, które sami określą (<a href="{% url 'pages:for_authors' %}">Dla autorów</a>).</li>
++  <li><strong>Opiekuna merytorycznego</strong>, jeśli projekt okaże się wart czasu: kogoś, kto decyduje o kanonie źródeł i kierunku, podczas gdy strona techniczna pozostaje po mojej stronie. Forma dowolna — od uwag mailem po wspólny projekt naukowy lub dydaktyczny.</li>
++</ul>
++
++<h2>Kontakt</h2>
++<div class="cards">
++  {% if site_contact_email %}<div class="card"><h3>E‑mail</h3><p><a href="mailto:{{ site_contact_email }}">{{ site_contact_email }}</a></p></div>{% endif %}
++  <div class="card"><h3>Strona</h3><p><a href="https://kwasiucionek.cytr.us" rel="noopener" target="_blank">kwasiucionek.cytr.us</a></p></div>
++  <div class="card"><h3>GitHub</h3><p><a href="https://github.com/kwasiucionek" rel="noopener" target="_blank">github.com/kwasiucionek</a>{% if site_github_url %} · <a href="{{ site_github_url }}" rel="noopener" target="_blank">kod Scriptury</a>{% endif %}</p></div>
++</div>
++<p class="small muted">Zgłaszając uwagę do odpowiedzi, dołącz treść pytania i — jeśli to możliwe — rozwinięty <code>JSON</code> spod odpowiedzi; zawiera listę źródeł, które dostał model, i pozwala odtworzyć problem.</p>
++
++<h2>Stan projektu</h2>
++<p>Prototyp badawczy, rozwijany od września 2026. Działa na własnym serwerze; korzystanie jest bezpłatne, bez reklam i bez skryptów śledzących. Treści pytań użytkowników anonimowych nie są zapisywane; zalogowani mają historię rozmów tylko na własne potrzeby i mogą ją usuwać. Szczegóły: <a href="{% url 'pages:about' %}">O projekcie</a>, <a href="{% url 'pages:guide' %}">Jak korzystać</a>, <a href="{% url 'pages:corpus' %}">Korpus</a>.</p>
++{% endblock %}
+diff --git a/templates/pages/corpus.html b/templates/pages/corpus.html
+new file mode 100644
+index 0000000..31540ad
+--- /dev/null
++++ b/templates/pages/corpus.html
+@@ -0,0 +1,81 @@
++{% extends "site.html" %}
++{% block title %}Korpus — Scriptura{% endblock %}
++{% block page_class %}wide{% endblock %}
++{% block content %}
++<div class="eyebrow">KORPUS</div>
++<h1>Z czego system <span>odpowiada</span></h1>
++<p class="lead">Wszystko, co asystent może zacytować, jest tu wyliczone. Liczby pochodzą z bazy i odświeżają się co godzinę.{% if extended %} Widzisz stan dla swojego poziomu dostępu ({{ levels|join:", " }}).{% else %} Widzisz materiały publiczne; zalogowani z rozszerzonym dostępem widzą także pozycje udostępnione za zgodą autorów.{% endif %}</p>
++
++<div class="cards">
++  <div class="card"><span class="num">{{ s.docs_total }}</span><h3>publikacji w literaturze</h3><p>{{ s.chunks_total }} fragmentów do cytowania{% if s.docs_hidden %} · {{ s.docs_hidden }} pozycji poza Twoim dostępem (bez zgody autora lub demo prywatne){% endif %}</p></div>
++  <div class="card"><span class="num">{{ s.verses }}</span><h3>wersetów</h3><p>{{ s.works|length }} dzieł, {{ s.tokens }} tokenów z lematami i morfologią</p></div>
++  <div class="card"><span class="num">{{ s.lexemes }}</span><h3>haseł leksykonu</h3><p>{{ s.lexemes_hbo }} hebrajskich i aramejskich, {{ s.lexemes_grc }} greckich · {{ s.links }} odsyłaczy między wersetami</p></div>
++  <div class="card"><span class="num">{{ s.pat_passages }}</span><h3>pasaży Ojców Kościoła</h3><p>{{ s.pat_works_n }} dzieł w {{ s.pat_volumes|length }} tomach, {{ s.pat_refs }} odsyłaczy biblijnych</p></div>
++  <div class="card"><span class="num">{{ s.ane_lines }}</span><h3>linii tekstów ANE</h3><p>{{ s.ane_texts|length }} tekstów mezopotamskich z eBL</p></div>
++</div>
++
++<h2>Literatura</h2>
++<p>Publikacje biblistów: artykuły, monografie, skrypty, recenzje, wpisy i wykłady. Do korpusu publicznego trafiają tylko pozycje z wolną licencją (Creative Commons, open access z prawem do ponownego użycia) albo takie, na które autor wyraził zgodę. Pozostałe — jeśli zostały przygotowane — czekają zamknięte i nie są tu wymieniane z nazwiska.</p>
++<table class="stats">
++  <tr><th>Autor</th><th>Afiliacja</th><th class="n">Publikacji{% if extended %} (w tym otwartych){% endif %}</th></tr>
++  {% for a in s.authors %}
++  <tr><td>{{ a.name }}</td><td class="muted">{{ a.affiliation|default:"—" }}</td><td class="n">{{ a.n_visible }}{% if extended and a.n_open != a.n_visible %} <span class="muted">({{ a.n_open }})</span>{% endif %}</td></tr>
++  {% empty %}
++  <tr><td colspan="3" class="muted">Brak publikacji w korpusie.</td></tr>
++  {% endfor %}
++</table>
++{% if s.type_rows %}
++<p class="small muted">Wg typu: {% for t in s.type_rows %}{{ t.label }} — {{ t.n }}{% if not forloop.last %} · {% endif %}{% endfor %}.</p>
++{% endif %}
++{% if s.recent %}
++<details class="more"><summary>Ostatnio dodane</summary>
++<table class="stats">
++  <tr><th>Tytuł</th><th>Autor</th><th>Rok</th><th>Typ</th><th>Licencja</th></tr>
++  {% for d in s.recent %}
++  <tr><td>{% if d.url %}<a href="{{ d.url }}" rel="noopener" target="_blank">{{ d.title }}</a>{% else %}{{ d.title }}{% endif %}</td><td>{% for a in d.authors.all %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td class="n">{{ d.year|default:"—" }}</td><td><span class="tag">{{ d.get_doc_type_display }}</span></td><td class="muted small">{{ d.license|default:"—" }}{% if d.access != "open" %} <span class="tag warn">{{ d.get_access_display }}</span>{% endif %}</td></tr>
++  {% endfor %}
++</table></details>
++{% endif %}
++
++<h2>Tekst biblijny</h2>
++<table class="stats">
++  <tr><th>Kod</th><th>Dzieło</th><th>Język</th><th>Rodzaj</th><th>Licencja</th></tr>
++  {% for w in s.works %}
++  <tr><td><code>{{ w.code }}</code></td><td>{% if w.source_url %}<a href="{{ w.source_url }}" rel="noopener" target="_blank">{{ w.name }}</a>{% else %}{{ w.name }}{% endif %}{% if w.year %} <span class="muted">({{ w.year }})</span>{% endif %}</td><td class="muted">{{ w.language }}</td><td>{{ w.get_kind_display }}</td><td class="muted small">{{ w.license|default:"—" }}</td></tr>
++  {% endfor %}
++</table>
++<p class="small muted">Tokeny tekstów oryginalnych mają lemat, numer Stronga i kod morfologiczny (OSHM dla hebrajskiego, MorphGNT dla greckiego); to one łączą konkordancję, leksykon i pytania o słowa. Leksykon: STEPBible TBESH/TBESG (Tyndale House, CC BY). Odsyłacze: OpenBible.info (CC BY).</p>
++
++<h2>Ojcowie Kościoła</h2>
++<p>Wydanie <em>Ante‑Nicene Fathers</em> / <em>Nicene and Post‑Nicene Fathers</em> w cyfrowej edycji Christian Classics Ethereal Library (domena publiczna). Pasaże są indeksowane po odsyłaczach biblijnych zawartych w tekście — pytanie o werset zwraca miejsca, w których Ojcowie ten werset komentują. {% if s.pat_translated %}Polski przekład pomocniczy (maszynowy, tylko do wyszukiwania i podglądu) ma {{ s.pat_translated }} z {{ s.pat_passages }} pasaży.{% endif %}</p>
++<table class="stats">
++  <tr><th>Tom</th><th class="n">Dzieł</th><th class="n">Pasaży</th></tr>
++  {% for v in s.pat_volumes %}
++  <tr><td>{{ v.series }} {{ v.volume }}</td><td class="n">{{ v.n_works }}</td><td class="n">{{ v.n_passages }}</td></tr>
++  {% empty %}
++  <tr><td colspan="3" class="muted">Brak zaimportowanych tomów.</td></tr>
++  {% endfor %}
++</table>
++{% if s.pat_works %}
++<details class="more"><summary>Lista dzieł ({{ s.pat_works_n }})</summary>
++<table class="stats">
++  <tr><th>Autor</th><th>Dzieło</th><th>Tom</th></tr>
++  {% for w in s.pat_works %}
++  <tr><td>{{ w.author_pl|default:w.author }}</td><td>{% if w.url %}<a href="{{ w.url }}" rel="noopener" target="_blank">{{ w.title_pl|default:w.title }}</a>{% else %}{{ w.title_pl|default:w.title }}{% endif %}{% if w.title_pl %} <span class="muted small">{{ w.title }}</span>{% endif %}</td><td class="muted">{{ w.series }} {{ w.volume }}</td></tr>
++  {% endfor %}
++</table></details>
++{% endif %}
++
++<h2>Starożytny Bliski Wschód</h2>
++<p>Teksty porównawcze z electronic Babylonian Library (LMU München, CC BY‑NC‑SA): transliteracja znormalizowana i przekład angielski, cytowane z tabliczką i linią. Włączają się przy pytaniach o stworzenie, potop, Babilon lub na życzenie.</p>
++<table class="stats">
++  <tr><th>Tekst</th><th>Język</th><th class="n">Linii</th><th>Licencja</th></tr>
++  {% for t in s.ane_texts %}
++  <tr><td>{% if t.url %}<a href="{{ t.url }}" rel="noopener" target="_blank">{{ t.name_pl|default:t.name }}</a>{% else %}{{ t.name_pl|default:t.name }}{% endif %}{% if t.name_pl %} <span class="muted small">{{ t.name }}</span>{% endif %}</td><td class="muted">{{ t.language }}</td><td class="n">{{ t.n_lines }}</td><td class="muted small">{{ t.license|default:"—" }}</td></tr>
++  {% empty %}
++  <tr><td colspan="4" class="muted">Brak zaimportowanych tekstów.</td></tr>
++  {% endfor %}
++</table>
++
++<div class="callout"><span aria-hidden="true">＋</span><p>Brakuje Twoich publikacji albo chcesz, żeby coś tu było? Zobacz <a href="{% url 'pages:for_authors' %}">Dla autorów</a> — zgoda, licencja, udostępnienie własnych materiałów z konta.</p></div>
++{% endblock %}
+diff --git a/templates/pages/for_authors.html b/templates/pages/for_authors.html
+new file mode 100644
+index 0000000..ff27351
+--- /dev/null
++++ b/templates/pages/for_authors.html
+@@ -0,0 +1,46 @@
++{% extends "site.html" %}
++{% block title %}Dla autorów — Scriptura{% endblock %}
++{% block content %}
++<div class="eyebrow">DLA AUTORÓW I WYDAWCÓW</div>
++<h1>Nic bez <span>zgody</span> autora</h1>
++<p class="lead">Scriptura cytuje publikacje biblistów. Ta strona wyjaśnia, co system robi z tekstem, które teksty są publiczne bez pytania, a które czekają na decyzję autora — i jak tę decyzję podjąć lub cofnąć.</p>
++
++<h2>Co system robi z tekstem</h2>
++<ul>
++  <li><strong>Dzieli na fragmenty</strong> (akapit lub kilka, z numerem strony albo minutą nagrania) i indeksuje je do wyszukiwania. Nie publikuje całości i nie udostępnia plików.</li>
++  <li><strong>Cytuje z przypisem</strong>: w odpowiedzi jest numer <code>[n]</code>, w panelu źródeł — autor, tytuł, rok, strona i link do oryginału w repozytorium albo na stronie autora. Czytelnik widzi fragment, który dostał model (do kilkuset znaków), i przechodzi do pełnego tekstu u źródła.</li>
++  <li><strong>Sprawdza model</strong>: cytaty w cudzysłowie są porównywane z tekstem źródła, sigla — z korpusem. Parafraza wydana za cytat jest oznaczana.</li>
++  <li><strong>Eksportuje cytowania</strong> w BibTeX / RIS z pełnymi danymi bibliograficznymi, tak by praca autora była cytowana poprawnie, a nie „za asystentem”.</li>
++</ul>
++
++<h2>Co jest publiczne bez pytania</h2>
++<p>Do wspólnego korpusu trafiają automatycznie tylko teksty, których licencja na to pozwala: publikacje na licencjach <strong>Creative Commons</strong> (CC BY, CC BY‑SA, CC BY‑NC, CC BY‑ND i ich połączenia) z repozytoriów uczelnianych i czasopism otwartych oraz dzieła w <strong>domenie publicznej</strong> (tekst biblijny w edycjach otwartych, Ojcowie Kościoła w wydaniu ANF/NPNF, teksty ANE z eBL). Licencja jest zapisana przy każdej pozycji i widoczna na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>. Warunek „NC” jest spełniony — projekt jest niekomercyjny; „ND” również — system nie tworzy dzieł zależnych z tekstu, tylko cytuje fragmenty z odesłaniem.</p>
++
++<h2>Co wymaga zgody</h2>
++<p>Wszystko inne: artykuły bez licencji CC, monografie, skrypty, wpisy na blogach, nagrania wykładów. Takie materiały — jeśli w ogóle zostały przygotowane technicznie — mają w systemie status <span class="tag warn">za zgodą właściciela praw</span> i <strong>nie są widoczne dla użytkowników publicznych</strong>. Mogą być pokazywane wyłącznie samemu autorowi (żeby mógł zobaczyć, jak system z nich korzysta) i osobom, którym autor na to pozwoli. Nazwiska autorów takich materiałów nie pojawiają się na publicznej liście korpusu.</p>
++<div class="callout warn"><span aria-hidden="true">!</span><p>Jeśli Twój tekst pojawia się w publicznych odpowiedziach, a nie ma wolnej licencji i nie wyrażałeś zgody — <a href="{% url 'pages:author' %}">napisz</a>. Pozycja zostanie zamknięta od razu, bez dyskusji o podstawie prawnej; wyjaśnienia mogą przyjść potem.</p></div>
++
++<h2>Jak wyrazić zgodę</h2>
++<ol class="steps">
++  <li><strong>Konto</strong>Konto zakłada autor projektu (kontakt niżej). Autor materiału dostaje własny login; może też otrzymać poziom dostępu pokazujący, jak system pracuje z jego jeszcze niepublicznymi tekstami.</li>
++  <li><strong>Moje materiały</strong>Na stronie konta można wgrać własne pliki (PDF, TXT, Markdown — do {{ limits.docs }} pozycji po {{ limits.mb }} MB) z opisem bibliograficznym. Są indeksowane <em>tylko dla Ciebie</em> i widoczne w Twoich odpowiedziach ze znaczkiem <span class="tag ok">moje</span> — to pozwala sprawdzić jakość cytowania, zanim cokolwiek stanie się publiczne.</li>
++  <li><strong>Udostępnij</strong>Przy każdej pozycji jest przycisk „Udostępnij”: wybierasz rejestr (naukowy / popularnonaukowy — decyduje o miejscu w hierarchii odpowiedzi), licencję i potwierdzasz oświadczenie. Zgoda jest zapisywana z datą, treścią oświadczenia i wskazaną licencją.</li>
++  <li><strong>Wycofaj w każdej chwili</strong>Przycisk „Wycofaj zgodę” przy udostępnionej pozycji przenosi ją z powrotem do materiałów osobistych. Znika z publicznych odpowiedzi natychmiast; data wycofania jest zapisywana.</li>
++</ol>
++<h3>Treść oświadczenia</h3>
++<blockquote>{{ consent_statement }}</blockquote>
++<p>Zgoda może też mieć formę mailową — wtedy pozycja zostaje otwarta ręcznie, a treść korespondencji jest zachowana jako podstawa. Zgoda może być częściowa: tylko wybrane publikacje, tylko tryb naukowy dla zalogowanych, tylko z podaniem konkretnej formy cytowania.</p>
++
++<h2>Co autor zyskuje</h2>
++<ul>
++  <li><strong>Widoczność u czytelnika, który szuka odpowiedzi, a nie nazwiska.</strong> Każda odpowiedź prowadzi do tekstu autora — z tytułem, stroną i linkiem do repozytorium.</li>
++  <li><strong>Poprawne cytowanie</strong> zamiast anonimowej „wiedzy” modelu językowego.</li>
++  <li><strong>Wgląd</strong>: jak system dobiera fragmenty i o co ludzie pytają w związku z daną publikacją (w miarę rozwoju — statystyki dla autora).</li>
++  <li><strong>Narzędzie</strong>: własne materiały, notatki i skrypty w tym samym asystencie, prywatnie.</li>
++</ul>
++
++<h2>Wydawcy i redakcje</h2>
++<p>Dla czasopism i wydawnictw możliwe jest włączenie całych roczników lub serii na warunkach ustalonych z redakcją: zakres (tylko abstrakty, wybrane numery, pełne teksty), forma cytowania, widoczność (publiczna albo tylko dla zalogowanych). Dotyczy to także przekładów Biblii — system jest technicznie gotowy na Biblię Tysiąclecia, Warszawską, Paulistów czy Ekumeniczną, ale bez zgody wydawcy używa wyłącznie przekładów w domenie publicznej.</p>
++
++<div class="callout"><span aria-hidden="true">✉</span><p>Pytania, zgody, sprzeciwy: <a href="{% url 'pages:author' %}">strona kontaktowa</a>. Projekt jest prywatny i niekomercyjny; nie stoi za nim firma ani finansowanie.</p></div>
++{% endblock %}
+diff --git a/templates/pages/guide.html b/templates/pages/guide.html
+new file mode 100644
+index 0000000..b8c1ff7
+--- /dev/null
++++ b/templates/pages/guide.html
+@@ -0,0 +1,86 @@
++{% extends "site.html" %}
++{% block title %}Jak korzystać — Scriptura{% endblock %}
++{% block content %}
++<div class="eyebrow">INSTRUKCJA</div>
++<h1>Jak <span>pytać</span> i jak czytać odpowiedź</h1>
++<p class="lead">Scriptura nie jest wyszukiwarką ani „czatem o Biblii”. Odpowiada tylko z tego, co ma w korpusie, i pokazuje, skąd co wzięła. Kilka nawyków sprawia, że odpowiedzi są dużo lepsze.</p>
++
++<h2>1. Zadawanie pytania</h2>
++<ol class="steps">
++  <li><strong>Pytaj pełnym zdaniem, o jedną rzecz</strong>Lepiej „Jak Ojcowie Kościoła rozumieli «uczyńmy człowieka» z Rdz 1,26?” niż „Rdz 1,26 Ojcowie”. Model dostaje wyłącznie fragmenty dobrane pod to jedno pytanie.</li>
++  <li><strong>Podaj siglum, jeśli pytasz o miejsce</strong>„Mk 16,9‑20”, „Rdz 1–3”, „J 3,16nn”, „1 Kor 13,4‑7”. Wersety trafią do kontekstu w oryginale i przekładzie, a literatura zostanie zawężona do publikacji, które <em>to miejsce</em> omawiają. Rozumiane są skróty Biblii Tysiąclecia oraz zapisy mówione („Powtórzonego Prawa 32, 8”, „pierwsza Koryntian 13”).</li>
++  <li><strong>Słowa oryginalne można pisać po polsku</strong>„Co znaczy hebrajskie <em>hesed</em>?”, „<em>szalom</em>”, „<em>logos</em> u Jana”. Transliteracja trafia do leksykonu STEPBible i do konkordancji; można też wpisać hebrajski lub grekę wprost (חסד, λόγος).</li>
++  <li><strong>Każde pytanie jest samodzielne</strong>System nie czyta poprzednich odpowiedzi w rozmowie. „A co z tym u Pawła?” nie zadziała — napisz: „Jak Paweł rozumie usprawiedliwienie z wiary w Rz 3?”. Historia rozmów (dla zalogowanych) służy do wracania do odpowiedzi, nie do kontekstu.</li>
++  <li><strong>Skrót</strong><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> wysyła pytanie. Przykładowe pytania pod nagłówkiem strony startowej można kliknąć.</li>
++</ol>
++
++<h2>2. Poziom odpowiedzi i opcje</h2>
++<h3>Tryb</h3>
++<ul>
++  <li><strong>popularnonaukowy</strong> — prosty język, te same źródła; system chętniej sięga po wpisy blogowe i wykłady, ale nadal cytuje z numerem.</li>
++  <li><strong>naukowy</strong> — aparat, terminy oryginalne, hierarchia źródeł: publikacja recenzowana przed popularyzacją, monografia przed wpisem.{% if anon_popular_only %} Dostępny po zalogowaniu.{% endif %}</li>
++</ul>
++<h3>Pod polem pytania</h3>
++<ul>
++  <li><strong>Autor</strong> — zawęża literaturę do jednego biblisty („co Rosik pisze o…”). Bez wyboru szukamy u wszystkich.</li>
++  <li><strong>Wersety w kontekście</strong> — które dzieła mają być cytowane przy siglach: {% for w in works %}<code>{{ w.code }}</code> ({{ w.name }}){% if not forloop.last %}, {% endif %}{% endfor %}.</li>
++  <li><strong>Ojcowie Kościoła</strong> — Tradycja włącza się sama przy pytaniach o Ojców, Justyna, Ireneusza, Barnabę, Didache itd.; zaznaczenie wymusza ją także dla zwykłych pytań o werset („co Ojcowie mówią o Rdz 1,26” — po odsyłaczach w ich tekstach).</li>
++  <li><strong>Teksty ANE</strong> — teksty mezopotamskie (Gilgamesz, Enuma Elisz…) włączają się przy pytaniach o potop, stworzenie, Babilon; zaznaczenie wymusza porównanie.</li>
++  <li><strong>Tylko moje materiały</strong> (zalogowani) — odpowiedź z własnych, wgranych tekstów, bez wspólnego korpusu.</li>
++</ul>
++
++<h2>3. Czytanie odpowiedzi</h2>
++<p>Przypisy w tekście są klikalne i prowadzą do fragmentu w panelu <strong>Źródła</strong>:</p>
++<ul>
++  <li><code>[1]</code>, <code>[2]</code>… — literatura: artykuł, monografia, skrypt, wpis, wykład (z minutą nagrania);</li>
++  <li><code>[P1]</code>… — Ojcowie Kościoła (przekład maszynowy z angielskiego wydania, oryginał do rozwinięcia);</li>
++  <li><code>[A1]</code>… — teksty starożytnego Bliskiego Wschodu, cytowane z tabliczką i linią;</li>
++  <li>sigla w odpowiedzi (podkreślone kropkami) otwierają tekst w widoku równoległym.</li>
++</ul>
++<p>Pod odpowiedzią są <strong>znaczki weryfikacji</strong> — to system sprawdza model, nie odwrotnie:</p>
++<table class="stats">
++  <tr><th>Znaczek</th><th>Znaczenie</th></tr>
++  <tr><td><span class="tag ok">odpowiedź ze źródeł</span></td><td>model odpowiedział na podstawie kontekstu; każdy akapit ma przypis</td></tr>
++  <tr><td><span class="tag warn">odmowa — brak podstaw w źródłach</span></td><td>korpus nie zawiera nic trafnego; to <em>poprawne</em> zachowanie, nie błąd — spróbuj inaczej sformułować pytanie lub sprawdź na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>, czy temat w ogóle jest pokryty</td></tr>
++  <tr><td><span class="tag ok">sigla zweryfikowane</span></td><td>wszystkie sigla z odpowiedzi występują w cytowanych źródłach lub w tekście biblijnym</td></tr>
++  <tr><td><span class="tag warn">sigla spoza korpusu</span></td><td>model podał miejsca, których nie ma w kontekście — traktuj ostrożnie i sprawdź w widoku tekstu</td></tr>
++  <tr><td><span class="tag ok">cytaty zgodne z korpusem</span></td><td>tekst w cudzysłowach porównano dosłownie ze źródłem; <span class="tag warn">cytat zmieniony</span> znaczy, że model sparafrazował — obok jest najbliższe prawdziwe brzmienie</td></tr>
++  <tr><td><span class="tag">cytatów z tradycji</span></td><td>cytaty z Ojców i tekstów ANE to przekład modelu z angielskiego — nie są weryfikowane dosłownie</td></tr>
++</table>
++<p class="small muted">Dalej w tej linii: tryb, model, liczba tokenów i czasy poszczególnych etapów (tłumaczenie, osadzenie, wyszukiwanie, ocena trafności, model). Rozwijany <code>JSON</code> pokazuje pełny wynik — przydatny przy zgłaszaniu uwag.</p>
++
++<h2>4. Panel źródeł</h2>
++<ul>
++  <li>Grupy (<strong>Literatura</strong>, <strong>Wersety</strong>, <strong>Ojcowie Kościoła</strong>, <strong>Teksty ANE</strong>, <strong>Powiązane wersety</strong>) są domyślnie zwinięte; stan zwinięcia pamiętany jest między odpowiedziami. Fragmenty użyte w odpowiedzi mają kolorowy pasek z lewej.</li>
++  <li>Każda pozycja ma <strong>„pokaż fragment”</strong> (dokładny tekst, który dostał model) i link <strong>„źródło”</strong> do oryginału: PDF w repozytorium, wpis na stronie, nagranie od właściwej minuty.</li>
++  <li>Znaczki przy pozycji: <span class="tag">popularne</span> (rejestr popularnonaukowy), <span class="tag">wykład</span>, <span class="tag">blog</span>, <span class="tag">recenzja</span>, <span class="tag ok">moje</span> (materiał osobisty).</li>
++  <li><strong>Eksport cytowań</strong> — BibTeX lub RIS dla pozycji przywołanych w odpowiedzi (literatura, Ojcowie jako rozdziały w tomach ANF/NPNF, teksty ANE), do Zotero, JabRef, EndNote.</li>
++  <li><strong>Powiązane wersety</strong> pochodzą z OpenBible (głosy społeczności) — to podpowiedź do dalszej lektury, nie teza systemu.</li>
++</ul>
++
++<h2>5. Tekst i konkordancja</h2>
++<p>Zakładka <a href="{% url 'corpus:index' %}">Tekst i konkordancja</a> działa niezależnie od asystenta:</p>
++<ul>
++  <li><strong>siglum</strong> („Mk 1,1‑8”, „Rdz 1–3”, „J 3,16nn”) otwiera widok równoległy: hebrajski / grecki obok przekładu, z wyborem dzieł;</li>
++  <li><strong>szukaj</strong>: <code>słowo</code>, <code>"dokładna fraza"</code>, <code>-wykluczone</code>, numer Stronga <code>H430</code> / <code>G3056</code>, <code>lemma:λόγος</code>;</li>
++  <li>kliknięcie słowa w tekście oryginalnym otwiera <strong>konkordancję</strong> tego lematu: hasło leksykonu, glosa i wszystkie wystąpienia.</li>
++</ul>
++
++<h2>6. Konto</h2>
++<ul>
++  <li><strong>Bez logowania</strong>{% if allow_anonymous %} można pytać w trybie popularnonaukowym z literatury otwartej; limit <strong>{{ rate_anon }} pytań na godzinę</strong> z jednego adresu.{% else %} korzystanie nie jest możliwe — poproś o konto.{% endif %}</li>
++  <li><strong>Po zalogowaniu</strong>: tryb naukowy, historia rozmów, limit {{ rate_user }} pytań na godzinę oraz — zależnie od nadanych uprawnień — materiały udostępnione za zgodą autorów.</li>
++  <li><strong>Moje materiały</strong> (strona konta): własne PDF‑y, notatki, skrypty — indeksowane tylko dla Ciebie i widoczne w odpowiedziach ze znaczkiem <span class="tag ok">moje</span>. Można je udostępnić do wspólnego korpusu; zasady na stronie <a href="{% url 'pages:for_authors' %}">Dla autorów</a>.</li>
++  <li>Pytanie może mieć do {{ question_max }} znaków.</li>
++</ul>
++
++<h2>7. Czego system nie robi</h2>
++<ul>
++  <li>Nie odpowiada z własnej wiedzy modelu — jeśli czegoś nie ma w korpusie, odmawia. Zakres pokrycia zależy od tego, którzy autorzy i które ich prace są otwarte.</li>
++  <li>Nie streszcza całych książek ani nie zastępuje lektury — pokazuje fragmenty i prowadzi do oryginału.</li>
++  <li>Nie rozstrzyga sporów teologicznych — referuje, kto co twierdzi, oddzielając tekst, egzegezę i Tradycję.</li>
++  <li>Nie pamięta poprzednich pytań w rozmowie (zob. pkt 1).</li>
++</ul>
++
++<div class="callout"><span aria-hidden="true">✎</span><p>Odpowiedź niepełna, niecelna albo zła? Rozwiń <code>JSON</code> pod odpowiedzią, skopiuj treść pytania i prześlij uwagę — <a href="{% url 'pages:author' %}">kontakt</a>. Każde takie zgłoszenie poprawia dobór źródeł.</p></div>
++{% endblock %}
+diff --git a/templates/partials/topbar.html b/templates/partials/topbar.html
+new file mode 100644
+index 0000000..933f195
+--- /dev/null
++++ b/templates/partials/topbar.html
+@@ -0,0 +1,17 @@
++{% comment %}Pasek górny: marka + nawigacja główna. `active` = ask | text | guide | corpus | about | authors | author;
++dla warstwy tekstu (namespace corpus) podświetlenie wynika z adresu, więc widoki korpusu nic nie przekazują.{% endcomment %}
++{% with ns=request.resolver_match.namespace %}
++<a class="brand" href="{% url 'rag:index' %}">
++  <div class="brand-mark" aria-hidden="true">S</div>
++  <div><h1>Scriptura<span class="edition">TEOLOGIA BIBLIJNA</span></h1><div class="sub">Tekst, egzegeza, interpretacja — z odsyłaczem do źródła.</div></div>
++</a>
++<nav class="mainnav" aria-label="Nawigacja główna">
++  <a href="{% url 'rag:index' %}" {% if active == "ask" %}class="on" aria-current="page"{% endif %}>Asystent</a>
++  <a href="{% url 'corpus:index' %}" {% if active == "text" or ns == "corpus" %}class="on" aria-current="page"{% endif %}>Tekst i konkordancja</a>
++  <a href="{% url 'pages:guide' %}" {% if active == "guide" %}class="on" aria-current="page"{% endif %}>Jak korzystać</a>
++  <a href="{% url 'pages:corpus' %}" {% if active == "corpus" %}class="on" aria-current="page"{% endif %}>Korpus</a>
++  <a href="{% url 'pages:about' %}" {% if active == "about" %}class="on" aria-current="page"{% endif %}>O projekcie</a>
++  <a href="{% url 'pages:for_authors' %}" {% if active == "authors" %}class="on" aria-current="page"{% endif %}>Dla autorów</a>
++  <a href="{% url 'pages:author' %}" {% if active == "author" %}class="on" aria-current="page"{% endif %}>Autor</a>
++</nav>
++{% endwith %}
+diff --git a/templates/partials/userbox.html b/templates/partials/userbox.html
+new file mode 100644
+index 0000000..d8baf10
+--- /dev/null
++++ b/templates/partials/userbox.html
+@@ -0,0 +1,7 @@
++{# Blok użytkownika w prawym rogu paska: konto / wyloguj albo zaloguj #}
++{% if user.is_authenticated %}
++<a href="{% url 'rag:account' %}" class="who" title="dostęp: {{ access_levels|join:', ' }}">{{ user.get_username }} · konto</a>
++<form method="post" action="{% url 'rag:logout' %}" class="inline">{% csrf_token %}<button class="ghost" type="submit">Wyloguj</button></form>
++{% else %}
++<a href="{% url 'rag:login' %}?next={{ request.path|urlencode }}">Zaloguj</a>
++{% endif %}
+diff --git a/templates/rag/account.html b/templates/rag/account.html
+index 63eb9e8..f47f41a 100644
+--- a/templates/rag/account.html
++++ b/templates/rag/account.html
+@@ -1,24 +1,31 @@
+-<!doctype html>
+-<html lang="pl"><head><meta charset="utf-8"><title>Konto — Scriptura</title>
++{% extends "site.html" %}
++{% block title %}Konto — Scriptura{% endblock %}
++{% block page_class %}wide{% endblock %}
++{% block head %}
+ <style>
+-  :root{--bg:#f8f6f2;--panel:#fff;--line:#e6dfd6;--text:#241f1c;--muted:#6f6660;--accent:#7a1f2b;--accent-soft:#f3e4e5;--ok:#2f6f4f}
+-  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}
+-  header{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--panel);border-bottom:1px solid var(--line)}
+-  header .brand{font:650 18px Georgia,serif;color:var(--accent)} header a{color:var(--accent);text-decoration:none;font-size:13px}
+-  main{max-width:960px;margin:24px auto;padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+-  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+-  section.wide{grid-column:1/-1} h2{font:650 15px system-ui;margin:0 0 12px}
+-  label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px} input,select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+-  button{margin-top:12px;padding:9px 14px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:600 12px system-ui;cursor:pointer}
+-  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+-  .msg{padding:10px 14px;border-radius:10px;margin-bottom:12px;background:#e7f2ec;color:var(--ok);font-size:13px} .msg.error{background:#fbe9e7;color:#a14b20}
+-  .err{color:#a14b20;font-size:12px} ul.errorlist{margin:4px 0 0;padding-left:16px;color:#a14b20;font-size:12px}
+-  table{width:100%;border-collapse:collapse;font-size:13px} td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top} th{font-size:11px;color:var(--muted);font-weight:600}
+-  .muted{color:var(--muted);font-size:12px} .badge{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:10px}
+-  @media (max-width:760px){main{grid-template-columns:1fr}}
+-</style></head><body>
+-<header><span class="brand">Scriptura</span><a href="{% url 'rag:index' %}">← Czat</a><a href="{% url 'corpus:index' %}">Tekst i konkordancja</a><span style="flex:1"></span><span class="muted">{{ user.get_username }} · dostęp: {{ access_levels|join:", " }}</span></header>
+-<main>
++  .acct { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 8px; }
++  .acct section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
++  .acct section.wide { grid-column: 1 / -1; }
++  .acct h2 { font: 650 15px var(--sans); margin: 0 0 12px; }
++  .acct label { display: block; font-size: 11px; color: var(--muted); margin: 10px 0 3px; }
++  .acct input, .acct select, .acct textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--bg); color: var(--text); }
++  .acct button { margin-top: 12px; padding: 9px 14px; border: 0; border-radius: 9px; background: var(--accent); color: #fff; font: 600 12px var(--sans); cursor: pointer; }
++  .acct button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
++  .msg { padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; background: var(--ok-soft); color: var(--ok); font-size: 13px; }
++  .msg.error { background: var(--warn-soft); color: var(--warn); }
++  .err, ul.errorlist { color: var(--warn); font-size: 12px; } ul.errorlist { margin: 4px 0 0; padding-left: 16px; }
++  .acct table { width: 100%; border-collapse: collapse; font-size: 13px; }
++  .acct td, .acct th { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
++  .acct th { font-size: 11px; color: var(--muted); font-weight: 600; }
++  .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 10px; }
++  @media (max-width: 760px) { .acct { grid-template-columns: 1fr; } }
++</style>
++{% endblock %}
++{% block content %}
++<div class="eyebrow">KONTO</div>
++<h1>{{ user.get_username }}</h1>
++<p class="lead">Dostęp: {{ access_levels|join:", " }}. Tu zmieniasz dane i hasło oraz zarządzasz własnymi materiałami — widocznymi tylko dla Ciebie, dopóki ich nie udostępnisz (<a href="{% url 'pages:for_authors' %}">zasady</a>).</p>
++<div class="acct">
+   {% if messages %}<div class="wide">{% for m in messages %}<div class="msg {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}</div>{% endif %}
+ 
+   <section>
+@@ -63,7 +70,7 @@
+         <td><span class="badge">{{ d.get_doc_type_display }}</span> <span class="badge">{{ d.get_register_display }}</span></td>
+         <td>{{ d.chunk_count }}</td>
+         <td class="muted">{{ d.created|date:"Y-m-d" }}</td>
+-        <td>{% if d.access == "licensed" %}<span class="badge" style="background:#e7f2ec;color:var(--ok)">we wspólnym korpusie</span>{% else %}<span class="badge">osobisty</span>{% endif %}</td>
++        <td>{% if d.access == "licensed" %}<span class="badge" style="background:var(--ok-soft);color:var(--ok)">we wspólnym korpusie</span>{% else %}<span class="badge">osobisty</span>{% endif %}</td>
+         <td style="white-space:nowrap">
+           {% if d.access == "personal" %}
+           <details><summary style="cursor:pointer;color:var(--accent);font-size:12px">Udostępnij</summary>
+@@ -85,5 +92,5 @@
+     </table>
+     {% else %}<p class="muted" style="margin-top:12px">Nie masz jeszcze własnych materiałów.</p>{% endif %}
+   </section>
+-</main>
+-</body></html>
++</div>
++{% endblock %}
+diff --git a/templates/rag/index.html b/templates/rag/index.html
+index 6965614..ae7acb0 100644
+--- a/templates/rag/index.html
++++ b/templates/rag/index.html
+@@ -1,42 +1,22 @@
+-<!doctype html>
++{% load static %}<!doctype html>
+ <html lang="pl">
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>Scriptura — asystent teologii biblijnej</title>
++<meta name="description" content="Asystent teologii biblijnej odpowiadający wyłącznie ze źródeł: polska biblistyka, tekst hebrajski i grecki, Ojcowie Kościoła, teksty starożytnego Bliskiego Wschodu.">
++<link rel="stylesheet" href="{% static 'site.css' %}">
+ <style>
+-  :root {
+-    color-scheme: light;
+-    --bg: #f8f6f2; --panel: #ffffff; --text: #241f1c; --muted: #6f6660; --line: #e6dfd6;
+-    --accent: #7a1f2b; --accent-soft: #f6e9ea; --ok: #2f6b3a; --ok-soft: #e8f2ea; --warn: #a14b20; --warn-soft: #fff2e8;
+-    --user: #f1ebe3; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+-    --serif: Georgia, "Noto Serif", "Source Serif 4", serif;
+-    --shadow: 0 8px 30px #3a1c1c10;
+-  }
+-  @media (prefers-color-scheme: dark) {
+-    :root { color-scheme: dark; --bg: #16120f; --panel: #1f1916; --text: #ece5dd; --muted: #a79c92; --line: #3a302a;
+-            --accent: #e08a95; --accent-soft: #3b2226; --ok: #8bd39a; --ok-soft: #223a28; --warn: #f0ac7b; --warn-soft: #3a2b21; --user: #2b231e;
+-            --shadow: 0 8px 30px #00000030; }
+-  }
+-  * { box-sizing: border-box; }
+   html, body { height: 100%; }
+-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+-  .app { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: 92px minmax(0, 1fr) auto; height: 100dvh; max-width: 1680px; margin: auto; }
+-  header { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 20px 32px; border-bottom: 1px solid var(--line); background: var(--panel); }
+-  .brand-mark { width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; background: var(--accent); color: var(--panel); display: flex; align-items: center; justify-content: center; font: 700 24px/1 var(--serif); }
+-  header h1 { display: flex; align-items: center; gap: 12px; font-size: 22px; letter-spacing: -.8px; margin: 0; font-family: var(--serif); }
+-  .edition { font-size: 9px; letter-spacing: 1.1px; border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; color: var(--muted); font-family: system-ui, sans-serif; }
+-  header .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+-  header .right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+-  header .right a { color: var(--muted); font-size: 12px; text-decoration: none; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
++  .app { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; max-width: 1680px; margin: auto; }
++  header.topbar { grid-column: 1 / -1; }
+   .access { position: relative; font-size: 12px; color: var(--muted); }
+-  .access summary { cursor: pointer; padding: 10px 0; }
++  .access summary { cursor: pointer; list-style: none; }
++  .access summary::-webkit-details-marker { display: none; }
+   .access .menu { position: absolute; z-index: 2; top: 44px; right: 0; width: 320px; max-height: 60vh; overflow-y: auto; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+   .access .menu a { display: block; padding: 8px 10px; border-radius: 8px; color: var(--text); text-decoration: none; font-size: 12px; }
+   .access .menu a:hover { background: var(--accent-soft); }
+   .access .menu .m { color: var(--muted); font-size: 10px; }
+-  .who { font-size: 12px; color: var(--muted); }
+-  form.inline { display: inline; padding: 0; background: transparent; }
+   .access label { position: absolute; z-index: 2; top: 44px; right: 0; width: 265px; padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+   .thread { grid-column: 1; grid-row: 2; overflow-y: auto; padding: 32px clamp(24px, 5vw, 80px); display: flex; flex-direction: column; gap: 24px; scrollbar-width: thin; }
+   .welcome { max-width: 820px; width: 100%; margin: auto; padding: 16px 0 20px; }
+@@ -130,11 +110,8 @@
+   details.raw summary { cursor: pointer; color: var(--muted); font-size: 11px; }
+   pre { font: 12px/1.4 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; }
+   .err { color: var(--warn); }
+-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+   @media (hover: hover) {
+     .chip:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-2px); }
+-    button.ghost:hover, header .right a:hover { background: var(--accent-soft); }
+     #ask:not(:disabled):hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+   }
+   @media (max-width: 900px) {
+@@ -149,23 +126,18 @@
+ </head>
+ <body>
+ <div class="app">
+-  <header>
+-    <div class="brand-mark" aria-hidden="true">S</div>
+-    <div class="brand"><h1>Scriptura<span class="edition">TEOLOGIA BIBLIJNA</span></h1><div class="sub">Tekst, egzegeza, interpretacja — z odsyłaczem do źródła.</div></div>
++  <header class="topbar">
++    {% include "partials/topbar.html" with active="ask" %}
+     <div class="right">
+-      <a href="{% url 'corpus:index' %}">Tekst i konkordancja</a>
+       {% if user.is_authenticated %}
+       <details class="access" id="history-box">
+         <summary>Historia</summary>
+         <div class="menu" id="history"><div class="muted">Ładuję…</div></div>
+       </details>
+-      <a href="{% url 'rag:account' %}" class="who" title="dostęp: {{ access_levels|join:', ' }}">{{ user.get_username }} · konto</a>
+-      <form method="post" action="{% url 'rag:logout' %}" class="inline">{% csrf_token %}<button class="ghost" type="submit">Wyloguj</button></form>
+-      {% else %}
+-      <a href="{% url 'rag:login' %}">Zaloguj</a>
+       {% endif %}
+       {% if demo_token_required %}<details class="access"><summary>Dostęp demo</summary><label>Token dostępu<input type="password" id="token" placeholder="Wpisz token" autocomplete="off"></label></details>{% else %}<input type="hidden" id="token" value="">{% endif %}
+       <button class="ghost" id="clear" type="button"><span aria-hidden="true">＋</span> Nowa rozmowa</button>
++      {% include "partials/userbox.html" %}
+     </div>
+   </header>
+ 
+diff --git a/templates/rag/login.html b/templates/rag/login.html
+index 3547647..566b605 100644
+--- a/templates/rag/login.html
++++ b/templates/rag/login.html
+@@ -1,19 +1,15 @@
+-<!doctype html>
+-<html lang="pl"><head><meta charset="utf-8"><title>Logowanie — Scriptura</title>
+-<style>
+-  body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#f8f6f2;color:#241f1c;font:15px system-ui,sans-serif}
+-  form{background:#fff;border:1px solid #e6dfd6;border-radius:16px;padding:28px 32px;width:320px;box-shadow:0 8px 30px #3a1c1c10}
+-  h1{font:650 22px Georgia,serif;margin:0 0 4px;color:#7a1f2b} p{color:#6f6660;font-size:12px;margin:0 0 18px}
+-  label{display:block;font-size:11px;color:#6f6660;margin:10px 0 4px} input{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #e6dfd6;border-radius:8px;font:inherit}
+-  button{margin-top:16px;width:100%;padding:11px;border:0;border-radius:10px;background:#7a1f2b;color:#fff;font:600 13px system-ui;cursor:pointer}
+-  .err{color:#a14b20;font-size:12px;margin-top:8px} a{color:#7a1f2b}
+-</style></head><body>
+-<form method="post">{% csrf_token %}
+-  <h1>Scriptura</h1><p>Zaloguj się, aby korzystać z pełnego korpusu i zapisywać rozmowy.</p>
++{% extends "site.html" %}
++{% block title %}Logowanie — Scriptura{% endblock %}
++{% block content %}
++<form method="post" class="form-card">{% csrf_token %}
++  <div class="eyebrow">LOGOWANIE</div>
++  <h1 style="font-size:26px;margin-bottom:6px">Scriptura</h1>
++  <p class="muted small" style="margin:0 0 10px">Zaloguj się, aby korzystać z trybu naukowego, pełnego korpusu i historii rozmów.</p>
+   <label for="id_username">Użytkownik</label><input id="id_username" name="username" autocomplete="username" autofocus required>
+   <label for="id_password">Hasło</label><input id="id_password" name="password" type="password" autocomplete="current-password" required>
+   <input type="hidden" name="next" value="{{ next|default:'/' }}">
+   {% if form.errors %}<div class="err">Nieprawidłowy login lub hasło.</div>{% endif %}
+   <button>Zaloguj</button>
+-  {% if allow_anonymous %}<p style="margin-top:14px"><a href="/">Wróć bez logowania</a></p>{% endif %}
+-</form></body></html>
++  <p class="muted small" style="margin:14px 0 0">Konta zakłada autor projektu — <a href="{% url 'pages:author' %}">kontakt</a>.{% if allow_anonymous %} <a href="{% url 'rag:index' %}">Wróć bez logowania</a>.{% endif %}</p>
++</form>
++{% endblock %}
+diff --git a/templates/site.html b/templates/site.html
+new file mode 100644
+index 0000000..3ccbf7b
+--- /dev/null
++++ b/templates/site.html
+@@ -0,0 +1,32 @@
++{% load static %}<!doctype html>
++<html lang="pl">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>{% block title %}Scriptura{% endblock %}</title>
++<meta name="description" content="{% block description %}Scriptura — asystent teologii biblijnej odpowiadający wyłącznie ze źródeł: polska biblistyka, tekst hebrajski i grecki, Ojcowie Kościoła, teksty starożytnego Bliskiego Wschodu.{% endblock %}">
++<link rel="stylesheet" href="{% static 'site.css' %}">
++{% block head %}{% endblock %}
++</head>
++<body class="site">
++<header class="topbar">
++  {% include "partials/topbar.html" %}
++  <div class="right">{% block tools %}{% endblock %}{% include "partials/userbox.html" %}</div>
++</header>
++{% block subbar %}{% endblock %}
++<main class="page {% block page_class %}{% endblock %}">
++{% block content %}{% endblock %}
++</main>
++<footer class="site-footer">
++  <div class="inner">
++    <span>Scriptura · prototyp badawczy · <a href="{% url 'pages:about' %}">o projekcie</a></span>
++    <a href="{% url 'pages:for_authors' %}">zasady źródeł i zgody autorów</a>
++    <a href="{% url 'pages:author' %}">kontakt</a>
++    {% if site_github_url %}<a href="{{ site_github_url }}" rel="noopener" target="_blank">kod na GitHubie</a>{% endif %}
++    <span class="fill"></span>
++    <span title="wersja wdrożenia">{% if site_commit %}<code>{{ site_commit }}</code>{% endif %} {% now "Y" %}</span>
++  </div>
++</footer>
++{% block scripts %}{% endblock %}
++</body>
++</html>

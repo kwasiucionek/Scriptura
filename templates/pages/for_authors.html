@@ -1,0 +1,46 @@
+{% extends "site.html" %}
+{% block title %}Dla autorów — Scriptura{% endblock %}
+{% block content %}
+<div class="eyebrow">DLA AUTORÓW I WYDAWCÓW</div>
+<h1>Nic bez <span>zgody</span> autora</h1>
+<p class="lead">Scriptura cytuje publikacje biblistów. Ta strona wyjaśnia, co system robi z tekstem, które teksty są publiczne bez pytania, a które czekają na decyzję autora — i jak tę decyzję podjąć lub cofnąć.</p>
+
+<h2>Co system robi z tekstem</h2>
+<ul>
+  <li><strong>Dzieli na fragmenty</strong> (akapit lub kilka, z numerem strony albo minutą nagrania) i indeksuje je do wyszukiwania. Nie publikuje całości i nie udostępnia plików.</li>
+  <li><strong>Cytuje z przypisem</strong>: w odpowiedzi jest numer <code>[n]</code>, w panelu źródeł — autor, tytuł, rok, strona i link do oryginału w repozytorium albo na stronie autora. Czytelnik widzi fragment, który dostał model (do kilkuset znaków), i przechodzi do pełnego tekstu u źródła.</li>
+  <li><strong>Sprawdza model</strong>: cytaty w cudzysłowie są porównywane z tekstem źródła, sigla — z korpusem. Parafraza wydana za cytat jest oznaczana.</li>
+  <li><strong>Eksportuje cytowania</strong> w BibTeX / RIS z pełnymi danymi bibliograficznymi, tak by praca autora była cytowana poprawnie, a nie „za asystentem”.</li>
+</ul>
+
+<h2>Co jest publiczne bez pytania</h2>
+<p>Do wspólnego korpusu trafiają automatycznie tylko teksty, których licencja na to pozwala: publikacje na licencjach <strong>Creative Commons</strong> (CC BY, CC BY‑SA, CC BY‑NC, CC BY‑ND i ich połączenia) z repozytoriów uczelnianych i czasopism otwartych oraz dzieła w <strong>domenie publicznej</strong> (tekst biblijny w edycjach otwartych, Ojcowie Kościoła w wydaniu ANF/NPNF, teksty ANE z eBL). Licencja jest zapisana przy każdej pozycji i widoczna na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>. Warunek „NC” jest spełniony — projekt jest niekomercyjny; „ND” również — system nie tworzy dzieł zależnych z tekstu, tylko cytuje fragmenty z odesłaniem.</p>
+
+<h2>Co wymaga zgody</h2>
+<p>Wszystko inne: artykuły bez licencji CC, monografie, skrypty, wpisy na blogach, nagrania wykładów. Takie materiały — jeśli w ogóle zostały przygotowane technicznie — mają w systemie status <span class="tag warn">za zgodą właściciela praw</span> i <strong>nie są widoczne dla użytkowników publicznych</strong>. Mogą być pokazywane wyłącznie samemu autorowi (żeby mógł zobaczyć, jak system z nich korzysta) i osobom, którym autor na to pozwoli. Nazwiska autorów takich materiałów nie pojawiają się na publicznej liście korpusu.</p>
+<div class="callout warn"><span aria-hidden="true">!</span><p>Jeśli Twój tekst pojawia się w publicznych odpowiedziach, a nie ma wolnej licencji i nie wyrażałeś zgody — <a href="{% url 'pages:author' %}">napisz</a>. Pozycja zostanie zamknięta od razu, bez dyskusji o podstawie prawnej; wyjaśnienia mogą przyjść potem.</p></div>
+
+<h2>Jak wyrazić zgodę</h2>
+<ol class="steps">
+  <li><strong>Konto</strong>Konto zakłada autor projektu (kontakt niżej). Autor materiału dostaje własny login; może też otrzymać poziom dostępu pokazujący, jak system pracuje z jego jeszcze niepublicznymi tekstami.</li>
+  <li><strong>Moje materiały</strong>Na stronie konta można wgrać własne pliki (PDF, TXT, Markdown — do {{ limits.docs }} pozycji po {{ limits.mb }} MB) z opisem bibliograficznym. Są indeksowane <em>tylko dla Ciebie</em> i widoczne w Twoich odpowiedziach ze znaczkiem <span class="tag ok">moje</span> — to pozwala sprawdzić jakość cytowania, zanim cokolwiek stanie się publiczne.</li>
+  <li><strong>Udostępnij</strong>Przy każdej pozycji jest przycisk „Udostępnij”: wybierasz rejestr (naukowy / popularnonaukowy — decyduje o miejscu w hierarchii odpowiedzi), licencję i potwierdzasz oświadczenie. Zgoda jest zapisywana z datą, treścią oświadczenia i wskazaną licencją.</li>
+  <li><strong>Wycofaj w każdej chwili</strong>Przycisk „Wycofaj zgodę” przy udostępnionej pozycji przenosi ją z powrotem do materiałów osobistych. Znika z publicznych odpowiedzi natychmiast; data wycofania jest zapisywana.</li>
+</ol>
+<h3>Treść oświadczenia</h3>
+<blockquote>{{ consent_statement }}</blockquote>
+<p>Zgoda może też mieć formę mailową — wtedy pozycja zostaje otwarta ręcznie, a treść korespondencji jest zachowana jako podstawa. Zgoda może być częściowa: tylko wybrane publikacje, tylko tryb naukowy dla zalogowanych, tylko z podaniem konkretnej formy cytowania.</p>
+
+<h2>Co autor zyskuje</h2>
+<ul>
+  <li><strong>Widoczność u czytelnika, który szuka odpowiedzi, a nie nazwiska.</strong> Każda odpowiedź prowadzi do tekstu autora — z tytułem, stroną i linkiem do repozytorium.</li>
+  <li><strong>Poprawne cytowanie</strong> zamiast anonimowej „wiedzy” modelu językowego.</li>
+  <li><strong>Wgląd</strong>: jak system dobiera fragmenty i o co ludzie pytają w związku z daną publikacją (w miarę rozwoju — statystyki dla autora).</li>
+  <li><strong>Narzędzie</strong>: własne materiały, notatki i skrypty w tym samym asystencie, prywatnie.</li>
+</ul>
+
+<h2>Wydawcy i redakcje</h2>
+<p>Dla czasopism i wydawnictw możliwe jest włączenie całych roczników lub serii na warunkach ustalonych z redakcją: zakres (tylko abstrakty, wybrane numery, pełne teksty), forma cytowania, widoczność (publiczna albo tylko dla zalogowanych). Dotyczy to także przekładów Biblii — system jest technicznie gotowy na Biblię Tysiąclecia, Warszawską, Paulistów czy Ekumeniczną, ale bez zgody wydawcy używa wyłącznie przekładów w domenie publicznej.</p>
+
+<div class="callout"><span aria-hidden="true">✉</span><p>Pytania, zgody, sprzeciwy: <a href="{% url 'pages:author' %}">strona kontaktowa</a>. Projekt jest prywatny i niekomercyjny; nie stoi za nim firma ani finansowanie.</p></div>
+{% endblock %}

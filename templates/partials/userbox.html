@@ -1,0 +1,7 @@
+{# Blok użytkownika w prawym rogu paska: konto / wyloguj albo zaloguj #}
+{% if user.is_authenticated %}
+<a href="{% url 'rag:account' %}" class="who" title="dostęp: {{ access_levels|join:', ' }}">{{ user.get_username }} · konto</a>
+<form method="post" action="{% url 'rag:logout' %}" class="inline">{% csrf_token %}<button class="ghost" type="submit">Wyloguj</button></form>
+{% else %}
+<a href="{% url 'rag:login' %}?next={{ request.path|urlencode }}">Zaloguj</a>
+{% endif %}

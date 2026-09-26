@@ -5,4 +5,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("rag.urls")),
     path("text/", include("corpus.urls")),
+    path("", include("pages.urls")),
 ]

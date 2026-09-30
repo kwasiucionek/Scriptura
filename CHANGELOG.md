@@ -567,6 +567,23 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
   stopka pokazuje wdrożoną wersję), `site_github_url`, `site_contact_email`, `access_levels`, `allow_anonymous`.
 - Ustawienia: `STATICFILES_DIRS`, `SITE_GITHUB_URL`, `SITE_CONTACT_EMAIL` (.env; pusty = bez adresu na stronie).
 
+## Sprint 28 — wspólny klient LLM, backend openai (NVIDIA NIM)
+
+- **`library/llm.py`** — jeden klient czatu: `chat()` (bez strumienia; `json_mode`, `max_tokens`,
+  `num_ctx`, `think`, `model`), `chat_stream()` (Delta: `content`/`reasoning`/`done`/tokeny),
+  `enabled()`, `model_name()`, `strip_think()`. Backendy: `ollama` (jak dotąd, `/api/chat`),
+  **`openai`** — każdy serwer zgodny z `/chat/completions` (NVIDIA `integrate.api.nvidia.com/v1`,
+  vLLM, OpenAI, Groq): SSE, `stream_options.include_usage`, `response_format=json_object`,
+  `chat_template_kwargs.enable_thinking` + `reasoning_budget` (gdy `OPENAI_THINKING_KWARGS`),
+  `OPENAI_EXTRA_BODY`; rozumowanie (`reasoning_content` albo inline `<think>`) oddzielone od treści;
+  `echo` bez modelu.
+- Przepięte na klienta: odpowiedź RAG (`rag/service.py`), tłumaczenie zapytania (`library/translate.py`),
+  kurator i reranker LLM (`library/curate.py`), `eval_bootstrap`. Warunek „jest model” = `llm.enabled()`
+  (ollama lub openai) zamiast `LLM_BACKEND == "ollama"`. Metadane odpowiedzi: `model` z `llm.model_name()`.
+- `manage.py llm_ping [--think] [--model …] [--prompt …]` — strumień, długość rozumowania, tokeny, czas.
+- Ustawienia: `OPENAI_BASE_URL`, `OPENAI_API_KEY` (alias `NVIDIA_API_KEY`), `OPENAI_CHAT_MODEL`,
+  `OPENAI_THINKING_KWARGS`, `LLM_REASONING_BUDGET`, `OPENAI_EXTRA_BODY`. Testy: `library/tests/test_llm.py`.
+
 ## Plan kolejnych sprintów
 
 5. **Dalsze korpusy**: LXX Rahlfs (Eliran Wong, CC BY-NC-SA), UBG, Wujek,

@@ -5,20 +5,19 @@
 Dobór chunków: warstwowo po dokumentach (max 3 na dokument), preferowane chunki z siglami
 i terminami oryginalnymi, długość 400–1400 znaków, bez chunków-bibliografii.
 Typ pytania: pl+orig gdy chunk ma hebrajski/grecki, pl->en gdy dokument angielski, inaczej pl.
-Pytanie generuje LLM (LLM_BACKEND=ollama); w trybie echo — szablon z nagłówka sekcji.
+Pytanie generuje LLM (LLM_BACKEND=ollama|openai); w trybie echo — szablon z nagłówka sekcji.
 Plik JSONL do ręcznego przejrzenia, potem: scripts/eval_retrieval.py <plik> [--no-rerank].
 """
 
 import json
 import random
 import re
-import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from library import llm
 from library.models import Chunk
 from library.search import original_terms
 
@@ -42,23 +41,9 @@ _BIBLIO_RE = re.compile(r"\b(?:jw\.|tamże|op\. cit\.|ibid\.)|\(\d{4}\),? \d+", 
 
 
 def _chat(prompt: str) -> str:
-    body = {
-        "model": settings.OLLAMA_CHAT_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "think": False,
-        "options": {"temperature": 0.7},
-    }
-    headers = {"Content-Type": "application/json"}
-    if settings.OLLAMA_API_KEY:
-        headers["Authorization"] = f"Bearer {settings.OLLAMA_API_KEY}"
-    req = urllib.request.Request(
-        f"{settings.OLLAMA_BASE_URL}/api/chat",
-        data=json.dumps(body).encode(),
-        headers=headers,
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
-        return json.load(resp)["message"]["content"].strip().strip('„”"')
+    return llm.chat(
+        [{"role": "user", "content": prompt}], temperature=0.7, timeout=120
+    ).strip()
 
 
 def _question_type(chunk: Chunk) -> str:
@@ -114,7 +99,7 @@ class Command(BaseCommand):
         rows = []
         for c in chosen:
             qtype = _question_type(c)
-            if settings.LLM_BACKEND == "ollama":
+            if llm.enabled():
                 try:
                     q = _chat(
                         PROMPT.format(

@@ -124,7 +124,10 @@ Pełna lista w `.env.example`; produkcja: `deploy/env.production.example`. Najwa
 
 | zmienna | domyślnie | uwagi |
 |---|---|---|
+| `LLM_BACKEND` | ollama | `ollama` \| `openai` (NVIDIA NIM, vLLM, OpenAI…) \| `echo`; klient w `library/llm.py`, test: `manage.py llm_ping` |
 | `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MODEL` | `http://localhost:11434`, `gemma4:31b-cloud` | modele `-cloud` po `ollama signin` |
+| `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL` | `https://integrate.api.nvidia.com/v1`, —, `nvidia/nemotron-3.5-lightning-30b-a3b` | backend openai |
+| `OPENAI_THINKING_KWARGS`, `LLM_REASONING_BUDGET`, `OPENAI_EXTRA_BODY` | false, 0, `{}` | vLLM/NIM: `chat_template_kwargs.enable_thinking`, budżet rozumowania, dodatkowe pola JSON |
 | `OLLAMA_EMBED_MODEL`, `EMBEDDING_DIM` | `snowflake-arctic-embed2`, 1024 | zmiana wymaga `reindex_chunks --recreate` |
 | `SEARCH_BACKEND`, `OPENSEARCH_URL`, `OPENSEARCH_INDEX_PREFIX` | opensearch | `db` = fallback bez kNN (testy, awaria) |
 | `RERANKER_BACKEND` | none | `llm` (chmura, bez GPU), `tei` (GPU), `none` |
@@ -164,7 +167,7 @@ scripts/      narzędzia jednorazowe (fonty legacy, place_downloads, eval)
 templates/    GUI: site.html (szkielet), partials/ (pasek, użytkownik), czat, konto, logowanie, tekst i konkordancja, pages/
 ```
 
-Testy: `pytest` (141, backendy zastępcze bez OpenSearcha i Ollamy); styl: `ruff format && ruff check`.
+Testy: `pytest` (147, backendy zastępcze bez OpenSearcha i Ollamy); styl: `ruff format && ruff check`.
 
 ## Stan i plan
 

@@ -5,19 +5,19 @@ Model decyduje o wszystkim poza licencją i dostępem: czy praca należy do bibl
 rejestr, język tekstu, poprawność nazwy czasopisma (metadane OpenAlex bywają błędne).
 `access` wynika z licencji (normalize_license); kurator może ustawić `skip` (szum, nieistotne)
 lub `review` (model sam zgłasza niepewność). Reguły: dublety po DOI/tytule, znane wzorce szumu.
-Bez modelu (LLM_BACKEND != ollama) działają same reguły.
+Bez modelu (LLM_BACKEND=echo) działają same reguły.
 """
 
 import json
 import logging
 import re
 import unicodedata
-import urllib.request
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 
 from django.conf import settings
 
+from library import llm
 from library.harvest.manifest import ManifestEntry
 
 log = logging.getLogger(__name__)
@@ -161,29 +161,15 @@ def chat_json(prompt: str, num_predict: int = 4000, attempts: int = 2) -> list[d
     Retry: pusta treść -> bez format=json; błąd sieci/parsowania -> ponowienie (attempts)."""
 
     def _chat(force_json: bool) -> str:
-        body = {
-            "model": settings.CURATE_MODEL or settings.OLLAMA_CHAT_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "stream": False,
-            "think": False,
-            "options": {
-                "temperature": 0.0,
-                "num_ctx": 16384,
-                "num_predict": num_predict,
-            },
-        }
-        if force_json:
-            body["format"] = "json"
-        headers = {"Content-Type": "application/json"}
-        if settings.OLLAMA_API_KEY:
-            headers["Authorization"] = f"Bearer {settings.OLLAMA_API_KEY}"
-        req = urllib.request.Request(
-            f"{settings.OLLAMA_BASE_URL}/api/chat",
-            data=json.dumps(body).encode(),
-            headers=headers,
+        return llm.chat(
+            [{"role": "user", "content": prompt}],
+            model=settings.CURATE_MODEL or None,
+            temperature=0.0,
+            num_ctx=16384,
+            max_tokens=num_predict,
+            json_mode=force_json,
+            timeout=180,
         )
-        with urllib.request.urlopen(req, timeout=180) as resp:  # noqa: S310
-            return json.load(resp)["message"].get("content", "") or ""
 
     last: Exception | None = None
     for attempt in range(attempts):
@@ -279,7 +265,7 @@ def curate(
     entries: list[ManifestEntry], author: str, use_llm: bool = True
 ) -> CurationReport:
     decisions = rule_decisions(entries)
-    if use_llm and settings.LLM_BACKEND == "ollama":
+    if use_llm and llm.enabled():
         llm_decisions(entries, author, decisions)
     return CurationReport(decisions)
 

@@ -4,6 +4,7 @@ Wszystkie wartości środowiskowe czytane są z .env (patrz .env.example).
 Domyślnie SQLite (dev), na produkcji PostgreSQL przez DATABASE_URL.
 """
 
+import json
 import os
 from pathlib import Path
 from urllib.parse import urlparse
@@ -159,7 +160,8 @@ QUESTION_MAX_CHARS = env("QUESTION_MAX_CHARS", 1000, int)
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        "LOCATION": env("CACHE_DIR", str(BASE_DIR / ".cache")),
+        # zawsze bezwzględna: względna wartość z .env liczona od BASE_DIR (caches.W003)
+        "LOCATION": str((BASE_DIR / env("CACHE_DIR", ".cache")).resolve()),
         "TIMEOUT": 3600,
     }
 }
@@ -199,17 +201,33 @@ SERPAPI_KEY = env(
 )  # profil Google Scholar przez SerpApi (opcjonalnie)
 
 # --- LLM / embeddingi ---
-# "ollama" | "echo" (bez modelu: odpowiedź zastępcza z listą źródeł — testy, demo offline)
+# LLM_BACKEND: "ollama" (natywne /api/chat) | "openai" (serwer zgodny z API OpenAI: NVIDIA NIM,
+# vLLM, OpenAI, Groq…) | "echo" (bez modelu: odpowiedź zastępcza z listą źródeł — testy, demo offline).
+# Klient wspólny: library/llm.py. Embeddingi zawsze przez Ollamę/TEI (niezależnie od backendu czatu).
 LLM_BACKEND = env("LLM_BACKEND", "echo")
 OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_API_KEY = env("OLLAMA_API_KEY", "")  # Ollama Cloud
 OLLAMA_CHAT_MODEL = env("OLLAMA_CHAT_MODEL", "qwen3.5:122b-cloud")
+# Backend openai — NVIDIA NIM: OPENAI_BASE_URL=https://integrate.api.nvidia.com/v1, klucz z build.nvidia.com,
+# OPENAI_THINKING_KWARGS=true (vLLM/NIM: chat_template_kwargs.enable_thinking + reasoning_budget).
+OPENAI_BASE_URL = env("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")
+OPENAI_API_KEY = env("OPENAI_API_KEY", "") or env("NVIDIA_API_KEY", "")
+OPENAI_CHAT_MODEL = env("OPENAI_CHAT_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b")
+OPENAI_THINKING_KWARGS = env("OPENAI_THINKING_KWARGS", False, bool)
+LLM_REASONING_BUDGET = env(
+    "LLM_REASONING_BUDGET", 0, int
+)  # 0 = bez limitu / pole pomijane
+OPENAI_EXTRA_BODY = json.loads(
+    env("OPENAI_EXTRA_BODY", "{}") or "{}"
+)  # dodatkowe pola żądania (JSON)
 OLLAMA_EMBED_MODEL = env("OLLAMA_EMBED_MODEL", "snowflake-arctic-embed2")
 EMBEDDING_DIM = env("EMBEDDING_DIM", 1024, int)
 # Prefiks doklejany do ZAPYTANIA (nie do dokumentów): arctic-embed v2 -> "query: ",
 # Qwen3-Embedding -> "Instruct: ...\nQuery: ", bge-m3 -> pusty
 EMBEDDING_QUERY_PREFIX = env("EMBEDDING_QUERY_PREFIX", "query: ")
-RAG_THINK = env("RAG_THINK", False, bool)  # tryb "thinking" modelu czatu
+RAG_THINK = env(
+    "RAG_THINK", False, bool
+)  # tryb "thinking" modelu czatu (odpowiedź RAG; pozostałe wywołania bez)
 
 # --- Embeddingi: "ollama" (lokalnie / OLLAMA_BASE_URL) | "tei" (serwer TEI: lokalny lub HF Inference Endpoint) ---
 EMBEDDINGS_BACKEND = env("EMBEDDINGS_BACKEND", "ollama")
@@ -240,7 +258,7 @@ RAG_CONTEXT_NEIGHBORS = env(
 )  # chunki order±N doklejane do trafień
 # Tłumaczenie zapytania na angielski (BM25 + kNN po dokumentach en), tylko gdy korpus ma takie dokumenty
 RAG_TRANSLATE_QUERY = env("RAG_TRANSLATE_QUERY", True, bool)
-RAG_TRANSLATE_MODEL = env("RAG_TRANSLATE_MODEL", "")  # pusty = OLLAMA_CHAT_MODEL
+RAG_TRANSLATE_MODEL = env("RAG_TRANSLATE_MODEL", "")  # pusty = model czatu backendu
 RAG_RELATED_VERSES = env(
     "RAG_RELATED_VERSES", 6, int
 )  # powiązane wersety (OpenBible); 0 = wyłączone
@@ -253,7 +271,7 @@ RAG_PATRISTIC_PASSAGES = env("RAG_PATRISTIC_PASSAGES", 4, int)
 TRANSLATE_MODEL = env("TRANSLATE_MODEL", "translategemma:27b")
 TRANSLATE_BASE_URL = env("TRANSLATE_BASE_URL", "") or OLLAMA_BASE_URL
 # Kurator manifestów (update_corpus): model do oceny wstępnej; progi pewności dla decyzji automatycznych
-CURATE_MODEL = env("CURATE_MODEL", "")  # pusty = OLLAMA_CHAT_MODEL
+CURATE_MODEL = env("CURATE_MODEL", "")  # pusty = model czatu backendu
 CURATE_REVIEW_CONFIDENCE = env(
     "CURATE_REVIEW_CONFIDENCE", 0.5, float
 )  # model niepewny -> access=review
@@ -289,4 +307,6 @@ LOGGING = {
 
 # --- Strony informacyjne (stopka, kontakt) ---
 SITE_GITHUB_URL = env("SITE_GITHUB_URL", "https://github.com/kwasiucionek/Scriptura")
-SITE_CONTACT_EMAIL = env("SITE_CONTACT_EMAIL", "")  # pusty = bez adresu na stronie „Autor”
+SITE_CONTACT_EMAIL = env(
+    "SITE_CONTACT_EMAIL", ""
+)  # pusty = bez adresu na stronie „Autor”

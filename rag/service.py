@@ -11,11 +11,9 @@ interpretację, przypisuj tezy autorom, nie wymyślaj wersetów. Każde siglum
 w odpowiedzi jest sprawdzane z korpusem — nieistniejące trafiają do `unverified`.
 """
 
-import json
 import logging
 import re
 import time
-import urllib.request
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 
@@ -25,6 +23,7 @@ from ane.service import ane_for_question
 from corpus.models import Lexeme, Verse
 from corpus.services import text as corpus_svc
 from corpus.sigla import extract, format_ref, ordinal_range
+from library import llm
 from library.search import ChunkHit, diversify, expand_with_neighbors, retrieve
 from patristics.service import patristics_for_question
 from rag.quotes import verify_quotes
@@ -92,6 +91,9 @@ class AskResult:
         default_factory=dict
     )  # retrieval_ms (embedding+OpenSearch+reranker), llm_ms
     usage: dict = field(default_factory=dict)
+    context_budget: dict = field(
+        default_factory=dict
+    )  # szacunek tokenów promptu i co odrzucono, żeby zmieścić się w num_ctx
     model: str = ""
     mode: str = "scientific"
 
@@ -371,53 +373,121 @@ def build_messages(
     ]
 
 
-# --- LLM ------------------------------------------------------------------
+# --- budżet kontekstu -----------------------------------------------------
+# Różne modele mają różne tokenizery: ten sam prompt to np. 16 tys. tokenów w Gemmie
+# i 21 tys. w PLLuM. Ollama albo zgłasza błąd, albo po cichu obcina prompt (tracimy
+# źródła). Dlatego szacujemy długość promptu przed wysłaniem i przycinamy najmniej
+# ważne elementy: powiązane wersety -> ANE -> Ojcowie -> najsłabsze fragmenty literatury.
+# Szacunek jest znakowy (bez tokenizera modelu), więc celowo ostrożny.
+
+_SECTION_OVERHEAD_CHARS = 1200  # nagłówki sekcji i instrukcje w treści użytkownika
 
 
-def _ollama_stream(messages: list[dict]) -> Iterator[dict]:
-    """Strumień NDJSON z /api/chat; ostatni rekord ma done=True i liczniki tokenów."""
-    headers = {"Content-Type": "application/json"}
-    if settings.OLLAMA_API_KEY:
-        headers["Authorization"] = f"Bearer {settings.OLLAMA_API_KEY}"
-    body = {
-        "model": settings.OLLAMA_CHAT_MODEL,
-        "messages": messages,
-        "stream": True,
-        "think": settings.RAG_THINK,
-        "options": {
-            "temperature": settings.RAG_TEMPERATURE,
-            "num_ctx": settings.RAG_NUM_CTX,
-        },
+def _chars_per_token() -> float:
+    # polski tekst to ok. 3–4 znaki/token; hebrajski/grecki mniej — stąd ostrożne 2.8
+    return float(getattr(settings, "RAG_CHARS_PER_TOKEN", 2.8))
+
+
+def _est_tokens(chars: int) -> int:
+    return int(chars / _chars_per_token()) + 1
+
+
+def prompt_budget_tokens() -> int | None:
+    """Ile tokenów może mieć prompt: num_ctx minus rezerwa na odpowiedź. None = bez limitu."""
+    num_ctx = settings.RAG_NUM_CTX
+    if not num_ctx:
+        return None
+    reserve = int(getattr(settings, "RAG_ANSWER_RESERVE_TOKENS", 2048))
+    return max(num_ctx - reserve, 1024)
+
+
+def fit_to_budget(
+    question: str,
+    chunks: list[ChunkHit],
+    verses: list[VerseSource],
+    mode: str,
+    related: list[dict],
+    ane: list,
+    patristics: list,
+) -> tuple[list[ChunkHit], list[dict], list, list, dict]:
+    """Przycina źródła do budżetu promptu. Zwraca listy po przycięciu i raport.
+
+    Wersety i leksykon zostają w całości (są podstawą cytatów), fragmenty literatury
+    zawsze co najmniej jeden. Musi działać PRZED zdarzeniem `sources`, żeby numery
+    [n], [P1], [A1] w GUI zgadzały się z promptem.
+    """
+    budget = prompt_budget_tokens()
+    chunks, related, ane, patristics = (
+        list(chunks),
+        list(related or []),
+        list(ane or []),
+        list(patristics or []),
+    )
+    # stała część: system, pytanie, wersety, leksykon (liczona raz — leksykon pyta bazę)
+    base = (
+        sum(len(m["content"]) for m in build_messages(question, [], verses, mode))
+        + _SECTION_OVERHEAD_CHARS
+    )
+    sizes = {
+        "chunks": [
+            len(h.citation or "") + len(h.section or "") + len(h.text or "") + 60
+            for h in chunks
+        ],
+        "related": [
+            len(r.get("ref") or "") + len(r.get("text") or "") + 30 for r in related
+        ],
+        "ane": [len(h.ref or "") + len(h.translation_en or "") + 20 for h in ane],
+        "patristics": [
+            len(h.ref or "") + len(h.text_en or "") + 40 for h in patristics
+        ],
     }
-    req = urllib.request.Request(
-        f"{settings.OLLAMA_BASE_URL}/api/chat",
-        data=json.dumps(body).encode(),
-        headers=headers,
+
+    def total_tokens() -> int:
+        return _est_tokens(base + sum(sum(v) for v in sizes.values()))
+
+    report = {
+        "budget_tokens": budget,
+        "estimated_tokens_before": total_tokens(),
+        "dropped": {"related": 0, "ane": 0, "patristics": 0, "chunks": 0},
+    }
+    if budget is None or report["estimated_tokens_before"] <= budget:
+        report["estimated_tokens_after"] = report["estimated_tokens_before"]
+        return chunks, related, ane, patristics, report
+
+    lists = {"related": related, "ane": ane, "patristics": patristics, "chunks": chunks}
+    for name in ("related", "ane", "patristics", "chunks"):
+        keep_min = 1 if name == "chunks" else 0
+        while total_tokens() > budget and len(lists[name]) > keep_min:
+            lists[name].pop()
+            sizes[name].pop()
+            report["dropped"][name] += 1
+
+    report["estimated_tokens_after"] = total_tokens()
+    log.info(
+        "Budżet kontekstu %s tok.: szacunek %s -> %s, odrzucono %s",
+        budget,
+        report["estimated_tokens_before"],
+        report["estimated_tokens_after"],
+        report["dropped"],
     )
-    with urllib.request.urlopen(req, timeout=600) as resp:  # noqa: S310
-        for line in resp:
-            if line.strip():
-                yield json.loads(line)
+    if report["estimated_tokens_after"] > budget:
+        log.warning(
+            "Prompt nadal przekracza budżet (wersety/leksykon za długie) — zwiększ RAG_NUM_CTX"
+        )
+    return chunks, related, ane, patristics, report
 
 
-def _echo_stream(messages: list[dict]) -> Iterator[dict]:
-    """Backend zastępczy bez LLM: streszcza, co zostało znalezione (testy, demo bez Ollamy)."""
-    user = messages[-1]["content"]
-    n_src = len(re.findall(r"^\[\d+\] ", user, re.M))
-    text = (
-        f"[tryb echo — bez modelu] Znaleziono {n_src} fragmentów literatury"
-        + (" [1]" if n_src else "")
-        + " oraz wersety z korpusu. Skonfiguruj LLM_BACKEND=ollama, aby uzyskać odpowiedź."
+# --- LLM ------------------------------------------------------------------
+# Klient w library/llm.py (ollama | openai | echo); tu tylko parametry odpowiedzi RAG.
+
+
+def llm_stream(messages: list[dict]) -> Iterator[llm.Delta]:
+    return llm.chat_stream(
+        messages,
+        temperature=settings.RAG_TEMPERATURE,
+        num_ctx=settings.RAG_NUM_CTX,
+        think=settings.RAG_THINK,
     )
-    for word in text.split(" "):
-        yield {"message": {"content": word + " "}, "done": False}
-    yield {"done": True, "prompt_eval_count": 0, "eval_count": 0}
-
-
-def llm_stream(messages: list[dict]) -> Iterator[dict]:
-    if settings.LLM_BACKEND == "ollama":
-        return _ollama_stream(messages)
-    return _echo_stream(messages)
 
 
 # --- weryfikacja ----------------------------------------------------------
@@ -544,6 +614,10 @@ def ask(
             question, sigla_ranges(question), include_patristics
         )
         verses_ms = int((time.monotonic() - t_v) * 1000)
+        # przycięcie do budżetu przed `sources`, żeby numeracja [n] się zgadzała
+        chunks, related, ane, patristics, budget_report = fit_to_budget(
+            question, chunks, verses, mode, related, ane, patristics
+        )
         t_retrieval = int((time.monotonic() - t0) * 1000)
     except Exception as exc:
         log.exception("retrieval")
@@ -580,12 +654,7 @@ def ask(
         },
     )
 
-    result = AskResult(
-        model=settings.OLLAMA_CHAT_MODEL
-        if settings.LLM_BACKEND == "ollama"
-        else "echo",
-        mode=mode,
-    )
+    result = AskResult(model=llm.model_name(), mode=mode, context_budget=budget_report)
     from library.search import LAST_TIMINGS
 
     result.timings["retrieval_ms"] = t_retrieval
@@ -602,16 +671,15 @@ def ask(
             for rec in llm_stream(
                 build_messages(question, chunks, verses, mode, related, ane, patristics)
             ):
-                if rec.get("done"):
+                if rec.done:
                     result.usage = {
-                        "prompt_tokens": rec.get("prompt_eval_count", 0),
-                        "completion_tokens": rec.get("eval_count", 0),
+                        "prompt_tokens": rec.prompt_tokens,
+                        "completion_tokens": rec.completion_tokens,
                     }
                     break
-                piece = rec.get("message", {}).get("content", "")
-                if piece:
-                    parts.append(piece)
-                    yield "delta", {"text": piece}
+                if rec.content:
+                    parts.append(rec.content)
+                    yield "delta", {"text": rec.content}
         except Exception as exc:
             log.exception("llm")
             yield "error", {"detail": f"Błąd modelu: {exc}"}

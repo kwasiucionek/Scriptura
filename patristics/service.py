@@ -7,13 +7,15 @@ from django.conf import settings
 from patristics.search import PatHit, retrieve
 
 PAT_TRIGGERS = [
-    "ojcowie", "ojców", "patrysty", "tradycj", "orygenes", "augustyn", "chryzostom", "ireneusz", "tertulian",
-    "hieronim", "ambroży", "bazyli", "grzegorz", "atanazy", "cyryl", "justyn", "klemens", "ignacy", "polikarp",
-    "euzebiusz", "efrem", "kasjan", "leon wielki", "hipolit", "cyprian", "laktancjusz", "starożytn", "pierwsz wiek",
-    "egzegeza alegoryczna", "aleksandryjsk", "antiocheńsk", "barnab", "hermas", "didache", "ojcowie apostolscy",
-    "kodeks synajski", "pisma apostolskie", "papiasz", "list do diogneta", "męczeńst",
+    "ojcowie", "ojców", "ojcow", "patrysty", "tradycja patrystyczna", "tradycja kościoła",
+    "orygenes", "augustyn", "chryzostom", "ireneusz", "tertulian", "hieronim", "ambroży",
+    "bazyli", "grzegorz z nyssy", "grzegorz z nazjanzu", "grzegorz wielki", "atanazy",
+    "cyryl aleksandryjski", "cyryl jerozolimski", "justyn", "klemens aleksandryjski",
+    "klemens rzymski", "ignacy antiocheński", "polikarp", "euzebiusz", "efrem", "kasjan",
+    "leon wielki", "hipolit", "cyprian", "laktancjusz", "egzegeza alegoryczna",
+    "szkoła aleksandryjska", "szkoła antiocheńska", "list barnaby", "pasterz hermasa",
+    "didache", "ojcowie apostolscy", "papiasz", "list do diogneta",
 ]  # fmt: skip
-
 
 def _fold(text: str) -> str:
     t = unicodedata.normalize("NFKD", text.lower())

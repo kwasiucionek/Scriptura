@@ -174,8 +174,20 @@
           </div>
         </label>
         {% if user.is_authenticated %}<label class="row"><input type="checkbox" name="personal_only" id="personal_only">tylko moje materiały</label>{% endif %}
-        <label class="row" title="Teksty porównawcze z eBL (Gilgamesz, Enuma Elisz…) — domyślnie włączane automatycznie, gdy pytanie o nie pyta"><input type="checkbox" name="include_ane" id="include_ane">teksty ANE (Mezopotamia)</label>
-        <label class="row" title="Ojcowie Kościoła (ANF/NPNF, CCEL) — włączani automatycznie przy pytaniach o tradycję/Ojców; tu wymuszasz także dla pytań o konkretne wersety"><input type="checkbox" name="include_patristics" id="include_patristics">Ojcowie Kościoła</label>
+        <label title="Teksty porównawcze z eBL (Gilgamesz, Enuma Elisz…). Automatycznie: gdy pytanie o nie pyta.">Teksty ANE (Mezopotamia)
+          <select id="include_ane">
+            <option value="auto" selected>automatycznie</option>
+            <option value="on">zawsze</option>
+            <option value="off">nigdy</option>
+          </select>
+        </label>
+        <label title="Ojcowie Kościoła (ANF/NPNF, CCEL). Automatycznie: gdy pytanie dotyczy Ojców lub tradycji patrystycznej.">Ojcowie Kościoła
+          <select id="include_patristics">
+            <option value="auto" selected>automatycznie</option>
+            <option value="on">zawsze</option>
+            <option value="off">nigdy</option>
+          </select>
+        </label>
         <label>Autor (opcjonalnie)
           <select id="author"><option value="">Wszyscy autorzy</option>{% for a in authors %}<option value="{{ a.name }}">{{ a.name }}</option>{% endfor %}</select>
         </label>
@@ -192,6 +204,8 @@
 const EXAMPLES = {{ examples_json|safe }};
 const TEXT_URL = "{% url 'corpus:reference' %}";
 const $ = (id) => document.getElementById(id);
+// trzy stany opcji: "on" -> true, "off" -> false, "auto" -> null (decyduje serwer)
+const tri = (id) => ({ on: true, off: false })[document.getElementById(id)?.value] ?? null;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let busy = false;
 const welcome = $("welcome");
@@ -357,7 +371,7 @@ async function streamAsk(payload, headers, onEvent) {
 async function submit() {
   if (busy) return;
   const question = $("q").value.trim(); if (question.length < 3) return;
-  const payload = { question, works: [...document.querySelectorAll('input[name=works]:checked')].map((i) => i.value), mode: document.querySelector('input[name=mode]:checked')?.value || "popular", conversation_id: conversationId, personal_only: !!document.getElementById("personal_only")?.checked, include_ane: document.getElementById("include_ane")?.checked ? true : null, include_patristics: document.getElementById("include_patristics")?.checked ? true : null };
+  const payload = { question, works: [...document.querySelectorAll('input[name=works]:checked')].map((i) => i.value), mode: document.querySelector('input[name=mode]:checked')?.value || "popular", conversation_id: conversationId, personal_only: !!document.getElementById("personal_only")?.checked, include_ane: tri("include_ane"), include_patristics: tri("include_patristics") };
   if ($("author").value) payload.authors = [$("author").value];
   const token = $("token").value.trim(); localStorage.setItem("scriptura_token", token);
   const headers = { "content-type": "application/json", ...(token ? { "x-demo-token": token } : {}) };

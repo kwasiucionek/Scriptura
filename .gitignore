@@ -26,3 +26,4 @@ data/manifests/report-*.md
 *.egg-info/
 .ssh/
 .gunicorn/
+*.patch

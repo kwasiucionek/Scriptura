@@ -584,6 +584,16 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
 - Ustawienia: `OPENAI_BASE_URL`, `OPENAI_API_KEY` (alias `NVIDIA_API_KEY`), `OPENAI_CHAT_MODEL`,
   `OPENAI_THINKING_KWARGS`, `LLM_REASONING_BUDGET`, `OPENAI_EXTRA_BODY`. Testy: `library/tests/test_llm.py`.
 
+## Sprint 29 — Umami w kodzie
+
+- `templates/partials/analytics.html` włączany w `site.html` i `rag/index.html`: skrypt Umami tylko gdy
+  `UMAMI_WEBSITE_ID` niepusty (lokalnie i w testach — brak). `UMAMI_SCRIPT_URL` (Umami Cloud lub własna
+  instancja), `UMAMI_DOMAINS` (`data-domains`, domyślnie `scriptura.cytr.us` — localhost nie liczy się).
+- Zdarzenie `ask` (tryb + czy pytanie miało siglum; bez treści pytania) przy wysłaniu pytania.
+- Strona „Autor”: zdanie o statystykach (Umami, bez ciasteczek) zamiast „bez skryptów śledzących”.
+- Ręczne wstawki w szablonach na serwerze (`*.bak-umami`) są zbędne — każde wdrożenie (`git reset --hard`)
+  je usuwa; konfiguracja wyłącznie przez `.env`.
+
 ## Plan kolejnych sprintów
 
 5. **Dalsze korpusy**: LXX Rahlfs (Eliran Wong, CC BY-NC-SA), UBG, Wujek,

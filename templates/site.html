@@ -6,6 +6,7 @@
 <title>{% block title %}Scriptura{% endblock %}</title>
 <meta name="description" content="{% block description %}Scriptura — asystent teologii biblijnej odpowiadający wyłącznie ze źródeł: polska biblistyka, tekst hebrajski i grecki, Ojcowie Kościoła, teksty starożytnego Bliskiego Wschodu.{% endblock %}">
 <link rel="stylesheet" href="{% static 'site.css' %}">
+{% include "partials/analytics.html" %}
 {% block head %}{% endblock %}
 </head>
 <body class="site">

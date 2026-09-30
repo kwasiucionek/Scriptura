@@ -6,6 +6,7 @@
 <title>Scriptura — asystent teologii biblijnej</title>
 <meta name="description" content="Asystent teologii biblijnej odpowiadający wyłącznie ze źródeł: polska biblistyka, tekst hebrajski i grecki, Ojcowie Kościoła, teksty starożytnego Bliskiego Wschodu.">
 <link rel="stylesheet" href="{% static 'site.css' %}">
+{% include "partials/analytics.html" %}
 <style>
   html, body { height: 100%; }
   .app { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; max-width: 1680px; margin: auto; }
@@ -373,6 +374,7 @@ async function submit() {
   const question = $("q").value.trim(); if (question.length < 3) return;
   const payload = { question, works: [...document.querySelectorAll('input[name=works]:checked')].map((i) => i.value), mode: document.querySelector('input[name=mode]:checked')?.value || "popular", conversation_id: conversationId, personal_only: !!document.getElementById("personal_only")?.checked, include_ane: tri("include_ane"), include_patristics: tri("include_patristics") };
   if ($("author").value) payload.authors = [$("author").value];
+  window.umami?.track("ask", { mode: payload.mode, siglum: /\d+\s*,\s*\d+/.test(question) ? "yes" : "no" });  // Umami: tylko tryb i czy było siglum, bez treści
   const token = $("token").value.trim(); localStorage.setItem("scriptura_token", token);
   const headers = { "content-type": "application/json", ...(token ? { "x-demo-token": token } : {}) };
 

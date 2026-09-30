@@ -1,0 +1,3 @@
+{% comment %}Umami (statystyki odwiedzin bez ciasteczek). Aktywne tylko, gdy w .env jest UMAMI_WEBSITE_ID;
+UMAMI_SCRIPT_URL wskazuje Umami Cloud albo własną instancję. Zdarzenia: `ask` z trybem (rag/index.html).{% endcomment %}
+{% if umami_website_id %}<script defer src="{{ umami_script_url }}" data-website-id="{{ umami_website_id }}"{% if umami_domains %} data-domains="{{ umami_domains }}"{% endif %}></script>{% endif %}

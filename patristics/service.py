@@ -17,6 +17,7 @@ PAT_TRIGGERS = [
     "didache", "ojcowie apostolscy", "papiasz", "list do diogneta",
 ]  # fmt: skip
 
+
 def _fold(text: str) -> str:
     t = unicodedata.normalize("NFKD", text.lower())
     return "".join(c for c in t if not unicodedata.combining(c))

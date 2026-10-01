@@ -97,6 +97,7 @@ def test_openai_stream_inline_think_tags_go_to_reasoning(settings, monkeypatch):
         {"choices": [{"delta": {"content": "b</think>Wynik"}}]},
     ]
     sse = b"".join(b"data: " + json.dumps(c).encode() + b"\n\n" for c in chunks)
+    sse += b"data: [DONE]\n\n"
     _capture(monkeypatch, sse)
     deltas = list(llm.chat_stream([{"role": "user", "content": "q"}]))
     assert "".join(d.content for d in deltas) == "Wynik"
@@ -150,3 +151,80 @@ def test_echo_backend(settings):
     assert deltas[-1].done and "2 fragmentów" in "".join(d.content for d in deltas)
     with pytest.raises(RuntimeError):
         llm.chat([{"role": "user", "content": "q"}])
+
+
+def _openai_sse(monkeypatch, settings, fragments, ending=b"data: [DONE]\n\n"):
+    settings.LLM_BACKEND = "openai"
+    settings.OPENAI_EXTRA_BODY = {}
+    records = [{"choices": [{"delta": {"content": text}}]} for text in fragments]
+    payload = (
+        b"".join(b"data: " + json.dumps(r).encode() + b"\n\n" for r in records) + ending
+    )
+    _capture(monkeypatch, payload)
+    return llm.chat_stream([{"role": "user", "content": "q"}])
+
+
+def test_inline_think_same_chunk_and_multiple_blocks(monkeypatch, settings):
+    deltas = list(
+        _openai_sse(
+            monkeypatch,
+            settings,
+            ["Przed<think>tajne</think>Po<think>drugie</think>Koniec"],
+        )
+    )
+    assert "".join(d.content for d in deltas) == "PrzedPoKoniec"
+    assert "".join(d.reasoning for d in deltas) == "tajnedrugie"
+    assert sum(d.done for d in deltas) == 1
+
+
+@pytest.mark.parametrize("cut", range(1, len("Before<think>secret</think>After")))
+def test_inline_think_at_every_split_boundary(monkeypatch, settings, cut):
+    text = "Before<think>secret</think>After"
+    deltas = list(_openai_sse(monkeypatch, settings, [text[:cut], text[cut:]]))
+    assert "".join(d.content for d in deltas) == "BeforeAfter"
+    assert "".join(d.reasoning for d in deltas) == "secret"
+    assert deltas[-1].done
+
+
+def test_inline_think_one_character_deltas_and_literal_prefix(monkeypatch, settings):
+    text = "Before<think>secret</think>After <thiX and <"
+    deltas = list(_openai_sse(monkeypatch, settings, list(text)))
+    assert "".join(d.content for d in deltas) == "BeforeAfter <thiX and <"
+    assert "".join(d.reasoning for d in deltas) == "secret"
+
+
+@pytest.mark.parametrize(
+    "ending",
+    [
+        b'data: {"error": {"message": "GPU failed"}}\n\ndata: [DONE]\n\n',
+        b'event: error\ndata: {"message": "GPU failed"}\n\n',
+        b'data: {"error": "GPU failed"}\n\n',
+        b"",
+        b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n',
+        b"data: broken-json\n\n",
+    ],
+)
+def test_openai_stream_error_or_eof_never_yields_done(monkeypatch, settings, ending):
+    stream = _openai_sse(monkeypatch, settings, ["Partial"], ending)
+    assert next(stream).content == "Partial"
+    with pytest.raises(llm.LLMStreamError):
+        list(stream)
+
+
+def test_unclosed_think_is_not_success(monkeypatch, settings):
+    stream = _openai_sse(monkeypatch, settings, ["<think>secret"])
+    assert next(stream).reasoning == "secret"
+    with pytest.raises(llm.LLMStreamError, match="unclosed"):
+        list(stream)
+
+
+def test_sse_multiline_payload_comments_crlf_and_final_done(monkeypatch, settings):
+    settings.LLM_BACKEND = "openai"
+    settings.OPENAI_EXTRA_BODY = {}
+    _capture(
+        monkeypatch,
+        b': ping\r\nevent: message\r\ndata: {"choices":\r\ndata: [{"delta": {"content": "ok"}}]}\r\n\r\ndata: [DONE]',
+    )
+    deltas = list(llm.chat_stream([{"role": "user", "content": "q"}]))
+    assert "".join(d.content for d in deltas) == "ok"
+    assert deltas[-1].done

@@ -1,5 +1,24 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-01 — poprawki po przeglądzie jakości
+
+- Wspólna kontrola dostępu SQL dla literatury, eksportu i autorów; końcowa autoryzacja
+  trafień OpenSearch i egzekwowanie `Work.access` w warstwie tekstu oraz RAG.
+- Cytaty porównywane ze wskazanymi źródłami; jawne raporty niepotwierdzonych cytatów
+  i przypisów. Wspólny parser list/zakresów dla weryfikacji i eksportu.
+- Oryginał `text_exact` zamiast przekładu wyszukiwawczego w kontekście literatury.
+- Transakcyjne uploady i zgody, deduplikacja per właściciel, sprzątanie po błędach,
+  notatki i status indeksowania z ponawianiem ze strony konta (migracja library 0009).
+- CSRF i walidacja POST, stałe godzinowe okna limitera z blokadą file cache.
+- Przypisy i eksport związane z konkretną odpowiedzią, również po odtworzeniu historii;
+  poprawiony cel HTMX w powiązanych wersetach i doprecyzowanie „tylko moje materiały”.
+- OpenAI SSE rozróżnia błąd/urwany strumień od sukcesu; parser tagów think działa
+  między fragmentami. Angielskie pytania przeszukują angielskie pola ANE/Ojców.
+- Spójne snapshoty SQLite z WAL, backup przed zastąpieniem bazy i jawne
+  `--data --replace-db`; setup nie usuwa WAL działającej bazy.
+- `constraints.txt` wygenerowany przez pip freeze. Testy regresyjne offline;
+  integracyjne OpenSearch/PostgreSQL i CI pozostają na później.
+
 Nazwa robocza. Cel: teologia biblijna na poziomie naukowym dla każdego (etap 1),
 z możliwością rozszerzenia o korpus naukowy po uzyskaniu praw (etap 2).
 

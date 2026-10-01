@@ -29,7 +29,12 @@ class ReferenceError(ValueError):
 
 
 def resolve(text: str) -> list[ParsedRef]:
-    refs = parse(text)
+    if not isinstance(text, str) or len(text) > 4096:
+        raise ReferenceError("Niepoprawne lub za długie siglum")
+    try:
+        refs = parse(text)
+    except ValueError:
+        raise ReferenceError("Niepoprawne siglum") from None
     if not refs:
         raise ReferenceError(f"Nie rozpoznano siglum: {text!r}")
     return refs
@@ -46,16 +51,44 @@ class VerseRow:
     texts: dict[str, VerseText] = field(default_factory=dict)  # work.code -> tekst
 
 
-def active_works(codes: list[str] | None = None) -> list[Work]:
-    """Dzieła do pokazania, w kolejności: oryginały, potem przekłady."""
-    qs = Work.objects.all()
-    if codes:
+def _work_levels(access: list[str] | None) -> list[str]:
+    # Work has no owner: personal can never be granted by a group or access list.
+    return [a for a in (["open"] if access is None else access) if a != "personal"]
+
+
+def active_works(
+    codes: list[str] | None = None, *, access: list[str] | None = None
+) -> list[Work]:
+    """SQL-authorized works, originals first. None codes = all; [] = none.
+
+    `access` must come from rag.access.access_for_user(user), not request JSON.
+    Omitted access is open-only; [] grants nothing. Selection of inaccessible or
+    unknown codes returns no works, never falls back to the full corpus.
+    """
+    qs = Work.objects.filter(access__in=_work_levels(access))
+    if codes is not None:
         qs = qs.filter(code__in=codes)
     return sorted(qs, key=lambda w: (w.kind != "original", w.code))
 
 
-def parallel(refs: list[ParsedRef], works: list[Work]) -> list[VerseRow]:
-    """Wersety z zakresów sigli, każdy z tekstami we wskazanych dziełach."""
+def visible_works(works: list[Work], *, access: list[str] | None = None) -> list[Work]:
+    """Reauthorize supplied (possibly stale) Work objects in SQL; preserve order."""
+    current = {
+        w.pk: w
+        for w in Work.objects.filter(
+            pk__in=[w.pk for w in works], access__in=_work_levels(access)
+        )
+    }
+    return [current[w.pk] for w in works if w.pk in current]
+
+
+def parallel(
+    refs: list[ParsedRef], works: list[Work], *, access: list[str] | None = None
+) -> list[VerseRow]:
+    """Wersety z zakresów sigli, każdy z tekstami w uprawnionych dziełach."""
+    if not refs:
+        return []
+    works = visible_works(works, access=access)
     q = Q()
     for ref in refs:
         start, end = ordinal_range(ref)
@@ -64,7 +97,9 @@ def parallel(refs: list[ParsedRef], works: list[Work]) -> list[VerseRow]:
 
     tokens_qs = Token.objects.order_by("position")
     texts = (
-        VerseText.objects.filter(verse__in=verses, work__in=works)
+        VerseText.objects.filter(
+            verse__in=verses, work__in=works, work__access__in=_work_levels(access)
+        )
         .select_related("work")
         .prefetch_related(Prefetch("tokens", queryset=tokens_qs))
     )
@@ -89,9 +124,16 @@ class Concordance:
 
 
 def concordance(
-    lemma: str = "", strong: str = "", form: str = "", language: str = ""
+    lemma: str = "",
+    strong: str = "",
+    form: str = "",
+    language: str = "",
+    *,
+    access: list[str] | None = None,
 ) -> Concordance:
-    qs = Token.objects.select_related("verse_text__verse__book", "verse_text__work")
+    qs = Token.objects.filter(
+        verse_text__work__access__in=_work_levels(access)
+    ).select_related("verse_text__verse__book", "verse_text__work")
     if lemma:
         norm = normalize(lemma, language or _guess_language(lemma))
         qs = qs.filter(lemma_norm=norm)
@@ -138,34 +180,68 @@ def _guess_language(text: str) -> str:
 
 
 def lexical(
-    q: str, works: list[Work], limit: int = 200, offset: int = 0
+    q: str,
+    works: list[Work],
+    limit: int = 200,
+    offset: int = 0,
+    *,
+    access: list[str] | None = None,
 ) -> LexicalResult:
+    if not isinstance(q, str) or len(q) > 4096:
+        raise ValueError("Niepoprawne lub za długie zapytanie")
     lq = parse_query(q)
+    if any(not 0 <= gap <= 1000 for _, _, gap in lq.near):
+        raise ValueError("NEAR wymaga odległości od 0 do 1000")
+    works = visible_works(works, access=access)
+    if not works:
+        return LexicalResult(total=0)
     if lq.is_empty:
         return LexicalResult(total=0)
     if settings.SEARCH_BACKEND == "opensearch":
-        return _lexical_opensearch(lq, works, limit, offset)
-    return _lexical_db(lq, works, limit, offset)
+        return _lexical_opensearch(lq, works, limit, offset, access=access)
+    return _lexical_db(lq, works, limit, offset, access=access)
 
 
 def _lexical_opensearch(
-    lq: LexicalQuery, works: list[Work], limit: int, offset: int
+    lq: LexicalQuery,
+    works: list[Work],
+    limit: int,
+    offset: int,
+    *,
+    access: list[str] | None = None,
 ) -> LexicalResult:
     from corpus.search.client import get_client, index_name
 
     body = lexical_body(lq, [w.code for w in works], size=limit, from_=offset)
     resp = get_client().search(index=index_name("verses"), body=body)
-    return parse_response(resp)
+    result = parse_response(resp)
+    current = visible_works(works, access=access)
+    codes = {w.code for w in current}
+    if (
+        codes != {w.code for w in works}
+        or any(h.work not in codes for h in result.hits)
+        or any(r["code"] not in codes for r in result.by_work)
+    ):
+        # ACL changed during search: don't return stale text or aggregations.
+        if not current:
+            return LexicalResult(total=0)
+        return _lexical_db(lq, current, limit, offset, access=access)
+    return result
 
 
 def _lexical_db(
-    lq: LexicalQuery, works: list[Work], limit: int, offset: int
+    lq: LexicalQuery,
+    works: list[Work],
+    limit: int,
+    offset: int,
+    *,
+    access: list[str] | None = None,
 ) -> LexicalResult:
     """Fallback bez OpenSearch: Strong/lemat po tokenach, słowa po text_norm.
     NEAR degraduje do AND; frazy = dokładne podciągi znormalizowanego tekstu."""
-    base = VerseText.objects.filter(work__in=works).select_related(
-        "verse__book", "work"
-    )
+    base = VerseText.objects.filter(
+        work__in=works, work__access__in=_work_levels(access)
+    ).select_related("verse__book", "work")
 
     if lq.strongs or lq.lemmas:
         tok = Q()
@@ -173,7 +249,9 @@ def _lexical_db(
             tok |= Q(strong=s)
         for lemma in lq.lemmas:
             tok |= Q(lemma_norm=normalize(lemma, _guess_language(lemma)))
-        verse_ids = Token.objects.filter(tok).values("verse_text__verse_id")
+        verse_ids = Token.objects.filter(
+            tok, verse_text__work__access__in=_work_levels(access)
+        ).values("verse_text__verse_id")
         base = base.filter(verse_id__in=verse_ids)
 
     words = list(lq.words) + [w for pair in lq.near for w in pair[:2]]
@@ -279,7 +357,11 @@ class RelatedVerse:
 
 
 def related_verses(
-    ranges: list[tuple[int, int]], works: list[Work] | None = None, limit: int = 8
+    ranges: list[tuple[int, int]],
+    works: list[Work] | None = None,
+    limit: int = 8,
+    *,
+    access: list[str] | None = None,
 ) -> list[RelatedVerse]:
     """Powiązane wersety (OpenBible cross-references) dla zakresów ordinali, wg głosów.
     Zakres docelowy skracany do pierwszego wersetu (tak działa większość powiązań);
@@ -307,11 +389,17 @@ def related_verses(
             ordinal__in=[p.to_start for p in picked]
         ).select_related("book")
     }
-    work_objs = works or active_works()
+    work_objs = (
+        active_works(access=access)
+        if works is None
+        else visible_works(works, access=access)
+    )
     texts = {
         (vt.verse_id, vt.work.code): vt.text
         for vt in VerseText.objects.filter(
-            verse__in=verses.values(), work__in=work_objs
+            verse__in=verses.values(),
+            work__in=work_objs,
+            work__access__in=_work_levels(access),
         ).select_related("work")
     }
     out = []

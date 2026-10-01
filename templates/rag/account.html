@@ -46,6 +46,7 @@
 
   <section class="wide">
     <h2>Moje materiały <span class="muted">— widoczne tylko dla Ciebie, także w odpowiedziach RAG · limit {{ limits.docs }} plików po {{ limits.mb }} MB</span></h2>
+    <p class="muted">W asystencie opcja „Literatura: tylko moje materiały” ogranicza literaturę do Twoich tekstów, bez literatury ze wspólnego korpusu. Biblia oraz teksty ANE i patrystyczne nadal mogą być kontekstem, zgodnie z wybranymi opcjami.</p>
     <form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="upload">
       {% if upload_form.non_field_errors %}<div class="err">{{ upload_form.non_field_errors }}</div>{% endif %}
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px">
@@ -65,13 +66,26 @@
       <tr><th>Tytuł</th><th>Autor</th><th>Typ / rejestr</th><th>Fragmenty</th><th>Dodano</th><th>Status</th><th></th></tr>
       {% for d in docs %}
       <tr>
-        <td>{{ d.title }}</td>
+        <td>{{ d.title }}{% if d.note %}<div class="muted" style="white-space:normal;margin-top:4px">{{ d.note }}</div>{% endif %}</td>
         <td>{% for a in d.authors.all %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
         <td><span class="badge">{{ d.get_doc_type_display }}</span> <span class="badge">{{ d.get_register_display }}</span></td>
         <td>{{ d.chunk_count }}</td>
         <td class="muted">{{ d.created|date:"Y-m-d" }}</td>
-        <td>{% if d.access == "licensed" %}<span class="badge" style="background:var(--ok-soft);color:var(--ok)">we wspólnym korpusie</span>{% else %}<span class="badge">osobisty</span>{% endif %}</td>
+        <td>
+          {% if d.access == "licensed" %}<span class="badge" style="background:var(--ok-soft);color:var(--ok)">we wspólnym korpusie</span>{% else %}<span class="badge">osobisty</span>{% endif %}
+          <div style="margin-top:4px">
+            {% if d.index_status == "indexed" %}<span class="badge" style="background:var(--ok-soft);color:var(--ok)">Indeks aktualny</span>
+            {% elif d.index_status == "pending" %}<span class="badge">Oczekuje na indeksowanie</span>
+            {% elif d.index_status == "failed" %}<span class="badge" style="background:var(--warn-soft);color:var(--warn)">Błąd indeksowania — można ponowić</span>
+            {% elif d.index_status == "not_required" %}<span class="badge">Indeks zewnętrzny niewymagany</span>
+            {% else %}<span class="badge">Stan indeksowania nieznany</span>{% endif %}
+          </div>
+          {% if d.index_error %}<div class="muted" style="margin-top:4px">Ostatnia próba indeksowania zakończyła się błędem. Szczegóły techniczne są ukryte.</div>{% endif %}
+        </td>
         <td style="white-space:nowrap">
+          {% if d.index_status == "failed" or d.index_status == "pending" %}
+          <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="retry_index"><input type="hidden" name="doc_id" value="{{ d.id }}"><button class="ghost" type="submit">Ponów indeksowanie</button></form>
+          {% endif %}
           {% if d.access == "personal" %}
           <details><summary style="cursor:pointer;color:var(--accent);font-size:12px">Udostępnij</summary>
             <form method="post" style="margin-top:8px;max-width:420px">{% csrf_token %}<input type="hidden" name="action" value="share"><input type="hidden" name="doc_id" value="{{ d.id }}">

@@ -140,7 +140,7 @@ def chat_stream(
     think: bool = False,
     timeout: int = 600,
 ) -> Iterator[Delta]:
-    """Strumień fragmentów; treść i rozumowanie osobno, na końcu Delta(done=True)."""
+    """Treść i rozumowanie osobno; done oznacza sukces, błędy OpenAI SSE rzucają LLMStreamError."""
     if settings.LLM_BACKEND == "ollama":
         return _ollama_stream(
             messages, model, temperature, max_tokens, num_ctx, think, timeout
@@ -338,25 +338,85 @@ def _openai_chat(
     return strip_think(choice.get("message", {}).get("content", "") or "")
 
 
+class LLMStreamError(RuntimeError):
+    """A provider reported an error or did not complete its SSE stream."""
+
+
+class _ThinkParser:
+    """Hold only a possible tag prefix so tags may cross arbitrary delta boundaries."""
+
+    def __init__(self):
+        self.pending = ""
+        self.in_think = False
+
+    def feed(self, text: str, *, final: bool = False) -> tuple[str, str]:
+        self.pending += text
+        content, reasoning = [], []
+        while self.pending:
+            tag = "</think>" if self.in_think else "<think>"
+            pos = self.pending.find(tag)
+            target = reasoning if self.in_think else content
+            if pos >= 0:
+                target.append(self.pending[:pos])
+                self.pending = self.pending[pos + len(tag) :]
+                self.in_think = not self.in_think
+                continue
+            keep = 0
+            if not final:
+                for n in range(1, min(len(tag), len(self.pending) + 1)):
+                    if self.pending.endswith(tag[:n]):
+                        keep = n
+            if keep:
+                target.append(self.pending[:-keep])
+                self.pending = self.pending[-keep:]
+            else:
+                target.append(self.pending)
+                self.pending = ""
+            break
+        return "".join(content), "".join(reasoning)
+
+
+def _sse_payloads(resp):
+    data, event = [], ""
+    for raw in resp:
+        line = raw.decode("utf-8", "replace").rstrip("\r\n")
+        if not line:
+            if data:
+                yield event, "\n".join(data)
+            data, event = [], ""
+        elif line.startswith("data:"):
+            data.append(line[5:].lstrip(" "))
+        elif line.startswith("event:"):
+            event = line[6:].strip()
+    if data:
+        yield event, "\n".join(data)
+
+
 def _openai_stream(
     messages, model, temperature, max_tokens, think, timeout
 ) -> Iterator[Delta]:
     """SSE: linie `data: {...}`, koniec `data: [DONE]`; usage w ostatnim rekordzie (bez choices)."""
     body = _openai_body(messages, model, temperature, max_tokens, think, True)
     prompt_tokens = completion_tokens = 0
-    in_think = False  # modele wpisujące <think> w content zamiast reasoning_content
+    parser = _ThinkParser()
+    completed = False
     with _openai_request(body, timeout) as resp:
-        for raw in resp:
-            line = raw.decode("utf-8", "replace").strip()
-            if not line.startswith("data:"):
-                continue
-            payload = line[5:].strip()
-            if payload == "[DONE]":
+        for event, payload in _sse_payloads(resp):
+            if payload.strip() == "[DONE]" and event != "error":
+                completed = True
                 break
             try:
                 rec = json.loads(payload)
-            except json.JSONDecodeError:
-                continue
+            except json.JSONDecodeError as exc:
+                raise LLMStreamError("OpenAI-compatible: invalid SSE data") from exc
+            if not isinstance(rec, dict):
+                raise LLMStreamError("OpenAI-compatible: invalid SSE record")
+            if event == "error" or rec.get("error") is not None:
+                error = rec.get("error", rec)
+                detail = (
+                    error.get("message", error) if isinstance(error, dict) else error
+                )
+                raise LLMStreamError(f"OpenAI-compatible stream error: {detail}")
             usage = rec.get("usage")
             if usage:
                 prompt_tokens = usage.get("prompt_tokens", 0) or 0
@@ -366,21 +426,17 @@ def _openai_stream(
                 continue
             delta = choices[0].get("delta") or {}
             reasoning = delta.get("reasoning_content") or delta.get("reasoning") or ""
-            content = delta.get("content") or ""
-            if content:
-                if "<think>" in content:
-                    in_think = True
-                    reasoning += content.split("<think>", 1)[1]
-                    content = content.split("<think>", 1)[0]
-                elif in_think:
-                    if "</think>" in content:
-                        in_think = False
-                        r, content = content.split("</think>", 1)
-                        reasoning += r
-                    else:
-                        reasoning, content = reasoning + content, ""
+            content, inline_reasoning = parser.feed(delta.get("content") or "")
+            reasoning += inline_reasoning
             if content or reasoning:
                 yield Delta(content=content, reasoning=reasoning)
+    if not completed:
+        raise LLMStreamError("OpenAI-compatible: premature EOF before [DONE]")
+    if parser.in_think:
+        raise LLMStreamError("OpenAI-compatible: unclosed <think> block")
+    content, reasoning = parser.feed("", final=True)
+    if content or reasoning:
+        yield Delta(content=content, reasoning=reasoning)
     yield Delta(
         done=True, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
     )

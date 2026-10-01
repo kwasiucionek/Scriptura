@@ -1,7 +1,7 @@
 # Scriptura — RAG teologii biblijnej
 
-Asystent do pytań o Biblię, który odpowiada **wyłącznie na podstawie źródeł** i każde zdanie
-podpiera przypisem: tekstem biblijnym w oryginale i przekładzie, literaturą biblistów (na razie
+Asystent do pytań o Biblię, instruowany do odpowiadania **na podstawie źródeł** i podpierania
+tez przypisami: tekstem biblijnym w oryginale i przekładzie, literaturą biblistów (na razie
 PWT Wrocław i UPJPII), leksykonem, tradycją Ojców Kościoła i tekstami starożytnego Bliskiego
 Wschodu. Dwa tryby — naukowy (aparat, terminy oryginalne, hierarchia źródeł) i popularny
 (prosty język, te same źródła) — i weryfikacja cytatów po stronie systemu.
@@ -40,8 +40,10 @@ automatycznie, gdy pytanie o nie pyta.
 4. **Kontekst**: ŹRÓDŁA [n] · WERSETY (oryginał + przekład) · LEKSYKON · POWIĄZANE WERSETY ·
    TRADYCJA PATRYSTYCZNA [P] · ANE [A].
 5. **Generacja** (Ollama, `gemma4:31b-cloud` lub lokalny model) ze strumieniem SSE; potem
-   weryfikacja: czy cytaty [n] istnieją, czy sigla są w źródłach, czy cudzysłowy odpowiadają
-   tekstowi (dosłownie; cytaty z [P]/[A] oznaczone jako przekład modelu).
+   weryfikacja: czy przypisy [n]/[P]/[A] (także listy i zakresy) istnieją w kontekście oraz
+   czy wykryte cytaty odpowiadają wskazanemu źródłu. Cytaty zmienione i niepotwierdzone
+   są raportowane, także przekłady modelu. To kontrola tekstowa, nie gwarancja poprawności
+   każdej tezy ani kompletności przypisów; przekłady wymagają porównania z oryginałem.
 6. **Panel źródeł**: zwijane grupy, fragmenty, linki do oryginałów, eksport cytowań
    BibTeX / RIS (tylko przywołane pozycje, ze stronami pasaży Ojców).
 
@@ -117,6 +119,14 @@ wycofania. Licencja i poziom dostępu są ustalane deterministycznie przy ingest
 brak → licensed); kurator LLM może tylko oznaczać do przeglądu.
 
 Anonimowi: tryb popularny, źródła `open`, limit `RATE_LIMIT_ANON` pytań/h.
+Uprawnienia są sprawdzane w aktualnym SQL także po odczycie indeksu; właściciel
+zachowuje dostęp do własnych materiałów po udostępnieniu.
+
+Upload i zapis zgody są transakcyjne; awaria indeksowania nie cofa zapisu SQL.
+Konto pokazuje status oraz przycisk ponowienia. „Literatura: tylko moje materiały”
+ogranicza literaturę — Biblia, ANE i patrystyka nadal mogą dostarczać kontekst.
+`personal` oznacza izolację od innych użytkowników, nie lokalne przetwarzanie:
+przy backendzie chmurowym fragmenty trafiają do skonfigurowanego dostawcy modelu.
 
 ## Konfiguracja (.env)
 
@@ -124,12 +134,12 @@ Pełna lista w `.env.example`; produkcja: `deploy/env.production.example`. Najwa
 
 | zmienna | domyślnie | uwagi |
 |---|---|---|
-| `LLM_BACKEND` | ollama | `ollama` \| `openai` (NVIDIA NIM, vLLM, OpenAI…) \| `echo`; klient w `library/llm.py`, test: `manage.py llm_ping` |
-| `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MODEL` | `http://localhost:11434`, `gemma4:31b-cloud` | modele `-cloud` po `ollama signin` |
+| `LLM_BACKEND` | echo | `ollama` \| `openai` (NVIDIA NIM, vLLM, OpenAI…) \| `echo`; klient w `library/llm.py`, test: `manage.py llm_ping` |
+| `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MODEL` | `http://localhost:11434`, `qwen3.5:122b-cloud` | modele `-cloud` po `ollama signin` |
 | `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL` | `https://integrate.api.nvidia.com/v1`, —, `nvidia/nemotron-3.5-lightning-30b-a3b` | backend openai |
 | `OPENAI_THINKING_KWARGS`, `LLM_REASONING_BUDGET`, `OPENAI_EXTRA_BODY` | false, 0, `{}` | vLLM/NIM: `chat_template_kwargs.enable_thinking`, budżet rozumowania, dodatkowe pola JSON |
 | `OLLAMA_EMBED_MODEL`, `EMBEDDING_DIM` | `snowflake-arctic-embed2`, 1024 | zmiana wymaga `reindex_chunks --recreate` |
-| `SEARCH_BACKEND`, `OPENSEARCH_URL`, `OPENSEARCH_INDEX_PREFIX` | opensearch | `db` = fallback bez kNN (testy, awaria) |
+| `SEARCH_BACKEND`, `OPENSEARCH_URL`, `OPENSEARCH_INDEX_PREFIX` | `db`, `http://localhost:9200`, `scriptura` | `db` = fallback bez kNN; produkcja zwykle `opensearch` |
 | `RERANKER_BACKEND` | none | `llm` (chmura, bez GPU), `tei` (GPU), `none` |
 | `RAG_TOP_K`, `RAG_MAX_PER_DOC`, `RAG_CONTEXT_NEIGHBORS` | 8, 3, 1 | źródła, limit na dokument, sąsiedzi |
 | `RAG_DEFAULT_MODE`, `RAG_REGISTER_MODE` | scientific, soft | soft: tryb = poziom odpowiedzi + premia rankingowa |
@@ -137,14 +147,14 @@ Pełna lista w `.env.example`; produkcja: `deploy/env.production.example`. Najwa
 | `ALLOW_ANONYMOUS`, `ANONYMOUS_POPULAR_ONLY`, `RATE_LIMIT_ANON` | true, true, 20 | |
 | `PERSONAL_MAX_MB`, `PERSONAL_MAX_DOCS` | 25, 50 | materiały osobiste |
 | `HARVEST_MAILTO`, `HARVEST_COOKIE`, `SERPAPI_KEY` | | OpenAlex polite pool; JWT zapory ICM (7 dni); Scholar |
-| `TRANSLATE_MODEL`, `CURATE_MODEL` | = chat | przekłady i kurator |
+| `TRANSLATE_MODEL`, `CURATE_MODEL` | `translategemma:27b`, = chat | przekłady i kurator |
 | `BEHIND_PROXY`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` | | produkcja za Cloudflare/nginx |
 
 ## Wdrożenie
 
 `deploy/` — unit systemd (`scriptura-web`: gunicorn gthread, SSE), timer tygodniowej
 aktualizacji (`scriptura-update`), vhost nginx (SSE bez buforowania), `deploy.sh`
-(rsync + migrate + collectstatic + restart; `--data` z PDF-ami, bazą i wektorami),
+(Git + migrate + collectstatic + restart; `--data --replace-db` z PDF-ami, snapshotem bazy i wektorami),
 `setup_after_rsync.sh` (venv, indeksy z pliku wektorów), `backup-db.sh` (spójna kopia SQLite).
 Kroki i realia serwera: [deploy/README.md](deploy/README.md). OpenSearch może być
 współdzielony z innymi aplikacjami (prefiks `scriptura-*`); potrzebne pluginy:
@@ -167,7 +177,27 @@ scripts/      narzędzia jednorazowe (fonty legacy, place_downloads, eval)
 templates/    GUI: site.html (szkielet), partials/ (pasek, użytkownik), czat, konto, logowanie, tekst i konkordancja, pages/
 ```
 
-Testy: `pytest` (147, backendy zastępcze bez OpenSearcha i Ollamy); styl: `ruff format && ruff check`.
+Testy: `pytest` (backendy zastępcze i atrapy usług, bez integracyjnego OpenSearch/PostgreSQL).
+Testy JavaScript z małym stubem DOM wymagają działającego Node; bez niego są pomijane.
+Styl: `ruff format --check . && ruff check .`.
+
+`constraints.txt` to zapis bieżącego środowiska przez `pip freeze > constraints.txt`,
+nie przenośny lockfile: zawiera także editable wpis samej Scriptury i narzędzia lokalne.
+Nie należy używać go bezpośrednio jako `pip install -c constraints.txt` (pip nie dopuszcza
+editable constraints); wersje trzeba też dopasować do Pythona na docelowym hoście.
+
+### Po aktualizacji
+
+Uruchom `python manage.py migrate` (nowa migracja `library/0009_personal_upload_state`).
+Dodaje notatkę, status indeksowania i unikalność hasha per właściciel. Istniejących
+plików i dokumentów nie usuwa; w historycznych duplikatach czyści tylko nadmiarowe hashe.
+Materiały osobiste otrzymują status `pending` i mogą być ponownie indeksowane ze strony konta.
+
+Indeks bez `text_exact` przebuduj przez `reindex_chunks --recreate --reuse-vectors`,
+żeby retrieval korzystał z oryginałów zamiast przekładów wyszukiwawczych.
+Klienci POST `/ask/stream` i `/export/citations` muszą teraz wysyłać token CSRF.
+Limiter używa stałych okien godzinowych i blokady pliku na jednym hoście; wdrożenia
+wielohostowe wymagają innego backendu współdzielonych limitów.
 
 ## Stan i plan
 

@@ -11,6 +11,7 @@ from rag.citations import (
     to_bibtex,
     to_ris,
 )
+from rag.quotes import check_citations
 
 pytestmark = pytest.mark.django_db
 
@@ -26,6 +27,116 @@ def test_cited_numbers_and_names():
         == canonical_name("Majewski, Marcin")
     )
     assert canonical_name("Justyn") == "Justyn"
+
+
+@pytest.mark.parametrize(
+    "answer,expected",
+    [
+        ("[P1, 2]", (set(), {1, 2}, set())),
+        ("[P1; P2]", (set(), {1, 2}, set())),
+        ("[1—2]", ({1, 2}, set(), set())),
+        ("[ P1 ; 2–3 ]", (set(), {1, 2, 3}, set())),
+        ("[A1, 2—3]", (set(), set(), {1, 2, 3})),
+        ("[P1, A2; 3]", (set(), {1}, {2, 3})),
+        ("[1; P2, 3]", ({1}, {2, 3}, set())),
+        ("[P1-P3] [A2–A3]", (set(), {1, 2, 3}, {2, 3})),
+        ("[P1, 2] [A1] [3]", ({3}, {1, 2}, {1})),
+        ("[1—200]", (set(range(1, 201)), set(), set())),
+        ("[1—201]", (set(), set(), set())),
+        ("[P1—A2]", (set(), set(), set())),
+        ("[1—P2]", (set(), set(), set())),
+        ("[P3—1]", (set(), set(), set())),
+        ("[P1, typo]", (set(), set(), set())),
+        ("[P1;]", (set(), set(), set())),
+        ("[P1, typo] [A2]", (set(), set(), {2})),
+        ("[P 1]", (set(), set(), set())),
+        ("[" + "9" * 5000 + "]", (set(), set(), set())),
+    ],
+)
+def test_cited_numbers_share_quote_parser_grammar(answer, expected):
+    assert cited_numbers(answer) == expected
+    labels = {
+        f"[{prefix}{n}]"
+        for prefix, numbers in zip(("", "P", "A"), expected, strict=True)
+        for n in numbers
+    }
+    parsed = {
+        ref
+        for marker in check_citations(answer, labels)
+        if marker.reason in ("", "missing_source")
+        for ref in marker.refs
+    }
+    assert parsed == labels
+
+
+@pytest.fixture
+def numbered_export_sources():
+    documents = [Document.objects.create(title=f"Literatura{n}") for n in range(1, 4)]
+    return {
+        "chunks": [{"n": n, "document_id": d.pk} for n, d in enumerate(documents, 1)],
+        "patristics": [
+            {"author": f"Ojciec{n}", "work": f"Pat{n}"} for n in range(1, 4)
+        ],
+        "ane": [{"text": f"ANE{n}"} for n in range(1, 4)],
+    }
+
+
+@pytest.mark.parametrize(
+    "answer,titles",
+    [
+        ("[P1, 2]", {"Pat1", "Pat2"}),
+        ("[P1; P2]", {"Pat1", "Pat2"}),
+        ("[1—2]", {"Literatura1", "Literatura2"}),
+        ("[A1, 2—3]", {"ANE1", "ANE2", "ANE3"}),
+        ("[P1; A2, 3]", {"Pat1", "ANE2", "ANE3"}),
+        ("[P1, typo] [A2]", {"ANE2"}),
+        ("[P1—A2] [2]", {"Literatura2"}),
+    ],
+)
+def test_exports_only_selected_families(numbered_export_sources, answer, titles):
+    entries = build_entries(numbered_export_sources, answer)
+    assert {e["title"] for e in entries} == titles
+    for exported in (to_bibtex(entries), to_ris(entries)):
+        for title in titles:
+            assert title in exported
+        for title in {
+            f"{family}{n}"
+            for family in ("Literatura", "Pat", "ANE")
+            for n in range(1, 4)
+        } - titles:
+            assert title not in exported
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "[P1, typo]",
+        "[P1;]",
+        "[P 1]",
+        "[P1—A2]",
+        "[1—P2]",
+        "[2—1]",
+        "[1—201]",
+        "[9999999999]",
+        "[1",
+        "[1,\n2]",
+        "[niepoprawne]",
+        "Odpowiedź bez odsyłaczy.",
+    ],
+)
+def test_nonempty_answer_never_falls_back_to_all_sources(
+    numbered_export_sources, answer
+):
+    assert build_entries(numbered_export_sources, answer) == []
+
+
+@pytest.mark.parametrize("answer", ["", " \n\t"])
+def test_empty_historical_answer_preserves_all_source_fallback(
+    numbered_export_sources, answer
+):
+    assert {e["title"] for e in build_entries(numbered_export_sources, answer)} == {
+        f"{family}{n}" for family in ("Literatura", "Pat", "ANE") for n in range(1, 4)
+    }
 
 
 def test_export_bibtex_ris_filters_cited_and_includes_patristics():

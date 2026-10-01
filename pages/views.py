@@ -1,33 +1,27 @@
 """Podstrony informacyjne: o projekcie, korpus (żywe liczby), dla autorów, autor.
 
-Statystyki korpusu liczone z bazy i trzymane w cache (STATS_TTL); anonim widzi
+Statystyki korpusu liczone z bieżącego SQL (bez cache metadanych); anonim widzi
 tylko materiały `open`, zalogowany z rozszerzonym dostępem — także swoje poziomy.
 Autorzy materiałów bez zgody nie są wymieniani z nazwiska — tylko liczba zbiorcza.
 """
 
 from django.conf import settings
-from django.core.cache import cache
 from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from ane.models import AneLine, AneText
-from corpus.models import Lexeme, Token, Verse, VerseLink, Work
+from corpus.models import Lexeme, Token, Verse, VerseLink
+from corpus.services.text import active_works
 from library.models import Author, DocType, Document
 from patristics.models import PatPassage, PatRef, PatWork
-from rag.access import access_for_user
-
-STATS_TTL = 3600
+from rag.access import access_for_user, document_access_q
 
 
-def _corpus_stats(levels: list[str]) -> dict:
-    key = "pages:corpus-stats:" + "-".join(sorted(levels))
-    data = cache.get(key)
-    if data:
-        return data
-
-    shared = Document.objects.filter(owner__isnull=True)  # bez materiałów osobistych
-    visible = shared.filter(access__in=levels)
+def _corpus_stats(levels: list[str], user_id: int | None = None) -> dict:
+    # Cached objects would retain titles/authors after an ACL change or deletion.
+    shared = Document.objects.filter(owner__isnull=True)
+    visible = Document.objects.filter(document_access_q(levels, user_id))
     by_type = dict(
         visible.values_list("doc_type")
         .annotate(n=Count("id"))
@@ -42,11 +36,11 @@ def _corpus_stats(levels: list[str]) -> dict:
         Author.objects.annotate(
             n_open=Count(
                 "documents",
-                filter=Q(documents__access="open", documents__owner__isnull=True),
+                filter=Q(documents__access="open"),
             ),
             n_visible=Count(
                 "documents",
-                filter=Q(documents__access__in=levels, documents__owner__isnull=True),
+                filter=Q(documents__in=visible),
             ),
         )
         .filter(n_visible__gt=0)
@@ -57,7 +51,7 @@ def _corpus_stats(levels: list[str]) -> dict:
     ).count()  # oczekujące na zgodę / demo prywatne
     recent = list(visible.prefetch_related("authors").order_by("-created")[:6])
 
-    works = sorted(Work.objects.all(), key=lambda w: (w.kind != "original", w.code))
+    works = active_works(access=levels)
     pat_volumes = (
         PatWork.objects.values("series", "volume")
         .annotate(n_works=Count("id"), n_passages=Count("passages", distinct=True))
@@ -70,7 +64,7 @@ def _corpus_stats(levels: list[str]) -> dict:
 
     data = {
         "docs_total": visible.count(),
-        "docs_open": shared.filter(access="open").count(),
+        "docs_open": visible.filter(access="open").count(),
         "docs_hidden": hidden,
         "chunks_total": sum(visible.values_list("chunk_count", flat=True)),
         "type_rows": type_rows,
@@ -78,7 +72,7 @@ def _corpus_stats(levels: list[str]) -> dict:
         "recent": recent,
         "works": works,
         "verses": Verse.objects.count(),
-        "tokens": Token.objects.count(),
+        "tokens": Token.objects.filter(verse_text__work__in=works).count(),
         "lexemes": Lexeme.objects.count(),
         "lexemes_hbo": Lexeme.objects.filter(language__in=["hbo", "arc"]).count(),
         "lexemes_grc": Lexeme.objects.filter(language="grc").count(),
@@ -92,7 +86,6 @@ def _corpus_stats(levels: list[str]) -> dict:
         "ane_texts": ane_texts,
         "ane_lines": AneLine.objects.count(),
     }
-    cache.set(key, data, STATS_TTL)
     return data
 
 
@@ -111,9 +104,7 @@ def guide(request: HttpRequest) -> HttpResponse:
             "question_max": settings.QUESTION_MAX_CHARS,
             "allow_anonymous": settings.ALLOW_ANONYMOUS,
             "anon_popular_only": settings.ANONYMOUS_POPULAR_ONLY,
-            "works": sorted(
-                Work.objects.all(), key=lambda w: (w.kind != "original", w.code)
-            ),
+            "works": active_works(access=access_for_user(request.user)),
         },
     )
 
@@ -127,7 +118,9 @@ def corpus(request: HttpRequest) -> HttpResponse:
             "active": "corpus",
             "levels": levels,
             "extended": levels != ["open"],
-            "s": _corpus_stats(levels),
+            "s": _corpus_stats(
+                levels, request.user.pk if request.user.is_authenticated else None
+            ),
         },
     )
 

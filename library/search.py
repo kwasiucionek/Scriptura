@@ -14,6 +14,7 @@ from django.db.models import Q
 from corpus.normalize import normalize_greek, normalize_hebrew, normalize_polish
 from corpus.search.mappings import ANALYSIS
 from library.models import Chunk, Document
+from rag.access import document_access_q
 
 log = logging.getLogger(__name__)
 
@@ -340,24 +341,16 @@ def _filters(
     user_id: int | None = None,
     personal_only: bool = False,
 ) -> list[dict]:
-    """Filtry dostępu: poziomy użytkownika LUB jego materiały osobiste (access=personal + owner_id).
-    personal_only=True zawęża do materiałów osobistych."""
-    personal = {
-        "bool": {
-            "filter": [
-                {"term": {"access": "personal"}},
-                {"term": {"owner_id": user_id or -1}},
-            ]
-        }
-    }
+    """Wstępne ACL indeksu; autorytatywna kontrola następuje w SQL."""
+    own = {"term": {"owner_id": user_id or -1}}
     if personal_only:
-        f: list[dict] = [personal]
+        f: list[dict] = [own]
     else:
         levels = [a for a in access if a != "personal"]
         f = [
             {
                 "bool": {
-                    "should": [{"terms": {"access": levels}}, personal],
+                    "should": [{"terms": {"access": levels}}, own],
                     "minimum_should_match": 1,
                 }
             }
@@ -457,7 +450,7 @@ def retrieve(
     from library.rerank import rerank
 
     LAST_TIMINGS.clear()
-    access = access or settings.RAG_ACCESS
+    access = settings.RAG_ACCESS if access is None else access
     pool = max(k, settings.RERANK_TOP_N)
     t = time.monotonic()
     if settings.SEARCH_BACKEND == "opensearch":
@@ -514,29 +507,36 @@ def _retrieve_opensearch(
     except Exception as exc:  # brak embeddingów nie blokuje odpowiedzi
         log.warning("kNN pominięte: %s", exc)
     fused = rrf(rankings)
-    top = sorted(fused, key=fused.get, reverse=True)[:k]
+    top = sorted(fused, key=fused.get, reverse=True)
     doc_ids = {docs[i]["document_id"] for i in top}
-    documents = {
-        d.id: d
-        for d in Document.objects.filter(id__in=doc_ids).prefetch_related("authors")
-    }
+    qs = Document.objects.filter(
+        document_access_q(access, user_id, personal_only=personal_only),
+        id__in=doc_ids,
+    )
+    if authors:
+        qs = qs.filter(authors__name__in=authors)
+    if registers:
+        qs = qs.filter(register__in=registers)
+    documents = {d.id: d for d in qs.distinct().prefetch_related("authors")}
     hits = []
     for i in top:
         s = docs[i]
-        d = documents[s["document_id"]]
+        d = documents.get(s["document_id"])
+        if d is None:  # usunięty dokument lub cofnięte ACL w nieaktualnym indeksie
+            continue
         hits.append(
             ChunkHit(
                 chunk_id=0,
                 document_id=d.id,
                 order=s["order"],
                 title=d.title,
-                authors=s["authors"],
+                authors=[a.name for a in d.authors.all()],
                 citation=d.citation,
                 doc_type=d.doc_type,
                 year=d.year,
                 url=d.url,
                 section=s["section"],
-                text=s["text"],
+                text=s.get("text_exact", s["text"]),
                 sigla=s["sigla_labels"],
                 score=fused[i],
                 access=d.access,
@@ -544,6 +544,8 @@ def _retrieve_opensearch(
                 owner_id=d.owner_id,
             )
         )
+        if len(hits) >= k:
+            break
     return hits
 
 
@@ -574,14 +576,11 @@ def _retrieve_db(
     ]
     patterns = [re.compile(rf"\b{re.escape(w)}\w*", re.IGNORECASE) for w in words]
     q_grc, q_hbo = original_terms(query)
-    personal = Q(document__access="personal", document__owner_id=user_id or -1)
-    if personal_only:
-        qs = Chunk.objects.filter(personal).select_related("document")
-    else:
-        levels = [a for a in access if a != "personal"]
-        qs = Chunk.objects.filter(
-            Q(document__access__in=levels) | personal
-        ).select_related("document")
+    qs = Chunk.objects.filter(
+        document_access_q(
+            access, user_id, prefix="document__", personal_only=personal_only
+        )
+    ).select_related("document")
     if authors:
         qs = qs.filter(document__authors__name__in=authors)
     if registers:

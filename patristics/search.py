@@ -180,8 +180,7 @@ def _retrieve_opensearch(query: str, k: int) -> list[PatHit]:
         return []
     query_en = translate_query(query)
     should = [{"match": {"text_pl": {"query": query}}}]
-    if query_en:
-        should.append({"match": {"text_en": {"query": query_en, "boost": 1.5}}})
+    should.append({"match": {"text_en": {"query": query_en or query, "boost": 1.5}}})
     bm25 = client.search(
         index=name,
         body={

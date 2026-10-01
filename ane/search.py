@@ -149,8 +149,9 @@ def _retrieve_opensearch(query: str, k: int) -> list[AneHit]:
             }
         },
     ]
-    if query_en:
-        should.append({"match": {"translation_en": {"query": query_en, "boost": 1.5}}})
+    should.append(
+        {"match": {"translation_en": {"query": query_en or query, "boost": 1.5}}}
+    )
     bm25 = client.search(
         index=name,
         body={

@@ -26,7 +26,7 @@ from corpus.sigla import extract, format_ref, ordinal_range
 from library import llm
 from library.search import ChunkHit, diversify, expand_with_neighbors, retrieve
 from patristics.service import patristics_for_question
-from rag.quotes import verify_quotes
+from rag.quotes import check_citations, verify_quotes
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +75,13 @@ class VerseSource:
 
 @dataclass
 class AskResult:
+    """Additive SSE result contract.
+
+    verified_citations checks source existence, not support for every claim.
+    quotes_checked = quotes_verified + len(quotes_altered) + len(quotes_unverified).
+    quotes_tradition is a subset of checked quotes, not a verification exemption.
+    """
+
     answer: str = ""
     citations: list[int] = field(default_factory=list)
     verified_refs: list[str] = field(default_factory=list)
@@ -82,8 +89,12 @@ class AskResult:
     quotes_verified: int = 0
     quotes_checked: int = 0
     quotes_altered: list[dict] = field(default_factory=list)
+    quotes_unverified: list[dict] = field(default_factory=list)
+    verified_citations: list[str] = field(default_factory=list)
+    unverified_citations: list[str] = field(default_factory=list)
+    citation_checks: list[dict] = field(default_factory=list)
     quotes_tradition: int = (
-        0  # cytaty z Ojców / ANE (przekład modelu), poza weryfikacją
+        0  # cytaty z odsyłaczem do Ojców / ANE; nie oznacza potwierdzenia
     )
     refused: bool = False
     latency_ms: int = 0
@@ -101,14 +112,32 @@ class AskResult:
 # --- retrieval ------------------------------------------------------------
 
 
+def _work_access(access):
+    return settings.RAG_ACCESS if access is None else access
+
+
+def _accessible_works(works=None, access=None):
+    """Use the levels already resolved by rag.views; an empty list denies all works."""
+    codes = list(settings.RAG_VERSE_WORKS) if works is None else works
+    if not codes:
+        return []
+    return corpus_svc.active_works(codes, access=_work_access(access))
+
+
 def verses_for_question(
-    question: str, works: list[str] | None = None, limit: int = 40
+    question: str,
+    works: list[str] | None = None,
+    limit: int = 40,
+    *,
+    access: list[str] | None = None,
 ) -> list[VerseSource]:
     refs = [r for m in extract(question) for r in m.refs]
     if not refs:
         return []
-    work_objs = corpus_svc.active_works(works or list(settings.RAG_VERSE_WORKS))
-    rows = corpus_svc.parallel(refs, work_objs)[:limit]
+    work_objs = _accessible_works(works, access)
+    if not work_objs:
+        return []
+    rows = corpus_svc.parallel(refs, work_objs, access=_work_access(access))[:limit]
     out: list[VerseSource] = []
     for row in rows:
         for w in work_objs:
@@ -118,17 +147,25 @@ def verses_for_question(
     return out
 
 
-def related_for_question(question: str, works: list[str] | None = None) -> list[dict]:
+def related_for_question(
+    question: str,
+    works: list[str] | None = None,
+    *,
+    access: list[str] | None = None,
+) -> list[dict]:
     """Powiązane wersety (OpenBible) dla sigli z pytania — do promptu i panelu źródeł."""
     ranges = sigla_ranges(question)
     if not ranges or not settings.RAG_RELATED_VERSES:
         return []
-    work_objs = corpus_svc.active_works(works or list(settings.RAG_VERSE_WORKS))
+    work_objs = _accessible_works(works, access)
+    if not work_objs:
+        # No fallback to other works when the requested selection is inaccessible.
+        return []
     pl_first = sorted(work_objs, key=lambda w: (w.language != "pl", w.code))
     return [
         asdict(r)
         for r in corpus_svc.related_verses(
-            ranges, pl_first, settings.RAG_RELATED_VERSES
+            ranges, pl_first, settings.RAG_RELATED_VERSES, access=_work_access(access)
         )
     ]
 
@@ -219,13 +256,18 @@ def lexemes_from_transliteration(question: str, limit: int = 3) -> list[Lexeme]:
 
 
 def verses_for_lexeme(
-    lx: Lexeme, works: list | None = None, limit: int = 6
+    lx: Lexeme,
+    works: list | None = None,
+    limit: int = 6,
+    *,
+    access: list[str] | None = None,
 ) -> tuple[int, list["VerseSource"], str]:
     """Wystąpienia lematu w korpusie: (liczba, pierwsze `limit` wersetów, rozkład po księgach)."""
     lang = "hbo" if lx.language == "arc" else lx.language
-    conc = corpus_svc.concordance(lemma=lx.lemma, language=lang)
+    levels = _work_access(access)
+    conc = corpus_svc.concordance(lemma=lx.lemma, language=lang, access=levels)
     if not conc.total and lx.strong:
-        conc = corpus_svc.concordance(strong=lx.strong)
+        conc = corpus_svc.concordance(strong=lx.strong, access=levels)
     if not conc.total:
         return 0, [], ""
     by_book = ", ".join(
@@ -239,21 +281,33 @@ def verses_for_lexeme(
             verse_ids.append(vid)
         if len(verse_ids) >= limit:
             break
-    work_objs = works or corpus_svc.active_works(list(settings.RAG_VERSE_WORKS))
+    work_objs = (
+        _accessible_works(access=access)
+        if works is None
+        else corpus_svc.visible_works(works, access=levels)
+    )
     out: list[VerseSource] = []
     for v in (
         Verse.objects.filter(id__in=verse_ids)
         .select_related("book")
         .order_by("ordinal")
     ):
-        for vt in v.texts.filter(work__in=work_objs).select_related("work"):
+        # Work objects may become stale after selection; enforce ACL at the text read.
+        for vt in v.texts.filter(
+            work__in=work_objs,
+            work__access__in=[a for a in levels if a != "personal"],
+        ).select_related("work"):
             if vt.work.language in ("pl", lang):
                 out.append(VerseSource(ref=str(v), work=vt.work.code, text=vt.text))
     return conc.total, out, by_book
 
 
 def lexicon_lines(
-    question: str, verses: list["VerseSource"], limit: int = 12
+    question: str,
+    verses: list["VerseSource"],
+    limit: int = 12,
+    *,
+    access: list[str] | None = None,
 ) -> list[str]:
     """Hasła leksykonu dla terminów z pytania: oryginał (lemat), Strong H…/G… albo transliteracja."""
     from library.search import original_terms
@@ -270,7 +324,7 @@ def lexicon_lines(
     lexemes += [lx for lx in lexemes_from_transliteration(question) if lx.id not in ids]
     out = []
     for lx in lexemes[:limit]:
-        total, _, by_book = verses_for_lexeme(lx, limit=0)
+        total, _, by_book = verses_for_lexeme(lx, limit=0, access=access)
         out.append(
             f"{lx.strong} {lx.lemma} ({lx.transliteration}) — {lx.gloss}"
             + (f": {lx.meaning[:240]}" if lx.meaning else "")
@@ -284,13 +338,18 @@ def lexicon_lines(
 
 
 def lexeme_verses_for_question(
-    question: str, works: list[str] | None = None
+    question: str,
+    works: list[str] | None = None,
+    *,
+    access: list[str] | None = None,
 ) -> list["VerseSource"]:
     """Przykładowe wersety z terminem transliterowanym w pytaniu (gdy pytanie nie ma sigli)."""
-    work_objs = corpus_svc.active_works(works or list(settings.RAG_VERSE_WORKS))
+    work_objs = _accessible_works(works, access)
+    if not work_objs:
+        return []
     out: list[VerseSource] = []
     for lx in lexemes_from_transliteration(question, limit=2):
-        _, vs, _ = verses_for_lexeme(lx, work_objs, limit=5)
+        _, vs, _ = verses_for_lexeme(lx, work_objs, limit=5, access=access)
         out += vs
     return out
 
@@ -303,6 +362,8 @@ def build_messages(
     related: list[dict] | None = None,
     ane: list | None = None,
     patristics: list | None = None,
+    *,
+    access: list[str] | None = None,
 ) -> list[dict]:
     src_lines = []
     for n, h in enumerate(chunks, start=1):
@@ -316,7 +377,7 @@ def build_messages(
         )
         src_lines.append(f"{head}\n{h.text}")
     verse_lines = [f"{v.ref} ({v.work}): {v.text}" for v in verses]
-    lex_lines = lexicon_lines(question, verses)
+    lex_lines = lexicon_lines(question, verses, access=access)
     user = (
         f"PYTANIE:\n{question}\n\n"
         f"ŹRÓDŁA (literatura):\n"
@@ -409,6 +470,8 @@ def fit_to_budget(
     related: list[dict],
     ane: list,
     patristics: list,
+    *,
+    access: list[str] | None = None,
 ) -> tuple[list[ChunkHit], list[dict], list, list, dict]:
     """Przycina źródła do budżetu promptu. Zwraca listy po przycięciu i raport.
 
@@ -425,7 +488,10 @@ def fit_to_budget(
     )
     # stała część: system, pytanie, wersety, leksykon (liczona raz — leksykon pyta bazę)
     base = (
-        sum(len(m["content"]) for m in build_messages(question, [], verses, mode))
+        sum(
+            len(m["content"])
+            for m in build_messages(question, [], verses, mode, access=access)
+        )
         + _SECTION_OVERHEAD_CHARS
     )
     sizes = {
@@ -605,10 +671,10 @@ def ask(
         chunks = diversify(chunks, settings.RAG_MAX_PER_DOC, settings.RAG_TOP_K)
         chunks = expand_with_neighbors(chunks, settings.RAG_CONTEXT_NEIGHBORS)
         t_v = time.monotonic()
-        verses = verses_for_question(question, works)
+        verses = verses_for_question(question, works, access=access)
         if not verses:  # pytanie bez sigli, ale z terminem (hesed, szalom) -> przykładowe wystąpienia
-            verses = lexeme_verses_for_question(question, works)
-        related = related_for_question(question, works)
+            verses = lexeme_verses_for_question(question, works, access=access)
+        related = related_for_question(question, works, access=access)
         ane = ane_for_question(question, include_ane)
         patristics = patristics_for_question(
             question, sigla_ranges(question), include_patristics
@@ -616,7 +682,7 @@ def ask(
         verses_ms = int((time.monotonic() - t_v) * 1000)
         # przycięcie do budżetu przed `sources`, żeby numeracja [n] się zgadzała
         chunks, related, ane, patristics, budget_report = fit_to_budget(
-            question, chunks, verses, mode, related, ane, patristics
+            question, chunks, verses, mode, related, ane, patristics, access=access
         )
         t_retrieval = int((time.monotonic() - t0) * 1000)
     except Exception as exc:
@@ -669,7 +735,16 @@ def ask(
         parts: list[str] = []
         try:
             for rec in llm_stream(
-                build_messages(question, chunks, verses, mode, related, ane, patristics)
+                build_messages(
+                    question,
+                    chunks,
+                    verses,
+                    mode,
+                    related,
+                    ane,
+                    patristics,
+                    access=access,
+                )
             ):
                 if rec.done:
                     result.usage = {
@@ -695,21 +770,50 @@ def ask(
         )
 
     result.timings["llm_ms"] = int((time.monotonic() - t_llm) * 1000)
-    result.citations = sorted(
-        {
-            int(n)
-            for n in re.findall(r"\[(\d+)\]", result.answer)
-            if 0 < int(n) <= len(chunks)
+    available = {
+        *(f"[{n}]" for n in range(1, len(chunks) + 1)),
+        *(f"[P{n}]" for n in range(1, len(patristics) + 1)),
+        *(f"[A{n}]" for n in range(1, len(ane) + 1)),
+    }
+    citation_checks = check_citations(result.answer, available)
+    cited = {
+        ref
+        for c in citation_checks
+        if not c.reason or c.reason == "missing_source"
+        for ref in c.refs
+    }
+    result.verified_citations = sorted(cited & available)
+    result.unverified_citations = sorted(
+        (cited - available)
+        | {
+            c.marker
+            for c in citation_checks
+            if c.reason and c.reason != "missing_source"
         }
+    )
+    result.citation_checks = [asdict(c) for c in citation_checks]
+    result.citations = sorted(
+        int(ref[1:-1]) for ref in cited & available if ref[1:-1].isdigit()
     )
     result.verified_refs, result.unverified_refs = verify_refs(result.answer)
     qr = verify_quotes(
         result.answer,
         [(f"{v.ref} ({v.work})", v.text) for v in verses],
         [(f"[{n}] {h.citation}", h.text) for n, h in enumerate(chunks, start=1)],
+        tradition=[
+            *[
+                (f"[P{n}] {h.ref}", h.text_en)
+                for n, h in enumerate(patristics, start=1)
+            ],
+            *[
+                (f"[A{n}] {h.ref}", h.translation_en)
+                for n, h in enumerate(ane, start=1)
+            ],
+        ],
     )
     result.quotes_verified, result.quotes_checked = qr.verified, qr.checked
     result.quotes_altered = [asdict(a) for a in qr.altered]
+    result.quotes_unverified = [asdict(a) for a in qr.unverified]
     result.quotes_tradition = qr.tradition
     result.latency_ms = int((time.monotonic() - t0) * 1000)
     yield "done", asdict(result)

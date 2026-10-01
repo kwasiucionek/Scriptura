@@ -26,11 +26,11 @@
   <li><strong>Wersety w kontekście</strong> — które dzieła mają być cytowane przy siglach: {% for w in works %}<code>{{ w.code }}</code> ({{ w.name }}){% if not forloop.last %}, {% endif %}{% endfor %}.</li>
   <li><strong>Ojcowie Kościoła</strong> — Tradycja włącza się sama przy pytaniach o Ojców, Justyna, Ireneusza, Barnabę, Didache itd.; zaznaczenie wymusza ją także dla zwykłych pytań o werset („co Ojcowie mówią o Rdz 1,26” — po odsyłaczach w ich tekstach).</li>
   <li><strong>Teksty ANE</strong> — teksty mezopotamskie (Gilgamesz, Enuma Elisz…) włączają się przy pytaniach o potop, stworzenie, Babilon; zaznaczenie wymusza porównanie.</li>
-  <li><strong>Tylko moje materiały</strong> (zalogowani) — odpowiedź z własnych, wgranych tekstów, bez wspólnego korpusu.</li>
+  <li><strong>Literatura: tylko moje materiały</strong> (zalogowani) — ogranicza literaturę do własnych, wgranych tekstów, bez literatury ze wspólnego korpusu. Biblia oraz teksty ANE i patrystyczne nadal mogą być kontekstem, zgodnie z pozostałymi opcjami. To nie jest tryb odpowiedzi wyłącznie z prywatnych plików.</li>
 </ul>
 
 <h2>3. Czytanie odpowiedzi</h2>
-<p>Przypisy w tekście są klikalne i prowadzą do fragmentu w panelu <strong>Źródła</strong>:</p>
+<p>Przypisy w tekście są klikalne: wybierają źródła tej konkretnej odpowiedzi i prowadzą do fragmentu w panelu <strong>Źródła</strong>. Przycisk <strong>Źródła tej odpowiedzi</strong> pozwala wrócić do jej całego kontekstu, również po odtworzeniu historii:</p>
 <ul>
   <li><code>[1]</code>, <code>[2]</code>… — literatura: artykuł, monografia, skrypt, wpis, wykład (z minutą nagrania);</li>
   <li><code>[P1]</code>… — Ojcowie Kościoła (przekład maszynowy z angielskiego wydania, oryginał do rozwinięcia);</li>
@@ -40,21 +40,23 @@
 <p>Pod odpowiedzią są <strong>znaczki weryfikacji</strong> — to system sprawdza model, nie odwrotnie:</p>
 <table class="stats">
   <tr><th>Znaczek</th><th>Znaczenie</th></tr>
-  <tr><td><span class="tag ok">odpowiedź ze źródeł</span></td><td>model odpowiedział na podstawie kontekstu; każdy akapit ma przypis</td></tr>
+  <tr><td><span class="tag ok">odpowiedź ze źródeł</span></td><td>odpowiedź wygenerowano z dobranego kontekstu; sam znaczek nie potwierdza każdej tezy — czytaj przypisy i wyniki weryfikacji</td></tr>
   <tr><td><span class="tag warn">odmowa — brak podstaw w źródłach</span></td><td>korpus nie zawiera nic trafnego; to <em>poprawne</em> zachowanie, nie błąd — spróbuj inaczej sformułować pytanie lub sprawdź na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>, czy temat w ogóle jest pokryty</td></tr>
-  <tr><td><span class="tag ok">sigla zweryfikowane</span></td><td>wszystkie sigla z odpowiedzi występują w cytowanych źródłach lub w tekście biblijnym</td></tr>
-  <tr><td><span class="tag warn">sigla spoza korpusu</span></td><td>model podał miejsca, których nie ma w kontekście — traktuj ostrożnie i sprawdź w widoku tekstu</td></tr>
-  <tr><td><span class="tag ok">cytaty zgodne z korpusem</span></td><td>tekst w cudzysłowach porównano dosłownie ze źródłem; <span class="tag warn">cytat zmieniony</span> znaczy, że model sparafrazował — obok jest najbliższe prawdziwe brzmienie</td></tr>
-  <tr><td><span class="tag">cytatów z tradycji</span></td><td>cytaty z Ojców i tekstów ANE to przekład modelu z angielskiego — nie są weryfikowane dosłownie</td></tr>
+  <tr><td><span class="tag ok">sigla zweryfikowane</span></td><td>adres biblijny występuje w bazie wersetów; nie oznacza to, że cały zakres był w kontekście modelu, ani nie potwierdza treści cytatu</td></tr>
+  <tr><td><span class="tag warn">sigla spoza korpusu</span></td><td>model podał adresy niepotwierdzone w bazie wersetów — traktuj ostrożnie i sprawdź w widoku tekstu</td></tr>
+  <tr><td><span class="tag ok">cytaty zgodne z korpusem</span></td><td>tekst cytatu porównano ze źródłem; licznik pokazuje liczbę zgodnych cytatów względem sprawdzonych. <span class="tag warn">cytat zmieniony</span> wskazuje różnicę — obok podano odsyłacz do najbliższego źródła, nie poprawione brzmienie cytatu</td></tr>
+  <tr><td><span class="tag warn">cytat niepotwierdzony w kontekście</span></td><td>weryfikator nie potwierdził cytatu w kontekście tej odpowiedzi. Najedź na znaczek, aby zobaczyć sprawdzany tekst; porównaj go samodzielnie ze źródłem</td></tr>
+  <tr><td><span class="tag warn">przypisy spoza kontekstu</span></td><td>podane numery przypisów nie odpowiadają źródłom przekazanym modelowi w tej odpowiedzi lub zapis przypisu jest nieprawidłowy; nie traktuj ich jako potwierdzenia tezy</td></tr>
+  <tr><td><span class="tag">cytatów z przypisem do Ojców / ANE</span></td><td>licznik pochodzenia, nie potwierdzenie zgodności. Te cytaty również podlegają kontroli: niepotwierdzone cytaty i przekłady otrzymują ostrzeżenie. Przekład modelu wymaga porównania z oryginałem</td></tr>
 </table>
 <p class="small muted">Dalej w tej linii: tryb, model, liczba tokenów i czasy poszczególnych etapów (tłumaczenie, osadzenie, wyszukiwanie, ocena trafności, model). Rozwijany <code>JSON</code> pokazuje pełny wynik — przydatny przy zgłaszaniu uwag.</p>
 
 <h2>4. Panel źródeł</h2>
 <ul>
-  <li>Grupy (<strong>Literatura</strong>, <strong>Wersety</strong>, <strong>Ojcowie Kościoła</strong>, <strong>Teksty ANE</strong>, <strong>Powiązane wersety</strong>) są domyślnie zwinięte; stan zwinięcia pamiętany jest między odpowiedziami. Fragmenty użyte w odpowiedzi mają kolorowy pasek z lewej.</li>
+  <li>Grupy (<strong>Literatura</strong>, <strong>Wersety</strong>, <strong>Ojcowie Kościoła</strong>, <strong>Teksty ANE</strong>, <strong>Powiązane wersety</strong>) są domyślnie zwinięte; stan zwinięcia pamiętany jest między odpowiedziami. Fragmenty z potwierdzonym numerem przypisu mają kolorowy pasek z lewej, także dla list i zakresów przypisów. Potwierdzenie numeru oznacza obecność źródła w kontekście, nie potwierdzenie każdej tezy.</li>
   <li>Każda pozycja ma <strong>„pokaż fragment”</strong> (dokładny tekst, który dostał model) i link <strong>„źródło”</strong> do oryginału: PDF w repozytorium, wpis na stronie, nagranie od właściwej minuty.</li>
   <li>Znaczki przy pozycji: <span class="tag">popularne</span> (rejestr popularnonaukowy), <span class="tag">wykład</span>, <span class="tag">blog</span>, <span class="tag">recenzja</span>, <span class="tag ok">moje</span> (materiał osobisty).</li>
-  <li><strong>Eksport cytowań</strong> — BibTeX lub RIS dla pozycji przywołanych w odpowiedzi (literatura, Ojcowie jako rozdziały w tomach ANF/NPNF, teksty ANE), do Zotero, JabRef, EndNote.</li>
+  <li><strong>Eksport cytowań</strong> — BibTeX lub RIS dla pozycji przywołanych w wybranej odpowiedzi — tej, której źródła są aktualnie w panelu. Obejmuje literaturę, Ojców jako rozdziały w tomach ANF/NPNF i teksty ANE; do Zotero, JabRef, EndNote.</li>
   <li><strong>Powiązane wersety</strong> pochodzą z OpenBible (głosy społeczności) — to podpowiedź do dalszej lektury, nie teza systemu.</li>
 </ul>
 

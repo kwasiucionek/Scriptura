@@ -1,7 +1,8 @@
 """Eksport cytowań z odpowiedzi do BibTeX / RIS.
 
 Wejście: payload źródeł (chunks, verses, ane, patristics) + treść odpowiedzi (tylko źródła
-przywołane jako [n] / [Pn] / [An]; gdy odpowiedź nie ma numerów — wszystkie). Dokumenty biblioteki
+przywołane jako [n] / [Pn] / [An]; tylko przy pustej historycznej odpowiedzi — wszystkie).
+Dokumenty biblioteki
 uzupełniane z bazy (journal, volume, pages, doi). Autorzy normalizowani do „Nazwisko, Imię”
 niezależnie od formy w bazie. Ojcowie: @incollection w Ante-Nicene / Nicene and Post-Nicene
 Fathers (tom, red. Schaff, rok serii) z listą przywołanych stron; ANE: @misc (eBL).
@@ -10,7 +11,8 @@ Fathers (tom, red. Schaff, rok serii) z listą przywołanych stron; ANE: @misc (
 import re
 import unicodedata
 
-from library.models import Document
+from rag.access import visible_documents
+from rag.quotes import check_citations
 
 _TYPE_BIB = {
     "article": "article",
@@ -85,62 +87,107 @@ def _key(surname: str, year, title: str, used: set[str]) -> str:
 
 
 def cited_numbers(answer: str) -> tuple[set[int], set[int], set[int]]:
-    """(literatura [n], Ojcowie [Pn], ANE [An]) z treści odpowiedzi."""
+    """(literatura, Ojcowie, ANE), using the same marker grammar as quote checks.
+
+    Availability is checked later against sources and SQL ACL. Ignore complete
+    malformed markers, including any partial refs retained for diagnostics.
+    """
     lit: set[int] = set()
     pat: set[int] = set()
     ane: set[int] = set()
-    for m in re.findall(r"\[([PA]?\d+(?:\s*[,–-]\s*[PA]?\d+)*)\]", answer or ""):
-        for part in re.split(r"\s*,\s*", m):
-            kind = "P" if part.startswith("P") else "A" if part.startswith("A") else ""
-            nums = re.findall(r"\d+", part)
-            target = {"P": pat, "A": ane}.get(kind, lit)
-            if len(nums) == 2 and re.search(r"[–-]", part):
-                if (
-                    int(nums[1]) - int(nums[0]) < 50
-                ):  # [6-7]; [999-1999] to nie odsyłacz
-                    target.update(range(int(nums[0]), int(nums[1]) + 1))
+    for citation in check_citations(answer or "", set()):
+        if citation.reason not in ("", "missing_source"):
+            continue
+        for ref in citation.refs:
+            label = ref[1:-1]  # canonical [n], [Pn], [An] from the shared parser
+            if label.startswith("P"):
+                pat.add(int(label[1:]))
+            elif label.startswith("A"):
+                ane.add(int(label[1:]))
             else:
-                target.update(int(n) for n in nums)
+                lit.add(int(label))
     return lit, pat, ane
 
 
-def build_entries(sources: dict, answer: str = "") -> list[dict]:
+def validate_sources(sources: dict, answer: str) -> None:
+    """Validate untrusted export JSON before DB queries or formatters."""
+    if not isinstance(sources, dict) or not isinstance(answer, str):
+        raise ValueError("sources musi być obiektem, answer tekstem")
+    for kind in ("chunks", "patristics", "ane", "verses"):
+        rows = sources.get(kind, [])
+        if not isinstance(rows, list) or len(rows) > 1000:
+            raise ValueError(f"{kind} musi być listą (maks. 1000 źródeł)")
+        for row in rows:
+            if not isinstance(row, dict):
+                raise ValueError("Źródło musi być obiektem")
+            for key in (
+                "title",
+                "doc_type",
+                "url",
+                "author",
+                "work",
+                "ref",
+                "text",
+                "license",
+            ):
+                if key in row and not isinstance(row[key], str):
+                    raise ValueError(f"{key} musi być tekstem")
+            if "authors" in row and (
+                not isinstance(row["authors"], list)
+                or not all(isinstance(a, str) for a in row["authors"])
+            ):
+                raise ValueError("authors musi być listą tekstów")
+            for key in ("document_id", "n", "year"):
+                value = row.get(key)
+                if value is not None and (
+                    type(value) is not int or not 0 < value <= 2**63 - 1
+                ):
+                    raise ValueError(f"Niepoprawne {key}")
+
+
+def build_entries(sources: dict, answer: str = "", *, user=None) -> list[dict]:
+    """Library metadata comes ONLY from currently accessible SQL documents.
+
+    Missing/deleted/hidden IDs (including chunks without IDs) are omitted, never
+    replaced by client-supplied metadata. The caller must pass the requesting user.
+    Only an empty/blank historical answer exports all accessible supplied sources;
+    a nonempty answer with no valid markers exports nothing.
+    """
+    validate_sources(sources, answer)
     lit_n, pat_n, ane_n = cited_numbers(answer)
     chunks = sources.get("chunks") or []
     patristics = sources.get("patristics") or []
     ane = sources.get("ane") or []
-    if lit_n or pat_n or ane_n:
+    if answer.strip():
         chunks = [c for c in chunks if c.get("n") in lit_n]
         patristics = [h for i, h in enumerate(patristics, start=1) if i in pat_n]
         ane = [h for i, h in enumerate(ane, start=1) if i in ane_n]
     docs = {
         d.id: d
-        for d in Document.objects.filter(
-            id__in=[c.get("document_id") for c in chunks if c.get("document_id")]
-        ).prefetch_related("authors")
+        for d in visible_documents(user)
+        .filter(id__in=[c.get("document_id") for c in chunks if c.get("document_id")])
+        .prefetch_related("authors")
     }
     used: set[str] = set()
     out: list[dict] = []
     seen: set = set()
 
     for c in chunks:
-        did = c.get("document_id") or c.get("title")
-        if did in seen:
+        did = c.get("document_id")
+        d = docs.get(did)
+        if d is None or did in seen:
             continue
         seen.add(did)
-        d = docs.get(c.get("document_id"))
-        raw_authors = (
-            [a.name for a in d.authors.all()] if d else list(c.get("authors") or [])
-        )
+        raw_authors = [a.name for a in d.authors.all()]
         authors = [canonical_name(a) for a in raw_authors]
-        title = d.title if d else c.get("title", "")
-        year = d.year if d else c.get("year")
+        title = d.title
+        year = d.year
         out.append({
-            "type": (d.doc_type if d else c.get("doc_type")) or "article",
+            "type": d.doc_type or "article",
             "key": _key(split_name(raw_authors[0])[0] if raw_authors else "", year, title, used),
             "authors": authors, "title": title, "year": year,
-            "journal": d.journal if d else "", "volume": d.volume if d else "", "pages": d.pages if d else "",
-            "doi": d.doi if d else "", "url": (d.url if d else c.get("url")) or "", "note": "",
+            "journal": d.journal, "volume": d.volume, "pages": d.pages,
+            "doi": d.doi, "url": d.url or "", "note": "",
             "editors": "", "booktitle": "",
         })  # fmt: skip
 

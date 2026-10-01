@@ -57,6 +57,13 @@ class Author(models.Model):
         return self.name
 
 
+class IndexStatus(models.TextChoices):
+    NOT_REQUIRED = "not_required", "indeks zewnętrzny niewymagany"
+    PENDING = "pending", "oczekuje na indeksowanie"
+    INDEXED = "indexed", "zaindeksowany"
+    FAILED = "failed", "błąd indeksowania — można ponowić"
+
+
 class Document(TimeStampedModel):
     title = models.CharField(max_length=300)
     authors = models.ManyToManyField(Author, related_name="documents", blank=True)
@@ -89,12 +96,26 @@ class Document(TimeStampedModel):
         max_length=32, blank=True, db_index=True
     )  # MD5 pliku źródłowego — dedup tego samego PDF-u pod różnymi rekordami
     abstract = models.TextField(blank=True)
+    note = models.CharField(max_length=300, blank=True)
     chunk_count = models.PositiveIntegerField(default=0)
+    index_status = models.CharField(
+        max_length=16, choices=IndexStatus.choices, default=IndexStatus.NOT_REQUIRED
+    )
+    index_error = models.TextField(blank=True)
+    indexed_at = models.DateTimeField(null=True, blank=True)
+    index_revision = models.PositiveBigIntegerField(default=0)
 
     class Meta:
         ordering = ["-year", "title"]
         verbose_name = "dokument"
         verbose_name_plural = "dokumenty"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "content_hash"],
+                condition=models.Q(owner__isnull=False) & ~models.Q(content_hash=""),
+                name="uniq_owned_document_hash",
+            )
+        ]
 
     def __str__(self) -> str:
         return self.title

@@ -104,9 +104,23 @@ LLM → ingestia → audyt → przekład → reindeks → raport w `data/manifes
 | `import_patristics`, `index_patristics` | Ojcowie z CCEL |
 | `import_ane`, `index_ane` | teksty ANE z eBL |
 | `merge_authors --apply` | scalanie dubletów autorów |
-| `eval_bootstrap`, `eval_retrieval` | ewaluacja retrievalu |
+| `eval_bootstrap`, `scripts/eval_retrieval.py` | zbiór syntetyczny i dotychczasowy benchmark retrievalu |
+| `eval_mlflow <JSONL> --task retrieval\|rag` | natywne ewaluacje MLflow GenAI, wyniki per przypadek i porównanie konfiguracji |
 | `update_corpus [--dry-run]` | pełny pipeline aktualizacji |
 | `warmup` | rozgrzewka embeddingów i rerankera po starcie |
+
+## Ewaluacje MLflow
+
+Opcjonalna instalacja: `pip install -e ".[eval]"` (MLflow 3.16+, bez zależności aplikacji WWW).
+`manage.py eval_mlflow` obsługuje dotychczasowy JSONL i dwa osobne benchmarki:
+retrieval (recall@k, MRR, hit@1, near±1) oraz RAG (cytaty, odsyłacze, odmowy, czasy i tokeny).
+Używa natywnego `mlflow.genai.evaluate` z deterministycznymi scorerami, bez płatnego judge'a.
+Domyślnie lokalny tracking SQLite i brak zapisu treści; `--log-content` jest jawną zgodą
+na zapis pytań/odpowiedzi/fragmentów. Korpus ewaluacji jest ograniczony do `open`.
+
+Instrukcja uruchomienia UI, format danych, porównania i ograniczenia metryk:
+[data/eval/README.md](data/eval/README.md). Ewaluacje z rzeczywistym pipeline'em mogą
+wywoływać chmurowe modele zgodnie z konfiguracją; zacznij od `--dry-run` i małego `--limit`.
 
 ## Dostęp i licencje
 

@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Code: git push -> server checkout, migrate, collectstatic, restart.
+# Code: git push -> server checkout, migrate, collectstatic, restart. --eval installs MLflow.
 # Data replacement: --data --replace-db (snapshot + remote backup; services stay stopped for reindex).
 set -euo pipefail
 HOST="root@steve141.mikrus.xyz"; PORT=10141
 APP=/opt/scriptura; DATA=/cytrus/scriptura/data
 SSH="ssh -p $PORT"
 BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
-WITH_DATA=false; REPLACE_DB=false; SNAPSHOT_DIR=""; SERVICES_STOPPED=false
+WITH_DATA=false; REPLACE_DB=false; WITH_EVAL=false; SNAPSHOT_DIR=""; SERVICES_STOPPED=false
 for arg in "$@"; do
   case "$arg" in
     --data) WITH_DATA=true ;;
     --replace-db) REPLACE_DB=true ;;
-    *) echo "Usage: $0 [--data --replace-db]" >&2; exit 2 ;;
+    --eval) WITH_EVAL=true ;;
+    *) echo "Usage: $0 [--eval] [--data --replace-db]" >&2; exit 2 ;;
   esac
 done
 if [[ "$WITH_DATA" != "$REPLACE_DB" ]]; then
@@ -23,7 +24,11 @@ cleanup() {
   if [[ -n "$SNAPSHOT_DIR" ]]; then rm -rf -- "$SNAPSHOT_DIR"; fi
   if [[ "$SERVICES_STOPPED" == true ]]; then
     echo "Data deployment: web/update services are stopped. After checking the transfer run:" >&2
-    echo "bash $APP/deploy/setup_after_rsync.sh" >&2
+    if [[ "$WITH_EVAL" == true ]]; then
+      echo "bash $APP/deploy/setup_after_rsync.sh --eval" >&2
+    else
+      echo "bash $APP/deploy/setup_after_rsync.sh" >&2
+    fi
   fi
 }
 trap cleanup EXIT
@@ -93,16 +98,23 @@ chown -R scriptura:scriptura /cytrus/scriptura/data
 REPLACE
 fi
 
-$SSH "$HOST" bash -s -- "$BRANCH" <<'REMOTE'
+$SSH "$HOST" bash -s -- "$BRANCH" "$WITH_EVAL" <<'REMOTE'
 set -euo pipefail
 cd /opt/scriptura
 branch=$1
+if [[ -n "$(sudo -u scriptura git status --porcelain)" ]]; then
+  echo "Server checkout has local changes; deployment aborted." >&2; exit 1
+fi
 sudo -u scriptura git fetch origin
 sudo -u scriptura git checkout -q "$branch"
-sudo -u scriptura git reset -q --hard "origin/$branch"
+sudo -u scriptura env GIT_EDITOR=true git merge --ff-only "origin/$branch"
 echo "Code: $(git --no-pager log -1 --format='%h %s')"
 [ -d .venv ] || { echo "Missing venv: run deploy/setup_after_rsync.sh"; exit 1; }
-sudo -u scriptura .venv/bin/pip install -q -e ".[prod,harvest]"
+if [[ "$2" == true ]]; then
+  sudo -u scriptura bash deploy/install_dependencies.sh --eval
+else
+  sudo -u scriptura bash deploy/install_dependencies.sh
+fi
 sudo -u scriptura .venv/bin/python manage.py migrate --noinput
 sudo -u scriptura .venv/bin/python manage.py collectstatic --noinput
 REMOTE

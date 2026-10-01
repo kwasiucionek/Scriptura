@@ -1,5 +1,18 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-01 — ewaluacje MLflow
+
+- Opcjonalne `.[eval]` i komenda `eval_mlflow`: osobne benchmarki retrieval oraz RAG.
+- Deploy i setup obsługują `--eval`, używając wspólnego instalatora zależności
+  z `pip check`. Kod na serwerze aktualizowany wyłącznie fast-forward; bez kasowania zmian.
+- Natywne MLflow GenAI evaluate/scorery na precomputed wynikach: metryki i oceny
+  per przypadek, artefakty i agregaty z mianownikami, podział wg typu pytania.
+- Fingerprint zbioru/promptu/metadanych korpusu, konfiguracja z allowlisty i commit Git.
+- Domyślnie lokalny SQLite, tylko korpus open, redakcja contentu i jawne `--log-content`.
+  Brak autologowania ruchu WWW; brak płatnego modelu oceniającego.
+- Testy offline i opcjonalny natywny smoke SQLite bez sieci/modeli; bez CI i integracji
+  OpenSearch/PostgreSQL. Instrukcja i ograniczenia w `data/eval/README.md`.
+
 ## 2026-10-01 — poprawki po przeglądzie jakości
 
 - Wspólna kontrola dostępu SQL dla literatury, eksportu i autorów; końcowa autoryzacja

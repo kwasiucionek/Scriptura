@@ -1,0 +1,3 @@
+{"id":"hesed-meaning","q":"Jakie znaczenie ma hebrajskie hesed w Biblii?","type":"pl+orig","expected_refused":false,"required_terms":["hesed"],"include_ane":false,"include_patristics":false,"note":"Przykład schematu, nie zatwierdzony benchmark ekspercki."}
+{"id":"mark-long-ending","q":"Dlaczego Mk 16,9-20 uznaje się za późniejszy dodatek?","type":"pl","expected_refused":false,"include_ane":false,"include_patristics":false,"note":"Sprawdź pokrycie otwartego korpusu; odmowa może być poprawna przy braku źródeł."}
+{"id":"outside-domain","q":"Jaki jest dzisiejszy kurs euro do złotego?","type":"out-of-scope","expected_refused":true,"include_ane":false,"include_patristics":false}

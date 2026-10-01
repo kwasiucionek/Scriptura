@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # Na serwerze, jako root, po `./deploy/deploy.sh --data --replace-db`: venv, indeksy, start.
-#   bash /opt/scriptura/deploy/setup_after_rsync.sh
+#   bash /opt/scriptura/deploy/setup_after_rsync.sh [--eval]
 set -euo pipefail
+INSTALL_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --eval) INSTALL_ARGS=(--eval) ;;
+    *) echo "Usage: $0 [--eval]" >&2; exit 2 ;;
+  esac
+done
 cd /opt/scriptura
 for unit in scriptura-update.timer scriptura-update.service scriptura-web.service; do
   if systemctl cat "$unit" >/dev/null 2>&1; then systemctl stop "$unit"; fi
@@ -12,7 +19,7 @@ chown -R scriptura:scriptura /opt/scriptura /cytrus/scriptura
 # Nie usuwamy WAL istniejącej bazy: może zawierać zatwierdzone transakcje.
 [ -d .venv ] || sudo -u scriptura python3 -m venv .venv
 sudo -u scriptura .venv/bin/pip install -q --upgrade pip
-sudo -u scriptura .venv/bin/pip install -q -e ".[prod]"
+sudo -u scriptura bash deploy/install_dependencies.sh "${INSTALL_ARGS[@]}"
 sudo -u scriptura .venv/bin/python manage.py migrate --noinput
 sudo -u scriptura .venv/bin/python manage.py collectstatic --noinput | tail -1
 sudo -u scriptura .venv/bin/python manage.py index_search --recreate

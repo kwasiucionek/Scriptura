@@ -14,6 +14,7 @@ dependencies = [
 dev = ["ruff", "pytest", "pytest-django", "fonttools"]  # fonttools: scripts/legacy_fonts.py
 prod = ["psycopg[binary]", "gunicorn"]
 harvest = ["yt-dlp"]  # harvest youtube (napisy i rozdziały wykładów)
+eval = ["mlflow>=3.16,<4"]  # opcjonalne ewaluacje; niepotrzebne aplikacji WWW
 
 [build-system]
 requires = ["setuptools>=68"]

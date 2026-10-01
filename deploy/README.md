@@ -110,7 +110,35 @@ journalctl -u scriptura-web -f
 Aktualizacje: `./deploy/deploy.sh` (kod) lub `./deploy/deploy.sh --data --replace-db` (świadoma podmiana danych);
 `update_corpus` z timera dociąga nowe publikacje autorów z `data/authors.jsonl` i pisze raport w `data/manifests/`.
 
-## 6. Backup i kontrola dostępu
+## 6. MLflow — opcjonalne zależności na serwerze
+
+```bash
+# Lokalnie: wdrożenie kodu oraz instalacja MLflow na VPS, bez podmiany danych:
+./deploy/deploy.sh --eval
+
+# Po świadomym przeniesieniu bazy, na VPS:
+bash /opt/scriptura/deploy/setup_after_rsync.sh --eval
+```
+
+Oba skrypty używają `deploy/install_dependencies.sh`: standardowo `.[prod,harvest]`,
+z `--eval` — `.[prod,harvest,eval]`, następnie `pip check` i sprawdzenie wersji MLflow.
+Flaga nie uruchamia benchmarku ani publicznego panelu. Zwykły deploy pozostaje lekki;
+nie usuwa jednak MLflow, jeśli był już zainstalowany. Aktualizacja kodu odmawia działania
+przy lokalnych zmianach na serwerze i wymaga fast-forward, bez `git reset --hard`.
+
+Ewaluację uruchamiaj jako użytkownik `scriptura`, z katalogu `/opt/scriptura`:
+
+```bash
+sudo -u scriptura .venv/bin/python manage.py eval_mlflow \
+  data/eval/mlflow-rag.example.jsonl --task rag --dry-run
+```
+
+Pełna instrukcja: [../data/eval/README.md](../data/eval/README.md).
+Rzeczywiste benchmarki JSONL muszą być dostępne na serwerze osobno; zwykły deploy kodu
+nie kopiuje prywatnych zbiorów ewaluacyjnych. Panel MLflow pozostaw lokalny lub użyj
+tunelu SSH; nie wystawiaj nowego publicznego portu bez zabezpieczeń.
+
+## 7. Backup i kontrola dostępu
 
 `deploy/backup-db.sh` tworzy prywatne snapshoty w `/backup/DB/scriptura/` (14 ostatnich).
 Katalog należy do użytkownika `scriptura`, więc proces może zapisać backup bez zmiany

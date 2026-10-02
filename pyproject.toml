@@ -15,6 +15,10 @@ dev = ["ruff", "pytest", "pytest-django", "fonttools"]  # fonttools: scripts/leg
 prod = ["psycopg[binary]", "gunicorn"]
 harvest = ["yt-dlp"]  # harvest youtube (napisy i rozdziały wykładów)
 eval = ["mlflow>=3.16,<4"]  # opcjonalne ewaluacje; niepotrzebne aplikacji WWW
+# sędziowie LLM w ewaluacji (RAGAS, DeepEval przez scorery MLflow); osobny venv —
+# ciągną langchain/openai/instructor, nie instalować w venv aplikacji WWW.
+# langchain-community<0.4: ragas 0.4 importuje usunięty tam moduł vertexai
+judges = ["mlflow>=3.16,<4", "ragas>=0.4,<0.5", "deepeval>=4,<5", "langchain-community<0.4"]
 
 [build-system]
 requires = ["setuptools>=68"]

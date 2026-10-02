@@ -292,9 +292,11 @@ def _rag_metrics(case: EvaluationCase, result: dict) -> dict[str, float]:
     return metrics
 
 
-def _rag(case: EvaluationCase, mode: str):
+def _rag(case: EvaluationCase, mode: str, include_content: bool = False):
     from rag import service
 
+    # pełne teksty fragmentów tylko na żądanie (sędziowie LLM w MLflow ich potrzebują)
+    extra = {"include_chunk_text": True} if include_content else {}
     sources, result = {}, None
     for event, data in service.ask(
         case.q,
@@ -306,6 +308,7 @@ def _rag(case: EvaluationCase, mode: str):
         personal_only=False,
         include_ane=case.include_ane,
         include_patristics=case.include_patristics,
+        **extra,
     ):
         if event == "error":
             raise RuntimeError("RAG failed")
@@ -335,7 +338,8 @@ def evaluate_cases(
     with subsequent cases. No raw errors, deltas or partial sources are retained.
     Latency is wall-clock monotonic time around each full evaluation. Success=1
     means pipeline completion, not correctness/non-refusal/nonempty answer.
-    ``include_content`` adds retrieval texts; RAG always returns result/sources.
+    ``include_content`` adds retrieval texts; RAG always returns result/sources,
+    and with ``include_content`` its chunk sources also carry full ``text``.
     """
     _task(task)
     _positive_int(k, "k")
@@ -357,7 +361,7 @@ def evaluate_cases(
             metrics, output = (
                 _retrieval(case, k, include_content)
                 if task == "retrieval"
-                else _rag(case, mode)
+                else _rag(case, mode, include_content)
             )
             metrics["success"] = 1.0
             error = None

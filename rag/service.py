@@ -636,9 +636,12 @@ def ask(
     personal_only: bool = False,
     include_ane: bool | None = None,
     include_patristics: bool | None = None,
+    include_chunk_text: bool = False,
 ) -> Iterator[tuple[str, dict]]:
     """Generator (event, data) do zaserwowania jako SSE.
-    `access` — poziomy dostępu użytkownika (rag.access.access_for_user); None = RAG_ACCESS."""
+    `access` — poziomy dostępu użytkownika (rag.access.access_for_user); None = RAG_ACCESS.
+    `include_chunk_text` — pełny tekst fragmentów w `sources` (tylko ewaluacja offline;
+    WWW dostaje jak dotąd skrót `snippet`)."""
     t0 = time.monotonic()
     mode = mode if mode in MODE_INSTRUCTIONS else settings.RAG_DEFAULT_MODE
     registers = registers_for_mode(mode)
@@ -706,6 +709,8 @@ def ask(
             "access": h.access,
             "register": h.register,
             "personal": h.access == "personal",
+            # pełny tekst jak w promptcie — potrzebny sędziom (faithfulness) w ewaluacji
+            **({"text": h.text} if include_chunk_text else {}),
         }
         for n, h in enumerate(chunks, start=1)
     ]

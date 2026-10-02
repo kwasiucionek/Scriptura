@@ -4,6 +4,8 @@
 !.env.example
 .cache/
 .mlflow/
+.deepeval/
+.deepeval*
 mlruns/
 mlartifacts/
 mlflow.db

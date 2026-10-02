@@ -14,6 +14,13 @@ from django.core.management.base import BaseCommand, CommandError
 from django.test.utils import override_settings
 
 from library.evaluation import aggregate_results, evaluate_cases, load_dataset
+from library.judges import (
+    DEFAULT_JUDGE_MODEL,
+    build_judges,
+    judge_name,
+    parse_judges,
+    validate_model,
+)
 from library.mlflow_eval import log_evaluation, preflight
 
 _CONFIG_KEYS = (
@@ -173,6 +180,35 @@ class Command(BaseCommand):
             action="store_true",
             help="Walidacja zbioru i etykiet bez modeli i zapisu MLflow",
         )
+        parser.add_argument(
+            "--judges",
+            help=(
+                "Sędziowie LLM (tylko --task rag, wymaga --log-content), np. "
+                "'default' albo 'ragas:Faithfulness,deepeval:AnswerRelevancy'"
+            ),
+        )
+        parser.add_argument(
+            "--judge-model",
+            help=(
+                "Model sędziego <dostawca>:/<model>; domyślnie SCRIPTURA_JUDGE_MODEL "
+                f"lub {DEFAULT_JUDGE_MODEL}"
+            ),
+        )
+        parser.add_argument(
+            "--judge-workers",
+            type=int,
+            default=2,
+            help="Równoległe przypadki i scorery w ocenie sędziów (domyślnie 2)",
+        )
+        parser.add_argument(
+            "--judge-timeout",
+            type=int,
+            default=300,
+            help=(
+                "Limit sekund na jedno wywołanie sędziego (domyślnie 300; MLflow ma 60, "
+                "za mało dla długiego kontekstu i modeli z rozumowaniem)"
+            ),
+        )
 
     def handle(self, *args, **options):
         task = options["task"]
@@ -184,6 +220,7 @@ class Command(BaseCommand):
             raise CommandError(f"Nieprawidłowy zbiór ewaluacyjny: {exc}") from None
         if not cases:
             raise CommandError("Zbiór ewaluacyjny jest pusty")
+        judge_items, judge_model = self._judge_options(options)
         if task == "retrieval":
             _validate_relevant(cases)
         if options["dry_run"]:
@@ -204,9 +241,26 @@ class Command(BaseCommand):
                 "Sprawdź URI, nazwę eksperymentu i aktywny run. "
                 "Zależności: pip install -e '.[eval]'."
             ) from None
+        judges = []
+        if judge_items:
+            try:
+                judges = build_judges(judge_items, judge_model)
+            except RuntimeError as exc:
+                raise CommandError(str(exc)) from None
+            # MLflow ocenia równolegle; ograniczamy obciążenie modelu sędziego
+            workers = str(options["judge_workers"])
+            os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_WORKERS", workers)
+            os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS", workers)
+            os.environ.setdefault(
+                "MLFLOW_GENAI_EVAL_LLM_TIMEOUT", str(options["judge_timeout"])
+            )
         if options["log_content"]:
             self.stderr.write(
                 "UWAGA: pytania, odpowiedzi i fragmenty trafią do skonfigurowanego MLflow."
+            )
+        if judges:
+            self.stderr.write(
+                f"UWAGA: treść przypadków trafi też do modelu sędziego {judge_model}."
             )
         self.stdout.write(
             f"Ewaluacja {task}: {len(cases)} przypadków, tylko źródła open."
@@ -237,6 +291,11 @@ class Command(BaseCommand):
                     ).hexdigest(),
                 }
             )
+            if judge_items:
+                params["evaluation.judges"] = ",".join(
+                    judge_name(f, m) for f, m in judge_items
+                )
+                params["evaluation.judge_model"] = judge_model
             tags = _git_metadata()
             tags["scriptura.evaluation_task"] = task
             for name in ("dataset_version", "corpus_version"):
@@ -259,6 +318,7 @@ class Command(BaseCommand):
                     params=params,
                     tags=tags,
                     log_content=options["log_content"],
+                    judges=judges or None,
                 )
             except Exception:
                 # Tracking exceptions can contain URLs, tokens and uploaded content.
@@ -275,7 +335,50 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"  {name}: {value:.4f} (n={summary['metric_counts'][name]})"
             )
+        if judges:
+            self._print_judges(uri, run_id, judge_items)
         if summary["error_count"]:
             raise CommandError(
                 "Ewaluacja zapisana, ale część przypadków zakończyła się błędem; sprawdź cases.json."
             )
+
+    def _judge_options(self, options) -> tuple[list[tuple[str, str]], str | None]:
+        """Walidacja opcji sędziów przed jakimkolwiek wywołaniem modeli."""
+        if not options["judges"]:
+            return [], None
+        if options["task"] != "rag":
+            raise CommandError("--judges działa tylko z --task rag")
+        if not options["log_content"]:
+            raise CommandError(
+                "--judges wymaga --log-content: sędzia i ślady MLflow potrzebują "
+                "pytań, odpowiedzi i fragmentów"
+            )
+        if options["judge_workers"] < 1 or options["judge_timeout"] < 1:
+            raise CommandError("--judge-workers i --judge-timeout muszą być dodatnie")
+        model = (
+            options["judge_model"]
+            or os.environ.get("SCRIPTURA_JUDGE_MODEL")
+            or DEFAULT_JUDGE_MODEL
+        )
+        try:
+            items = parse_judges(options["judges"])
+            validate_model(model)
+        except ValueError as exc:
+            raise CommandError(str(exc)) from None
+        return items, model
+
+    def _print_judges(self, uri: str, run_id: str, items) -> None:
+        """Średnie ocen sędziów z zapisanego runu (bez treści przypadków)."""
+        try:
+            from mlflow import MlflowClient
+
+            metrics = MlflowClient(tracking_uri=uri).get_run(run_id).data.metrics
+        except Exception:
+            self.stdout.write("Oceny sędziów: zobacz run w MLflow (Traces).")
+            return
+        self.stdout.write(f"Sędziowie (n={int(metrics.get('judges.cases', 0))}):")
+        for framework, metric in items:
+            name = judge_name(framework, metric)
+            value = metrics.get(f"{name}/mean")
+            shown = f"{value:.4f}" if value is not None else "brak ocen"
+            self.stdout.write(f"  {name}: {shown}")

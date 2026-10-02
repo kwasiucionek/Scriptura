@@ -163,6 +163,51 @@ dostępu. Możesz korzystać z lokalnego UI przez tunel SSH albo wskazać zaufan
 przez `MLFLOW_TRACKING_URI`/`--tracking-uri`. Remote tracking wymaga sieci; preflight
 sprawdza konfigurację i zależność, ale nie sprawdza osiągalności serwera.
 
+## Sędziowie LLM (RAGAS, DeepEval)
+
+Metryki deterministyczne nie mówią, czy odpowiedź wynika ze źródeł. Do tego służą
+sędziowie LLM uruchamiani jako scorery MLflow (`mlflow.genai.scorers.ragas`,
+`mlflow.genai.scorers.deepeval`) w tym samym runie co metryki deterministyczne.
+
+```bash
+# osobny venv — RAGAS/DeepEval ciągną langchain, openai, instructor; nie w venv WWW
+python -m venv /cytrus/scriptura-eval/venv
+/cytrus/scriptura-eval/venv/bin/pip install --no-cache-dir -e ".[prod,eval,judges]"
+
+python manage.py eval_mlflow data/eval/questions.jsonl --task rag --mode popular \
+  --limit 5 --log-content --judges default \
+  --tracking-uri http://127.0.0.1:8535 --run-name rag-judged
+```
+
+- `--judges`: `default` = `ragas:Faithfulness`, `deepeval:Faithfulness`,
+  `deepeval:AnswerRelevancy`; można dopisać `ragas:ResponseGroundedness`,
+  `ragas:ContextRelevance`, `ragas:ContextUtilization`, `deepeval:ContextualRelevancy`.
+  Tylko metryki bez odpowiedzi wzorcowej i bez embeddingów (żadnych domyślnych wywołań OpenAI).
+- `--judge-model` (albo `SCRIPTURA_JUDGE_MODEL`): URI MLflow `<dostawca>:/<model>`,
+  domyślnie `ollama:/deepseek-v4-pro:cloud` przez lokalną Ollamę — inna rodzina niż
+  model odpowiedzi (gemma4), żeby sędzia nie oceniał sam siebie.
+- `--judge-workers` (domyślnie 2): równoległe przypadki i scorery; więcej = szybciej,
+  ale też więcej równoczesnych zapytań do modelu sędziego.
+- `--judge-timeout` (domyślnie 300 s): limit jednego wywołania sędziego. Domyślne 60 s
+  MLflow nie wystarcza — przy ~10 tys. tokenów kontekstu i modelu z rozumowaniem
+  (deepseek-v4-pro) część ocen faithfulness kończyła się `ReadTimeout`.
+- Wymaga `--log-content` i `--task rag`; walidacja przed wywołaniem jakiegokolwiek modelu.
+- Średnia sędziego liczy tylko udane oceny — zawsze sprawdzaj w śladach, ile ocen ma błąd.
+
+Jak to działa: zapisane odpowiedzi są odtwarzane przez `predict_fn` (bez ponownego
+generowania) — każdy przypadek dostaje ślad ze spanem `RETRIEVER` z fragmentami kontekstu
+w tej postaci, w jakiej widział je model (pełny tekst fragmentów, wersety, powiązane
+wersety, ANE, Ojcowie; leksykon pominięty). Scorery RAGAS/DeepEval czytają kontekst z tego
+spanu. Oceny mają nazwy `ragas/…` i `deepeval/…`, średnie trafiają do metryk runu
+(`ragas/Faithfulness/mean` itd.), uzasadnienia sędziów — do śladów (Traces).
+Przypadki z błędem lub pustą odpowiedzią nie są oceniane (`judges.cases` = liczba ocenionych).
+
+Ograniczenia: sędzia też się myli — przed wnioskami przejrzyj ręcznie kilka ocen
+i uzasadnień, zwłaszcza przy greckim i hebrajskim. Prompty RAGAS/DeepEval są angielskie,
+treść polska. Adresy URL w treści są wycinane (`[redacted]`), reszta fragmentu zostaje.
+Treść przypadków trafia do modelu sędziego i do śladów MLflow; telemetria RAGAS/DeepEval
+jest domyślnie wyłączona (`DEEPEVAL_TELEMETRY_OPT_OUT`, `RAGAS_DO_NOT_TRACK`).
+
 ## Testy implementacji
 
 Testy metryk i komendy są offline, z atrapami usług. Natywny smoke MLflow jest opcjonalny:

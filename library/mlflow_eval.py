@@ -23,6 +23,9 @@ _SENSITIVE = re.compile(
     re.IGNORECASE,
 )
 _URL = re.compile(r"\b(?:https?|postgres(?:ql)?|sqlite|mysql)://", re.IGNORECASE)
+_URL_SPAN = re.compile(
+    r"\b(?:https?|postgres(?:ql)?|sqlite|mysql)://\S+", re.IGNORECASE
+)
 
 
 def _safe_content(value):
@@ -213,6 +216,67 @@ def preflight(
         raise RuntimeError("Finish the active MLflow run before exporting evaluation")
 
 
+def _redact_urls(text: str) -> str:
+    """Treść dla sędziów: wycina same adresy zamiast redagować cały tekst.
+
+    ``_safe_content`` zastępuje cały napis z adresem, co w artykułach naukowych
+    (DOI, linki) zabrałoby sędziemu cały fragment. Tu znika tylko adres —
+    poświadczenia w URI (np. ``postgres://user:pass@host``) i tak w nim są."""
+    return _URL_SPAN.sub(_REDACTED, text)
+
+
+def _passages(output: dict) -> list[str]:
+    """Fragmenty kontekstu w tej postaci, w jakiej widział je model odpowiedzi."""
+    sources = output.get("sources") if isinstance(output, dict) else None
+    if not isinstance(sources, dict):
+        return []
+
+    def items(key):
+        return [item for item in sources.get(key) or [] if isinstance(item, dict)]
+
+    passages = []
+    for chunk in items("chunks"):
+        head = f"[{chunk.get('n')}] {chunk.get('citation') or chunk.get('title') or ''}"
+        if chunk.get("section"):
+            head += f" — sekcja: {chunk['section']}"
+        passages.append(f"{head}\n{chunk.get('text') or chunk.get('snippet') or ''}")
+    for verse in items("verses"):
+        passages.append(
+            f"{verse.get('ref')} ({verse.get('work')}): {verse.get('text')}"
+        )
+    for verse in items("related"):
+        if verse.get("text"):
+            passages.append(
+                f"{verse.get('ref')} ({verse.get('work')}): {verse['text']}"
+            )
+    for n, hit in enumerate(items("ane"), start=1):
+        passages.append(f"[A{n}] {hit.get('ref')}: {hit.get('translation_en')}")
+    for n, hit in enumerate(items("patristics"), start=1):
+        passages.append(f"[P{n}] {hit.get('ref')}: {hit.get('text_en')}")
+    return [_redact_urls(str(p)) for p in passages if str(p).strip()]
+
+
+def _judge_payload(results: list[dict]) -> dict:
+    """Pytanie, odpowiedź i fragmenty dla przypadków, które sędziowie mogą ocenić."""
+    payload = {}
+    for result in results:
+        output = result.get("output") if isinstance(result, dict) else None
+        output = output if isinstance(output, dict) else {}
+        answer = (output.get("result") or {}).get("answer")
+        judgeable = (
+            result.get("error") is None
+            and isinstance(answer, str)
+            and bool(answer.strip())
+        )
+        payload[result["id"]] = {
+            "question": _redact_urls(str(result.get("question") or "")),
+            "answer": _redact_urls(answer) if judgeable else "",
+            "passages": _passages(output) if judgeable else [],
+            "judge": judgeable,
+        }
+    return payload
+
+
 def log_evaluation(
     results: list[dict],
     *,
@@ -222,6 +286,7 @@ def log_evaluation(
     params: dict,
     tags: dict,
     log_content: bool = False,
+    judges: list | None = None,
 ) -> str:
     """Log native GenAI assessments, aggregate metrics and ``cases.json``.
 
@@ -240,10 +305,30 @@ def log_evaluation(
     Call ``preflight`` before generation to validate prerequisites early.
     Empty evaluations log counts and an empty artifact, without invoking GenAI.
     This function, like ``mlflow.genai.evaluate``, is not thread-safe.
+
+    ``judges`` (scorery z ``library.judges``, wymaga ``log_content``): zamiast
+    zapisanych wyników ewaluacja odtwarza każdy przypadek przez ``predict_fn`` —
+    span RETRIEVER z fragmentami kontekstu i odpowiedź jako wynik — żeby scorery
+    RAGAS/DeepEval widziały kontekst. Metryki deterministyczne pozostają w tych
+    samych śladach; przypadki z błędem lub pustą odpowiedzią nie są oceniane.
     """
+    if judges and not log_content:
+        raise ValueError("LLM judges require log_content")
     preflight(tracking_uri, experiment, cases=results)
     cases = _prepare_cases(results, log_content)
     mlflow = require_mlflow()
+    if judges:
+        return _log_judged(
+            mlflow,
+            results,
+            cases,
+            judges=judges,
+            tracking_uri=tracking_uri,
+            experiment=experiment,
+            run_name=run_name,
+            params=params,
+            tags=tags,
+        )
 
     from mlflow.entities import Feedback
     from mlflow.genai.scorers import scorer
@@ -274,16 +359,7 @@ def log_evaluation(
 
     previous_uri = mlflow.get_tracking_uri()
     try:
-        artifact_location = _sqlite_artifacts(tracking_uri)
-        mlflow.set_tracking_uri(tracking_uri)
-        existing = mlflow.get_experiment_by_name(experiment)
-        experiment_id = (
-            existing.experiment_id
-            if existing is not None
-            else mlflow.create_experiment(
-                experiment, artifact_location=artifact_location
-            )
-        )
+        experiment_id = _experiment_id(mlflow, tracking_uri, experiment)
         with mlflow.start_run(experiment_id=experiment_id, run_name=run_name) as run:
             mlflow.log_params(_safe_metadata(params))
             mlflow.set_tags(_safe_metadata(tags))
@@ -292,6 +368,93 @@ def log_evaluation(
             if rows:
                 evaluation = mlflow.genai.evaluate(
                     data=rows, scorers=[precomputed_metrics]
+                )
+                if evaluation.run_id != run.info.run_id:
+                    raise RuntimeError("MLflow GenAI evaluation used a different run")
+            return run.info.run_id
+    finally:
+        mlflow.set_tracking_uri(previous_uri)
+
+
+def _experiment_id(mlflow, tracking_uri: str, experiment: str) -> str:
+    """Ustawia tracking URI i zwraca ID eksperymentu (tworzy go w razie potrzeby)."""
+    artifact_location = _sqlite_artifacts(tracking_uri)
+    mlflow.set_tracking_uri(tracking_uri)
+    existing = mlflow.get_experiment_by_name(experiment)
+    if existing is not None:
+        return existing.experiment_id
+    return mlflow.create_experiment(experiment, artifact_location=artifact_location)
+
+
+def _log_judged(
+    mlflow,
+    results: list[dict],
+    cases: list[dict],
+    *,
+    judges: list,
+    tracking_uri: str,
+    experiment: str,
+    run_name: str | None,
+    params: dict,
+    tags: dict,
+) -> str:
+    """Wariant ``log_evaluation`` z sędziami LLM: odtworzenie przypadków przez
+    ``predict_fn`` ze spanem RETRIEVER, jedna ewaluacja dla metryk i sędziów."""
+    from mlflow.entities import Feedback, SpanType
+    from mlflow.genai.scorers import scorer
+
+    payload = _judge_payload(results)
+    by_id = {case["id"]: case for case in cases}
+
+    @scorer(name="precomputed_metrics")
+    def precomputed_metrics(inputs):
+        case = by_id[inputs["case_id"]]
+        feedback = [
+            Feedback(name=name, value=float(value))
+            for name, value in case["metrics"].items()
+        ]
+        feedback.append(
+            Feedback(
+                name="evaluation_status",
+                value="failed" if case["error"] is not None else "ok",
+            )
+        )
+        return feedback
+
+    def replay(case_id, question, **_):
+        # bez wywołań modeli: odpowiedź i kontekst zapisane podczas ewaluacji
+        item = payload[case_id]
+        with mlflow.start_span(name="retrieval", span_type=SpanType.RETRIEVER) as span:
+            span.set_inputs({"query": question})
+            span.set_outputs([{"page_content": text} for text in item["passages"]])
+        return item["answer"]
+
+    rows = [
+        {
+            "inputs": {
+                "case_id": case["id"],
+                "type": case["type"],
+                "question": payload[case["id"]]["question"],
+                "judge": payload[case["id"]]["judge"],
+            }
+        }
+        for case in cases
+    ]
+    judged = sum(item["judge"] for item in payload.values())
+
+    previous_uri = mlflow.get_tracking_uri()
+    try:
+        experiment_id = _experiment_id(mlflow, tracking_uri, experiment)
+        with mlflow.start_run(experiment_id=experiment_id, run_name=run_name) as run:
+            mlflow.log_params(_safe_metadata(params))
+            mlflow.set_tags(_safe_metadata(tags))
+            mlflow.log_metrics({**_aggregate(cases), "judges.cases": float(judged)})
+            mlflow.log_dict(cases, "cases.json")
+            if rows:
+                evaluation = mlflow.genai.evaluate(
+                    data=rows,
+                    predict_fn=replay,
+                    scorers=[precomputed_metrics, *judges],
                 )
                 if evaluation.run_id != run.info.run_id:
                     raise RuntimeError("MLflow GenAI evaluation used a different run")

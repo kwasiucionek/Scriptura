@@ -200,7 +200,7 @@ def test_inline_think_one_character_deltas_and_literal_prefix(monkeypatch, setti
         b'event: error\ndata: {"message": "GPU failed"}\n\n',
         b'data: {"error": "GPU failed"}\n\n',
         b"",
-        b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n',
+        b'data: {"choices": [{"delta": {}, "finish_reason": null}]}\n\n',
         b"data: broken-json\n\n",
     ],
 )
@@ -209,6 +209,17 @@ def test_openai_stream_error_or_eof_never_yields_done(monkeypatch, settings, end
     assert next(stream).content == "Partial"
     with pytest.raises(llm.LLMStreamError):
         list(stream)
+
+
+def test_stream_without_done_completes_after_finish_reason(monkeypatch, settings):
+    # bramka AI MLflow: rekord z finish_reason, potem usage, bez [DONE]
+    ending = (
+        b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
+        b'data: {"choices": [], "usage": {"prompt_tokens": 7, "completion_tokens": 2}}\n\n'
+    )
+    deltas = list(_openai_sse(monkeypatch, settings, ["Gotowe"], ending))
+    assert "".join(d.content for d in deltas) == "Gotowe"
+    assert deltas[-1].done and deltas[-1].prompt_tokens == 7
 
 
 def test_unclosed_think_is_not_success(monkeypatch, settings):

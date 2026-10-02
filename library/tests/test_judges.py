@@ -221,6 +221,27 @@ def test_command_validates_judges_before_models(monkeypatch, dataset, args, mess
         call_command("eval_mlflow", str(dataset), "--dry-run", *args)
 
 
+def test_gateway_judge_requires_http_tracking(monkeypatch, dataset, tmp_path):
+    # sędzia przez bramkę MLflow nie zadziała z lokalnym SQLite — błąd przed modelami
+    monkeypatch.setattr(service, "ask", pytest.fail)
+    monkeypatch.delenv("MLFLOW_GATEWAY_URI", raising=False)
+    with pytest.raises(CommandError, match="gateway"):
+        call_command(
+            "eval_mlflow",
+            str(dataset),
+            "--task",
+            "rag",
+            "--judges",
+            "default",
+            "--log-content",
+            "--judge-model",
+            "gateway:/scriptura-judge",
+            "--tracking-uri",
+            f"sqlite:///{tmp_path / 'eval.db'}",
+        )
+    assert "MLFLOW_GATEWAY_URI" not in os.environ
+
+
 @pytest.mark.skipif(
     os.environ.get("RUN_MLFLOW_SMOKE") != "1",
     reason="Opt-in native MLflow smoke; RUN_MLFLOW_SMOKE=1 (temporary local SQLite only)",

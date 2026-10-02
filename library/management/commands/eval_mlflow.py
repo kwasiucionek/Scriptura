@@ -190,7 +190,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--judge-model",
             help=(
-                "Model sędziego <dostawca>:/<model>; domyślnie SCRIPTURA_JUDGE_MODEL "
+                "Model sędziego <dostawca>:/<model> albo gateway:/<endpoint> (bramka "
+                "MLflow, wymaga --tracking-uri http); domyślnie SCRIPTURA_JUDGE_MODEL "
                 f"lub {DEFAULT_JUDGE_MODEL}"
             ),
         )
@@ -233,6 +234,16 @@ class Command(BaseCommand):
             or os.environ.get("MLFLOW_TRACKING_URI")
             or (f"sqlite:///{Path(settings.BASE_DIR) / '.mlflow' / 'mlflow.db'}")
         )
+        if judge_model and judge_model.startswith("gateway:/"):
+            if not uri.startswith(("http://", "https://")):
+                raise CommandError(
+                    "Sędzia gateway:/ działa przez bramkę serwera MLflow: "
+                    "podaj --tracking-uri http(s)://…"
+                )
+            # MLflow szuka bramki w MLFLOW_GATEWAY_URI albo w globalnym URI śledzenia,
+            # a --tracking-uri jest ustawiane dopiero przy zapisie runu — bez tego
+            # scorery RAGAS/DeepEval próbują litellm zamiast bramki
+            os.environ.setdefault("MLFLOW_GATEWAY_URI", uri)
         try:
             preflight(uri, options["experiment"])
         except (RuntimeError, ValueError):

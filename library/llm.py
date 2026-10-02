@@ -395,11 +395,16 @@ def _sse_payloads(resp):
 def _openai_stream(
     messages, model, temperature, max_tokens, think, timeout
 ) -> Iterator[Delta]:
-    """SSE: linie `data: {...}`, koniec `data: [DONE]`; usage w ostatnim rekordzie (bez choices)."""
+    """SSE: linie `data: {...}`, koniec `data: [DONE]`; usage w ostatnim rekordzie (bez choices).
+
+    Bramka AI MLflow nie wysyła `[DONE]` — kończy strumień po rekordzie z `finish_reason`
+    (i opcjonalnie usage). Taki koniec też jest kompletny; zerwane połączenie w trakcie
+    generowania nie ma `finish_reason`, więc nadal jest błędem.
+    """
     body = _openai_body(messages, model, temperature, max_tokens, think, True)
     prompt_tokens = completion_tokens = 0
     parser = _ThinkParser()
-    completed = False
+    completed = finished = False
     with _openai_request(body, timeout) as resp:
         for event, payload in _sse_payloads(resp):
             if payload.strip() == "[DONE]" and event != "error":
@@ -424,13 +429,14 @@ def _openai_stream(
             choices = rec.get("choices") or []
             if not choices:
                 continue
+            finished = finished or bool(choices[0].get("finish_reason"))
             delta = choices[0].get("delta") or {}
             reasoning = delta.get("reasoning_content") or delta.get("reasoning") or ""
             content, inline_reasoning = parser.feed(delta.get("content") or "")
             reasoning += inline_reasoning
             if content or reasoning:
                 yield Delta(content=content, reasoning=reasoning)
-    if not completed:
+    if not (completed or finished):
         raise LLMStreamError("OpenAI-compatible: premature EOF before [DONE]")
     if parser.in_think:
         raise LLMStreamError("OpenAI-compatible: unclosed <think> block")

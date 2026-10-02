@@ -232,6 +232,59 @@ Scorery RAGAS/DeepEval z `--judges` tak nie działają: serwer odrzuca scorery z
 dzięki temu `{{ inputs }}`/`{{ outputs }}` w sędziach z UI to pytanie i odpowiedź,
 a wbudowane `RetrievalGroundedness`/`RetrievalRelevance` widzą kontekst.
 
+## Bramka AI MLflow (AI Gateway)
+
+Serwer MLflow 3.x ma bramkę zgodną z API OpenAI: `/gateway/mlflow/v1/chat/completions`,
+gdzie `model` to nazwa endpointu. Endpointy, modele zapasowe i guardraile Scriptury są
+zapisane jako kod w `scripts/mlflow_gateway.py` (`setup` idempotentnie, `status`, `check`
+z oczekiwanym wynikiem każdego przypadku). Klucz dostawcy zostaje w sekrecie bramki
+(UI: AI Gateway → API Keys); skrypt wskazuje go po nazwie.
+
+| Endpoint | Model główny → zapasowy | Rola |
+| --- | --- | --- |
+| `scriptura-chat` | gemma4:31b-cloud → qwen3.5:397b-cloud | odpowiedź RAG; guardraile `scriptura-pii`, `scriptura-injection` |
+| `scriptura-utility` | gemma4:31b-cloud → qwen3.5:397b-cloud | tłumaczenie zapytania, reranker LLM; bez guardraili |
+| `scriptura-guard` | deepseek-v4-flash:cloud → gpt-oss:120b-cloud | model guardraili |
+| `scriptura-judge` | deepseek-v4-pro:cloud, bez zapasowego | sędziowie ewaluacji |
+| `demo-fallback` | qwen3-coder:480b-cloud (wycofany) → gemma4:31b-cloud | pokaz przełączenia |
+
+Ewaluacja przez bramkę (produkcja dalej woła Ollamę bezpośrednio):
+
+```bash
+LLM_BACKEND=openai OPENAI_BASE_URL=http://127.0.0.1:8535/gateway/mlflow/v1 \
+OPENAI_CHAT_MODEL=scriptura-chat RAG_TRANSLATE_MODEL=scriptura-utility \
+CURATE_MODEL=scriptura-utility OPENAI_API_KEY=unused \
+python manage.py eval_mlflow ../questions.jsonl --task rag --mode popular --limit 5 \
+  --log-content --judges default --judge-model gateway:/scriptura-judge \
+  --tracking-uri http://127.0.0.1:8535 --run-name rag-gateway
+```
+
+`OPENAI_API_KEY=unused` — żeby klucz NIM z `.env` nie trafiał do bramki.
+
+Co wyszło w praktyce (MLflow 3.16.1):
+
+- Guardrail to sędzia LLM (`make_judge`, `yes`/`no`) na osobnym endpoincie. Etap BEFORE
+  widzi całe żądanie z fragmentami źródeł, więc instrukcje każą oceniać tylko tekst po
+  „PYTANIE:”; nazwiska autorów, Ojców i postaci biblijnych nie są danymi osobowymi
+  (szablon PII z UI blokowałby takie pytania).
+- Każdy guardrail to dodatkowe wywołanie modelu przed odpowiedzią, wykonywane po kolei.
+  Na 5 pytaniach (tryb popular) dwa guardraile wydłużyły odpowiedź z ok. 6,0 do 9,0 s;
+  oceny sędziów bez zmian.
+- Guardraile AFTER nie działają przy strumieniowaniu, a Scriptura strumieniuje odpowiedź.
+- Zablokowane żądanie i tak trafia do śladu bramki, razem z danymi osobowymi — guardrail
+  chroni model, nie logi. Potrzebna krótka retencja albo maskowanie śladów.
+- Gdy model guardraili nie odpowiada, żądanie czeka na ponowienia (minuty) i kończy się
+  błędem — dlatego `scriptura-guard` ma model zapasowy.
+- Bramka nie wysyła `data: [DONE]`; `library/llm.py` uznaje strumień za kompletny także po
+  `finish_reason`.
+- `--judge-model gateway:/…` wymaga `--tracking-uri http(s)://…`; komenda ustawia wtedy
+  `MLFLOW_GATEWAY_URI`, bez którego scorery RAGAS/DeepEval szukają litellm.
+- Sędzia bez modelu zapasowego celowo: ocena innego modelu nie byłaby porównywalna
+  z wcześniejszymi runami.
+- Bez `MLFLOW_CRYPTO_KEK_PASSPHRASE` w środowisku serwera MLflow klucze w bramce są
+  szyfrowane domyślnym hasłem (serwer to loguje) — ustaw je przed dodaniem kluczy
+  i ogranicz dostęp do pliku bazy MLflow.
+
 ## Testy implementacji
 
 Testy metryk i komendy są offline, z atrapami usług. Natywny smoke MLflow jest opcjonalny:

@@ -208,6 +208,30 @@ treść polska. Adresy URL w treści są wycinane (`[redacted]`), reszta fragmen
 Treść przypadków trafia do modelu sędziego i do śladów MLflow; telemetria RAGAS/DeepEval
 jest domyślnie wyłączona (`DEEPEVAL_TELEMETRY_OPT_OUT`, `RAGAS_DO_NOT_TRACK`).
 
+### Sędziowie w UI MLflow (strona „Judges”)
+
+Sędziowie z `make_judge` (instrukcje + model) mogą być zarejestrowani w eksperymencie
+i uruchamiani przez serwer MLflow — z UI na wybranych śladach albo automatycznie na nowych
+śladach (`scorer.start(sampling_config=…)`). Kryteria specyficzne dla Scriptury są w
+`scripts/mlflow_judges.py` (jedno kryterium na sędziego, wynik `yes`/`no`):
+
+- `tradycja_vs_egzegeza` — Ojcowie [P…] i teksty ANE [A…] nie są podawane jako ustalenia
+  współczesnej egzegezy ani tekst biblijny;
+- `zrozumiala_dla_laika` — w trybie popularnym odpowiedź pada na początku, a terminy
+  hebrajskie, greckie i fachowe są objaśnione.
+
+```bash
+python scripts/mlflow_judges.py register --experiment scriptura-evaluation
+python scripts/mlflow_judges.py run --experiment scriptura-evaluation --run-id <RUN_ID>
+```
+
+Serwer MLflow wywołuje model sędziego sam (`ollama:/…` przez Ollamę na tym samym hoście).
+Scorery RAGAS/DeepEval z `--judges` tak nie działają: serwer odrzuca scorery z kodem
+(`@scorer`), więc zostają w komendzie. Ślady z `--judges` mają span główny `scriptura_rag`
+(wejście: pytanie, wynik: odpowiedź) i podrzędny `retrieval` (RETRIEVER, fragmenty) —
+dzięki temu `{{ inputs }}`/`{{ outputs }}` w sędziach z UI to pytanie i odpowiedź,
+a wbudowane `RetrievalGroundedness`/`RetrievalRelevance` widzą kontekst.
+
 ## Testy implementacji
 
 Testy metryk i komendy są offline, z atrapami usług. Natywny smoke MLflow jest opcjonalny:

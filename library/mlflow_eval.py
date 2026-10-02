@@ -421,7 +421,11 @@ def _log_judged(
         )
         return feedback
 
-    def replay(case_id, question, **_):
+    # Span główny (CHAIN) z odpowiedzią jako wynikiem: bez niego korzeniem śladu
+    # zostaje span RETRIEVER, a sędziowie z UI MLflow ({{ outputs }}) oceniają
+    # fragmenty kontekstu zamiast odpowiedzi.
+    @mlflow.trace(name="scriptura_rag", span_type=SpanType.CHAIN)
+    def replay(case_id, question, type, judge):
         # bez wywołań modeli: odpowiedź i kontekst zapisane podczas ewaluacji
         item = payload[case_id]
         with mlflow.start_span(name="retrieval", span_type=SpanType.RETRIEVER) as span:

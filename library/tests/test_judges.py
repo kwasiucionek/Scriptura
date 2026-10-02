@@ -274,6 +274,10 @@ mlflow.set_tracking_uri(uri)
 experiment_id = client.get_run(run_id).info.experiment_id
 traces = mlflow.search_traces(locations=[experiment_id], run_id=run_id, return_type='list')
 assert len(traces) == 2, len(traces)
+root = [s for s in traces[0].data.spans if s.parent_id is None]
+assert len(root) == 1 and root[0].span_type == 'CHAIN', [(s.name, s.span_type) for s in root]
+responses = sorted(str(t.data.response) for t in traces)
+assert 'Odpowiedź [1].' in responses[1] or 'Odpowiedź [1].' in responses[0], responses
 statuses = {a.value for t in traces for a in t.info.assessments if a.name == 'evaluation_status'}
 assert statuses == {'ok', 'failed'}, statuses
 judged = [t for t in traces if any(a.name == 'fake/ContextCount' for a in t.info.assessments)]

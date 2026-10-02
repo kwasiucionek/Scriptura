@@ -35,3 +35,4 @@ data/manifests/report-*.md
 .ssh/
 .gunicorn/
 *.patch
+*.djcache

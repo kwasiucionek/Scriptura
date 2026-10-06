@@ -1,5 +1,21 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-06 — pracownia biblijna: nowa oprawa
+
+- Własny język wizualny: zieleń atramentu, papierowe tło i mosiężne detale;
+  skład inspirowany książką oraz przypisami na marginesie, zamiast zaokrąglonych kart czatu.
+- Autorska ilustracja kodeksu, znak księgi z gałązką oliwną i favicon SVG.
+  Lokalny EB Garamond (WOFF2, SIL OFL), bez zewnętrznych usług fontów.
+- Nowy początek lektury: indeks przykładowych pytań i odsyłacze do tekstu/korpusu.
+  Tryb odpowiedzi pozostaje widoczny; dodatkowy kontekst w rozwijanej sekcji.
+  Na małych ekranach skrót „Zadaj pytanie” prowadzi bezpośrednio do formularza.
+- Szerokość odpowiedzi ograniczona do szerokości pracowni również na dużych monitorach;
+  etykieta licznika źródeł pozostaje dostępna przy aktualizacji liczby przez JavaScript.
+- Wspólna oprawa podstron, konta i konkordancji; jasny/ciemny motyw, układ mobilny,
+  etykiety formularzy, dostęp klawiaturą i ograniczone animacje.
+  Równoległe przekłady przewijają się w osobnym obszarze, bez rozszerzania strony na telefonie.
+- Bez zmian pipeline'u, uprawnień, danych i API; testy regresji szablonów oraz lokalnych zasobów.
+
 ## 2026-10-01 — ewaluacje MLflow
 
 - Opcjonalne `.[eval]` i komenda `eval_mlflow`: osobne benchmarki retrieval oraz RAG.

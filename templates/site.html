@@ -5,22 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Scriptura{% endblock %}</title>
 <meta name="description" content="{% block description %}Scriptura — asystent teologii biblijnej odpowiadający wyłącznie ze źródeł: polska biblistyka, tekst hebrajski i grecki, Ojcowie Kościoła, teksty starożytnego Bliskiego Wschodu.{% endblock %}">
+<link rel="icon" type="image/svg+xml" href="{% static 'images/scriptura-mark.svg' %}">
 <link rel="stylesheet" href="{% static 'site.css' %}">
 {% include "partials/analytics.html" %}
 {% block head %}{% endblock %}
 </head>
 <body class="site">
+<a class="skip-link" href="#main-content">Przejdź do treści</a>
 <header class="topbar">
   {% include "partials/topbar.html" %}
   <div class="right">{% block tools %}{% endblock %}{% include "partials/userbox.html" %}</div>
 </header>
 {% block subbar %}{% endblock %}
-<main class="page {% block page_class %}{% endblock %}">
+<main id="main-content" class="page {% block page_class %}{% endblock %}" tabindex="-1">
 {% block content %}{% endblock %}
 </main>
 <footer class="site-footer">
   <div class="inner">
-    <span>Scriptura · prototyp badawczy · <a href="{% url 'pages:about' %}">o projekcie</a></span>
+    <span class="footer-brand"><span class="footer-wordmark">Scriptura</span><span class="footer-note">Pracownia biblijna · prototyp badawczy · <a href="{% url 'pages:about' %}">o projekcie</a></span></span>
     <a href="{% url 'pages:for_authors' %}">zasady źródeł i zgody autorów</a>
     <a href="{% url 'pages:author' %}">kontakt</a>
     {% if site_github_url %}<a href="{{ site_github_url }}" rel="noopener" target="_blank">kod na GitHubie</a>{% endif %}

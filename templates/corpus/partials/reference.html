@@ -14,6 +14,7 @@ function scripturaReload(el){
   document.querySelectorAll('input[name=works][type=hidden]').forEach(h=>h.value=codes);
 }
 </script>
+<div class="parallel-scroll" role="region" aria-label="Teksty biblijne w układzie równoległym" tabindex="0">
 <table class="parallel">
   <thead><tr><th></th>{% for w in works %}<th>{{ w.code }} <span class="muted">{{ w.language }}</span></th>{% endfor %}</tr></thead>
   <tbody>
@@ -31,6 +32,7 @@ function scripturaReload(el){
   {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {% if related %}
 <section class="related" style="margin-top:18px">

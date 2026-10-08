@@ -43,6 +43,10 @@ DOM_STUB = r"""
 const assert = require('node:assert/strict');
 const nodes = new Map();
 let scrolledSource = null;
+let threadOverflow = 'auto';
+let motionReduced = false;
+const getComputedStyle = () => ({ overflowY: threadOverflow });
+const matchMedia = () => ({ matches: motionReduced });
 class Element {
   constructor(id = '') {
     this.id = id; this.children = []; this.dataset = {}; this.attrs = {};
@@ -59,7 +63,8 @@ class Element {
   remove() {}
   focus() {}
   click() {}
-  scrollIntoView() { scrolledSource = this.id; }
+  get lastElementChild() { return this.children.at(-1); }
+  scrollIntoView(options) { scrolledSource = this.id; this.scrollOptions = options; }
   closest() { return this.group ??= new Element(); }
   querySelector(selector) {
     if (selector === '.answer') return this.answer ??= new Element();
@@ -102,6 +107,7 @@ const document = {
   querySelector(selector) {
     if (selector === '#form input[name=csrfmiddlewaretoken]') return csrfInput;
     if (selector === 'input[name=mode]:checked') return { value: 'popular' };
+    if (selector === '.ask-jump') return null;
     throw new Error('Unexpected document selector: ' + selector);
   },
   querySelectorAll(selector) {
@@ -517,3 +523,33 @@ def test_account_index_status_and_safe_retry_form(status, label, can_retry, has_
         assert 'method="post"' in form
         assert 'name="doc_id" value="42"' in form
         assert re.search(r'name="csrfmiddlewaretoken" value="[A-Za-z0-9]{64}"', form)
+
+
+def test_reading_scroll_and_citations_respect_layout_and_reduced_motion(interface_page):
+    run_script(
+        interface_page,
+        r"""
+const bot = addBot();
+bot.id = 'latest-answer';
+scrolledSource = null;
+threadOverflow = 'auto';
+scroll();
+assert.equal(scrolledSource, null);
+threadOverflow = 'visible';
+scroll();
+assert.equal(scrolledSource, 'latest-answer');
+threadOverflow = 'auto';
+finishBot(bot, { answer: 'Tekst [1]', citations: [1] }, sourceSet('Źródło'));
+selectBot(bot);
+const refs = bot.querySelectorAll('.ref');
+const source = new Element('src-1');
+source.innerHTML = '<details>fragment</details>';
+const originalGet = document.getElementById;
+document.getElementById = id => id === 'src-1' ? source : originalGet(id);
+for (const reduced of [false, true]) {
+  motionReduced = reduced;
+  refs[0].onclick();
+  assert.deepEqual(source.scrollOptions, { behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+}
+""",
+    )

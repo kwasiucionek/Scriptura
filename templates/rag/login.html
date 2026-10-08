@@ -4,7 +4,8 @@
 <form method="post" class="form-card">{% csrf_token %}
   <div class="eyebrow">LOGOWANIE</div>
   <h1 style="font-size:26px;margin-bottom:6px">Scriptura</h1>
-  <p class="muted small" style="margin:0 0 10px">Zaloguj się, aby korzystać z trybu naukowego, pełnego korpusu i historii rozmów.</p>
+  <p class="muted small" style="margin:0 0 10px">Zaloguj się, aby zapisywać historię rozmów i korzystać z własnych materiałów. Samo logowanie nie daje dostępu do pełnego korpusu. Dostęp do źródeł licencjonowanych i prywatnych we wspólnym korpusie zależy od nadanych uprawnień.</p>
+  <p class="muted small">{% if not allow_anonymous %}Zadawanie pytań wymaga logowania.{% elif anon_popular_only %}Bez logowania możesz korzystać tylko z trybu popularnonaukowego, zawsze wyłącznie z publicznych źródeł (<code>open</code>). Tryb naukowy jest dostępny po zalogowaniu.{% else %}Bez logowania możesz korzystać z trybu popularnonaukowego i naukowego, zawsze wyłącznie z publicznych źródeł (<code>open</code>).{% endif %}</p>
   <label for="id_username">Użytkownik</label><input id="id_username" name="username" autocomplete="username" autofocus required>
   <label for="id_password">Hasło</label><input id="id_password" name="password" type="password" autocomplete="current-password" required>
   <input type="hidden" name="next" value="{{ next|default:'/' }}">

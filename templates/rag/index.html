@@ -4,12 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scriptura — asystent teologii biblijnej</title>
-<meta name="description" content="Asystent teologii biblijnej odpowiadający wyłącznie ze źródeł: polska biblistyka, tekst hebrajski i grecki, Ojcowie Kościoła, teksty starożytnego Bliskiego Wschodu.">
-<link rel="icon" type="image/svg+xml" href="{% static 'images/scriptura-mark.svg' %}">
+<meta name="description" content="Czytaj głębiej. Pytaj u źródła. Scriptura — pracownia teologii biblijnej: tekst Biblii, egzegeza, tradycja i świat starożytny, w odpowiedziach opartych na źródłach.">
 <link rel="stylesheet" href="{% static 'site.css' %}">
 <link rel="stylesheet" href="{% static 'workbench.css' %}">
 {% include "partials/analytics.html" %}
-
 </head>
 <body>
 <a class="skip-link" href="#main-content">Przejdź do treści</a>
@@ -30,96 +28,88 @@
   </header>
 
   <main class="workspace" id="main-content" tabindex="-1">
-  <section class="thread" id="thread" aria-label="Rozmowa z asystentem">
-    <div class="welcome" id="welcome">
-      <div class="folio-line">
-        <div class="eyebrow">PRACOWNIA TEOLOGII BIBLIJNEJ</div>
-        <span class="folio-note">Ad fontes · do źródeł</span>
-      </div>
-      <div class="welcome-opening">
+    <section class="thread" id="thread" aria-label="Rozmowa z asystentem">
+      <div class="welcome" id="welcome">
+        <div class="folio-line">
+          <div class="eyebrow">PRACOWNIA TEOLOGII BIBLIJNEJ</div>
+          <span class="folio-note">Ad fontes · do źródeł</span>
+        </div>
         <div class="welcome-copy">
-          <h1>Czytaj głębiej.<br><em>Pytaj u źródła.</em></h1>
+          <h1>Czytaj głębiej.<br> <em>Pytaj u źródła.</em></h1>
           <p>Od hebrajskiego słowa do jego interpretacji. Odkrywaj tekst Biblii w rozmowie z egzegetami, tradycją i światem starożytnym.</p>
         </div>
-        <figure class="codex" aria-hidden="true">
-          <img src="{% static 'images/scriptura-codex.svg' %}" width="420" height="330" alt="" decoding="async">
-          <figcaption>Tekst · kontekst · interpretacja</figcaption>
-        </figure>
-      </div>
-      <nav class="reading-path" aria-label="Rozpocznij lekturę">
-        <a class="ask-jump" href="#q">Zadaj pytanie <span aria-hidden="true">↓</span></a>
-        <a href="{% url 'corpus:index' %}">Otwórz tekst i konkordancję <span aria-hidden="true">→</span></a>
-        <a href="{% url 'pages:corpus' %}">Poznaj źródła <span aria-hidden="true">→</span></a>
-      </nav>
-      <div class="script-band" role="group" aria-label="Języki tekstów biblijnych">
-        <span><span lang="he" dir="rtl">א — ת</span> <small>HEBRAJSKI</small></span>
-        <span><span lang="grc">Α — Ω</span> <small>GRECKI</small></span>
-        <span>Słowo <small>PRZEKŁADY</small></span>
-      </div>
-      <details class="question-index" id="question-index">
-        <summary class="suggestions-heading">
-          <h2>Wybierz początek lektury</h2>
-          <span>PYTANIA DO TEKSTU</span>
-        </summary>
-        <div class="chips" id="chips"></div>
-      </details>
-      <p class="welcome-note">Prototyp badawczy. Sięgaj do przypisów — odpowiedzi i interpretacje wymagają krytycznej lektury.</p>
-    </div>
-  </section>
-
-  <aside class="sources-panel" aria-labelledby="sources-title">
-    <div class="margin-label">MARGINALIA</div>
-    <div class="aside-heading"><h2 id="sources-title">Źródła i przypisy</h2><span class="source-count"><span class="sr-only">Liczba źródeł: </span><span id="source-count">0</span></span></div>
-    <p class="aside-sub">Źródła wybranej odpowiedzi. Kliknij przypis lub „Źródła tej odpowiedzi” przy wiadomości.</p>
-    <div id="sources"><div class="empty"><div class="document-icon" aria-hidden="true"><svg viewBox="0 0 86 96" fill="none" focusable="false"><path d="M16 14h45l10 11v58H16V14Z" stroke="currentColor"/><path d="M61 14v12h10M24 36h31M24 43h37M24 50h32M24 69h37M24 76h24" stroke="currentColor" opacity=".5"/><path d="M31 57c-8 0-8-12 0-12h9v18M35 45v18" stroke="currentColor" stroke-width="1.5"/><path d="M9 22v67h50" stroke="currentColor" opacity=".35"/></svg></div><h3>Każda lektura ma swój margines</h3><p>Zadaj pytanie. Tutaj zbierzesz fragmenty literatury, teksty źródłowe i wersety towarzyszące odpowiedzi.</p></div></div>
-    <div class="source-note"><span aria-hidden="true">§</span><div><strong>Podaj siglum w pytaniu</strong><p>np. „Mk 16,9-20” — wersety trafią do kontekstu, a literatura zostanie zawężona do tego miejsca.</p></div></div>
-  </aside>
-
-  <form id="form">
-    {% csrf_token %}
-    <div class="composer">
-      <label class="composer-label" for="q">Twoje pytanie do tekstu</label>
-      <div class="inputs">
-        <textarea id="q" rows="2" required minlength="3" placeholder="Werset, słowo, temat… np. Co oznacza Logos w J 1,1?"></textarea>
-        <button id="ask" type="submit"><span id="ask-label">Zapytaj</span><span aria-hidden="true">↗</span></button>
-      </div>
-      <div class="composer-settings">
-        <fieldset class="mode-options">
-          <legend>Sposób odpowiedzi</legend>
-          <label><input type="radio" name="mode" value="popular" {% if default_mode == "popular" %}checked{% endif %}>popularnonaukowy</label>
-          {% if "scientific" in allowed_modes %}<label><input type="radio" name="mode" value="scientific" {% if default_mode != "popular" %}checked{% endif %}>naukowy</label>{% else %}<span class="muted">tryb naukowy po zalogowaniu</span>{% endif %}
-        </fieldset>
-        <details class="context-options">
-          <summary>Przekłady, autor i kontekst</summary>
-          <div class="opts">
-            {% if user.is_authenticated %}<label class="row" title="Ogranicza tylko literaturę do Twoich materiałów. Biblia oraz teksty ANE i patrystyczne nadal mogą być kontekstem, zgodnie z pozostałymi opcjami."><input type="checkbox" name="personal_only" id="personal_only">Literatura: tylko moje materiały</label>{% endif %}
-            <label for="include_ane" title="Teksty porównawcze z eBL (Gilgamesz, Enuma Elisz…). Automatycznie: gdy pytanie o nie pyta.">Teksty ANE (Mezopotamia)
-              <select id="include_ane">
-                <option value="auto" selected>automatycznie</option>
-                <option value="on">zawsze</option>
-                <option value="off">nigdy</option>
-              </select>
-            </label>
-            <label for="include_patristics" title="Ojcowie Kościoła (ANF/NPNF, CCEL). Automatycznie: gdy pytanie dotyczy Ojców lub tradycji patrystycznej.">Ojcowie Kościoła
-              <select id="include_patristics">
-                <option value="auto" selected>automatycznie</option>
-                <option value="on">zawsze</option>
-                <option value="off">nigdy</option>
-              </select>
-            </label>
-            <label for="author">Autor (opcjonalnie)
-              <select id="author"><option value="">Wszyscy autorzy</option>{% for a in authors %}<option value="{{ a.name }}">{{ a.name }}</option>{% endfor %}</select>
-            </label>
-            <fieldset class="works-options">
-              <legend>Wersety w kontekście</legend>
-              <div class="row">{% for w in works %}<label><input type="checkbox" name="works" value="{{ w.code }}" {% if w.code in default_works %}checked{% endif %}>{{ w.code }}</label>{% endfor %}</div>
-            </fieldset>
-          </div>
+        <nav class="reading-path" aria-label="Rozpocznij lekturę">
+          <a class="ask-jump" href="#q">Zadaj pytanie <span aria-hidden="true">↓</span></a>
+          <a href="{% url 'corpus:index' %}">Tekst i konkordancja <span aria-hidden="true">→</span></a>
+          <a href="{% url 'pages:corpus' %}">Poznaj źródła <span aria-hidden="true">→</span></a>
+        </nav>
+        <details class="question-index" id="question-index" open>
+          <summary class="suggestions-heading"><span>Wybierz początek lektury</span><span class="suggestions-hint">Przykładowe pytania</span></summary>
+          <div class="chips" id="chips"></div>
         </details>
+        <div class="script-band" role="group" aria-label="Tekst, kontekst i interpretacja">
+          <div><span class="step-number" aria-hidden="true">01</span><span><strong>Tekst</strong><small>Hebrajski, grecki i przekłady</small></span></div>
+          <div><span class="step-number" aria-hidden="true">02</span><span><strong>Kontekst</strong><small>Tradycja i świat starożytny</small></span></div>
+          <div><span class="step-number" aria-hidden="true">03</span><span><strong>Interpretacja</strong><small>Egzegeza oparta na źródłach</small></span></div>
+        </div>
+        <p class="welcome-note">Prototyp badawczy. Sięgaj do przypisów — odpowiedzi i interpretacje wymagają krytycznej lektury.</p>
       </div>
-    </div>
-    <div class="composer-footer"><span id="status" role="status">Odpowiedzi wyłącznie ze źródeł w korpusie.</span><span class="shortcut">Ctrl / ⌘ + Enter <span aria-hidden="true">↵</span></span></div>
-  </form>
+    </section>
+
+    <aside class="sources-panel" aria-labelledby="sources-title">
+      <div class="margin-label">TWÓJ WARSZTAT LEKTURY</div>
+      <div class="aside-heading"><h2 id="sources-title">Źródła i przypisy</h2><span class="source-count"><span class="sr-only">Liczba źródeł: </span><span id="source-count">0</span></span></div>
+      <p class="aside-sub">Źródła wybranej odpowiedzi. Kliknij przypis lub „Źródła tej odpowiedzi” przy wiadomości.</p>
+      <div id="sources"><div class="empty"><h3>Każda lektura ma swój margines</h3><p>Zadaj pytanie. Tutaj zbierzesz fragmenty literatury, teksty źródłowe i wersety towarzyszące odpowiedzi.</p></div></div>
+      <div class="source-note"><strong>Podaj siglum w pytaniu</strong><p>np. „Mk 16,9-20” — wersety trafią do kontekstu, a literatura zostanie zawężona do tego miejsca.</p></div>
+      {% if not user.is_authenticated and not demo_token_required %}<p class="guest-note">{% if "scientific" in allowed_modes %}Dwa sposoby odpowiedzi, także bez konta.{% else %}Zacznij lekturę bez konta.{% endif %} Goście korzystają wyłącznie z publicznych źródeł.</p>{% endif %}
+    </aside>
+
+    <form id="form">
+      {% csrf_token %}
+      <div class="composer">
+        <label class="composer-label" for="q">Twoje pytanie do tekstu</label>
+        <div class="inputs">
+          <textarea id="q" rows="1" required minlength="3" placeholder="Werset, słowo, temat… np. Co oznacza Logos w J 1,1?"></textarea>
+          <button id="ask" type="submit"><span id="ask-label">Zapytaj</span><span aria-hidden="true">↗</span></button>
+        </div>
+        <div class="composer-settings">
+          <fieldset class="mode-options">
+            <legend>Sposób odpowiedzi</legend>
+            <label><input type="radio" name="mode" value="popular" {% if default_mode == "popular" %}checked{% endif %}>popularnonaukowy</label>
+            {% if "scientific" in allowed_modes %}<label><input type="radio" name="mode" value="scientific" {% if default_mode != "popular" %}checked{% endif %}>naukowy</label>{% else %}<span class="muted">tryb naukowy po zalogowaniu</span>{% endif %}
+          </fieldset>
+          {% if user.is_authenticated %}<label class="row personal-filter" title="Ogranicza tylko literaturę do Twoich materiałów. Biblia oraz teksty ANE i patrystyczne nadal mogą być kontekstem, zgodnie z pozostałymi opcjami."><input type="checkbox" name="personal_only" id="personal_only">Literatura: tylko moje materiały</label>{% endif %}
+          <details class="context-options" open>
+            <summary>Przekłady, autor i kontekst</summary>
+            <div class="opts">
+              <label for="include_ane" title="Teksty porównawcze z eBL (Gilgamesz, Enuma Elisz…). Automatycznie: gdy pytanie o nie pyta.">Teksty ANE (Mezopotamia)
+                <select id="include_ane">
+                  <option value="auto" selected>automatycznie</option>
+                  <option value="on">zawsze</option>
+                  <option value="off">nigdy</option>
+                </select>
+              </label>
+              <label for="include_patristics" title="Ojcowie Kościoła (ANF/NPNF, CCEL). Automatycznie: gdy pytanie dotyczy Ojców lub tradycji patrystycznej.">Ojcowie Kościoła
+                <select id="include_patristics">
+                  <option value="auto" selected>automatycznie</option>
+                  <option value="on">zawsze</option>
+                  <option value="off">nigdy</option>
+                </select>
+              </label>
+              <label for="author">Autor (opcjonalnie)
+                <select id="author"><option value="">Wszyscy autorzy</option>{% for a in authors %}<option value="{{ a.name }}">{{ a.name }}</option>{% endfor %}</select>
+              </label>
+              <fieldset class="works-options">
+                <legend>Wersety w kontekście</legend>
+                <div class="row">{% for w in works %}<label><input type="checkbox" name="works" value="{{ w.code }}" {% if w.code in default_works %}checked{% endif %}>{{ w.code }}</label>{% endfor %}</div>
+              </fieldset>
+            </div>
+          </details>
+        </div>
+      </div>
+      <div class="composer-footer"><span id="status" role="status">Odpowiedzi wyłącznie ze źródeł w korpusie.</span><span class="shortcut">Ctrl / ⌘ + Enter <span aria-hidden="true">↵</span></span></div>
+    </form>
   </main>
 </div>
 
@@ -195,14 +185,16 @@ $("token").value = localStorage.getItem("scriptura_token") || "";
 const urlToken = new URLSearchParams(location.search).get("t");
 if (urlToken) { localStorage.setItem("scriptura_token", urlToken); $("token").value = urlToken; history.replaceState(null, "", location.pathname); }
 
-// On phones, keep the question field close; the index still opens without JavaScript.
-const questionIndex = document.getElementById("question-index");
-if (questionIndex && window.matchMedia?.("(min-width: 901px)").matches) questionIndex.open = true;
 EXAMPLES.forEach((ex) => {
   const b = document.createElement("button"); b.type = "button"; b.className = "chip";
   b.innerHTML = `<span class="chip-heading">${esc(ex.title)}<span aria-hidden="true">↗</span></span><span>${esc(ex.q)}</span>`;
   b.onclick = () => { $("q").value = ex.q; submit(); };
   $("chips").appendChild(b);
+});
+document.querySelector(".ask-jump")?.addEventListener("click", (event) => {
+  event.preventDefault();
+  $("q").focus({ preventScroll: true });
+  $("q").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
 });
 
 const groupState = {};  // zwinięte/rozwinięte grupy źródeł — pamiętane między odpowiedziami
@@ -338,11 +330,15 @@ function finishBot(el, data, sources = {}) {
     </div>
     <details class="raw"><summary>JSON</summary><pre>${esc(JSON.stringify(data, null, 2))}</pre></details>`;
   el.querySelector(".show-sources").onclick = () => selectBot(el);
-  el.querySelectorAll(".ref").forEach((r) => r.onclick = () => { selectBot(el); const s = $(`src-${r.dataset.kind || ""}${r.dataset.n}`); s?.closest("details.grp")?.setAttribute("open", ""); if (s) { s.scrollIntoView({ behavior: "smooth", block: "center" }); s.querySelector("details")?.setAttribute("open", ""); } });
+  el.querySelectorAll(".ref").forEach((r) => r.onclick = () => { selectBot(el); const s = $(`src-${r.dataset.kind || ""}${r.dataset.n}`); s?.closest("details.grp")?.setAttribute("open", ""); if (s) { s.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" }); s.querySelector("details")?.setAttribute("open", ""); } });
   scroll();
 }
 
-function scroll() { const t = $("thread"); t.scrollTop = t.scrollHeight; }
+function scroll() {
+  const t = $("thread");
+  if (getComputedStyle(t).overflowY === "visible") t.lastElementChild?.scrollIntoView({ block: "end" });
+  else t.scrollTop = t.scrollHeight;
+}
 
 async function streamAsk(payload, headers, onEvent) {
   const r = await fetch("{% url 'rag:ask_stream' %}", { method: "POST", headers, body: JSON.stringify(payload) });

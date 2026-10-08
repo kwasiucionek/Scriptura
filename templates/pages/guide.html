@@ -18,7 +18,7 @@
 <h3>Tryb</h3>
 <ul>
   <li><strong>popularnonaukowy</strong> — prosty język, te same źródła; system chętniej sięga po wpisy blogowe i wykłady, ale nadal cytuje z numerem.</li>
-  <li><strong>naukowy</strong> — aparat, terminy oryginalne, hierarchia źródeł: publikacja recenzowana przed popularyzacją, monografia przed wpisem.{% if anon_popular_only %} Dostępny po zalogowaniu.{% endif %}</li>
+  <li><strong>naukowy</strong> — aparat, terminy oryginalne, hierarchia źródeł: publikacja recenzowana przed popularyzacją, monografia przed wpisem.{% if not allow_anonymous or anon_popular_only %} Dostępny po zalogowaniu.{% else %} Dostępny również bez logowania, zawsze wyłącznie z publicznych źródeł (<code>open</code>).{% endif %}</li>
 </ul>
 <h3>Pod polem pytania</h3>
 <ul>
@@ -70,8 +70,8 @@
 
 <h2>6. Konto</h2>
 <ul>
-  <li><strong>Bez logowania</strong>{% if allow_anonymous %} można pytać w trybie popularnonaukowym z literatury otwartej; limit <strong>{{ rate_anon }} pytań na godzinę</strong> z jednego adresu.{% else %} korzystanie nie jest możliwe — poproś o konto.{% endif %}</li>
-  <li><strong>Po zalogowaniu</strong>: tryb naukowy, historia rozmów, limit {{ rate_user }} pytań na godzinę oraz — zależnie od nadanych uprawnień — materiały udostępnione za zgodą autorów.</li>
+  <li><strong>Bez logowania</strong>{% if allow_anonymous %} można pytać {% if anon_popular_only %}tylko w trybie popularnonaukowym{% else %}w trybie popularnonaukowym lub naukowym{% endif %}, zawsze wyłącznie z publicznych źródeł (<code>open</code>); {% if rate_anon %}limit <strong>{{ rate_anon }} pytań na godzinę</strong> z jednego adresu{% else %}brak godzinnego limitu pytań{% endif %}.{% else %} zadawanie pytań wymaga logowania — <a href="{% url 'rag:login' %}">zaloguj się</a> lub poproś o konto.{% endif %}</li>
+  <li><strong>Po zalogowaniu</strong>: oba tryby odpowiedzi, historia rozmów oraz {% if rate_user %}limit {{ rate_user }} pytań na godzinę{% else %}brak godzinnego limitu pytań{% endif %}. Samo logowanie nie daje dostępu do pełnego korpusu. Dostęp do źródeł licencjonowanych i prywatnych we wspólnym korpusie zależy od nadanych uprawnień.</li>
   <li><strong>Moje materiały</strong> (strona konta): własne PDF‑y, notatki, skrypty — indeksowane tylko dla Ciebie i widoczne w odpowiedziach ze znaczkiem <span class="tag ok">moje</span>. Można je udostępnić do wspólnego korpusu; zasady na stronie <a href="{% url 'pages:for_authors' %}">Dla autorów</a>.</li>
   <li>Pytanie może mieć do {{ question_max }} znaków.</li>
 </ul>

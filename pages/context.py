@@ -40,6 +40,7 @@ def site(request) -> dict:
         "site_host": request.get_host(),
         "access_levels": access_for_user(user),
         "allow_anonymous": settings.ALLOW_ANONYMOUS,
+        "anon_popular_only": settings.ANONYMOUS_POPULAR_ONLY,
         "umami_script_url": settings.UMAMI_SCRIPT_URL,
         "umami_website_id": settings.UMAMI_WEBSITE_ID,
         "umami_domains": settings.UMAMI_DOMAINS,

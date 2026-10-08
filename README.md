@@ -132,9 +132,19 @@ do wspólnego korpusu: oświadczenie → `Consent` (kto, kiedy, treść) → `li
 wycofania. Licencja i poziom dostępu są ustalane deterministycznie przy ingestii (CC → open,
 brak → licensed); kurator LLM może tylko oznaczać do przeglądu.
 
-Anonimowi: tryb popularny, źródła `open`, limit `RATE_LIMIT_ANON` pytań/h.
-Uprawnienia są sprawdzane w aktualnym SQL także po odczycie indeksu; właściciel
-zachowuje dostęp do własnych materiałów po udostępnieniu.
+Przy `ALLOW_ANONYMOUS=true` goście mogą korzystać z trybów `popular` i `scientific`
+(`ANONYMOUS_POPULAR_ONLY=false`, domyślnie), zawsze wyłącznie ze źródeł `open`
+i z limitem `RATE_LIMIT_ANON` pytań/h. `ANONYMOUS_POPULAR_ONLY=true` pozostaje
+opcjonalną restrykcją: ogranicza gości do `popular`, nie zmieniając dostępu do źródeł.
+`ALLOW_ANONYMOUS=false` wymaga logowania do zadawania pytań. Jawny wpis
+`ANONYMOUS_POPULAR_ONLY=true` w istniejącym `.env` nadal obowiązuje; nowa wartość
+domyślna działa przy braku wpisu.
+
+Po zalogowaniu dostępne są oba tryby, historia rozmów i własne materiały.
+Samo logowanie nie daje dostępu do pełnego korpusu: źródła `licensed` i `private`
+we wspólnym korpusie wymagają odpowiednich uprawnień. Uprawnienia są sprawdzane
+w aktualnym SQL także po odczycie indeksu; właściciel zachowuje dostęp do własnych
+materiałów po udostępnieniu.
 
 Upload i zapis zgody są transakcyjne; awaria indeksowania nie cofa zapisu SQL.
 Konto pokazuje status oraz przycisk ponowienia. „Literatura: tylko moje materiały”
@@ -158,7 +168,7 @@ Pełna lista w `.env.example`; produkcja: `deploy/env.production.example`. Najwa
 | `RAG_TOP_K`, `RAG_MAX_PER_DOC`, `RAG_CONTEXT_NEIGHBORS` | 8, 3, 1 | źródła, limit na dokument, sąsiedzi |
 | `RAG_DEFAULT_MODE`, `RAG_REGISTER_MODE` | scientific, soft | soft: tryb = poziom odpowiedzi + premia rankingowa |
 | `RAG_RELATED_VERSES`, `RAG_ANE_PASSAGES`, `RAG_PATRISTIC_PASSAGES` | 6, 3, 4 | 0 wyłącza warstwę |
-| `ALLOW_ANONYMOUS`, `ANONYMOUS_POPULAR_ONLY`, `RATE_LIMIT_ANON` | true, true, 20 | |
+| `ALLOW_ANONYMOUS`, `ANONYMOUS_POPULAR_ONLY`, `RATE_LIMIT_ANON` | true, false, 20 | goście: oba tryby, zawsze `open`; `ANONYMOUS_POPULAR_ONLY=true` ogranicza do `popular`; `ALLOW_ANONYMOUS=false` wymaga logowania |
 | `PERSONAL_MAX_MB`, `PERSONAL_MAX_DOCS` | 25, 50 | materiały osobiste |
 | `HARVEST_MAILTO`, `HARVEST_COOKIE`, `SERPAPI_KEY` | | OpenAlex polite pool; JWT zapory ICM (7 dni); Scholar |
 | `TRANSLATE_MODEL`, `CURATE_MODEL` | `translategemma:27b`, = chat | przekłady i kurator |

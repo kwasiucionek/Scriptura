@@ -288,9 +288,10 @@ RAG_NUM_CTX = env("RAG_NUM_CTX", 16384, int)
 DEMO_TOKEN = env(
     "DEMO_TOKEN", ""
 )  # jeśli ustawiony, /ask/stream wymaga nagłówka X-Demo-Token
-# Konta: czy anonimowi mogą pytać (tylko open + tryb popularny), czy wymagane logowanie
+# Konta: czy anonimowi mogą pytać (wyłącznie open), czy wymagane logowanie
 ALLOW_ANONYMOUS = env("ALLOW_ANONYMOUS", True, bool)
-ANONYMOUS_POPULAR_ONLY = env("ANONYMOUS_POPULAR_ONLY", True, bool)
+# True opcjonalnie ogranicza anonimowych do trybu popularnego, bez zmiany ACL źródeł.
+ANONYMOUS_POPULAR_ONLY = env("ANONYMOUS_POPULAR_ONLY", False, bool)
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"

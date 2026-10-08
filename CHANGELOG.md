@@ -1,20 +1,37 @@
 # Scriptura — dziennik sprintów (changelog)
 
-## 2026-10-06 — pracownia biblijna: nowa oprawa
+## 2026-10-08 — biblijno-skryptoryjny styl wizualny
 
-- Własny język wizualny: zieleń atramentu, papierowe tło i mosiężne detale;
-  skład inspirowany książką oraz przypisami na marginesie, zamiast zaokrąglonych kart czatu.
-- Autorska ilustracja kodeksu, znak księgi z gałązką oliwną i favicon SVG.
-  Lokalny EB Garamond (WOFF2, SIL OFL), bez zewnętrznych usług fontów.
-- Nowy początek lektury: indeks przykładowych pytań i odsyłacze do tekstu/korpusu.
-  Tryb odpowiedzi pozostaje widoczny; dodatkowy kontekst w rozwijanej sekcji.
-  Na małych ekranach skrót „Zadaj pytanie” prowadzi bezpośrednio do formularza.
-- Szerokość odpowiedzi ograniczona do szerokości pracowni również na dużych monitorach;
-  etykieta licznika źródeł pozostaje dostępna przy aktualizacji liczby przez JavaScript.
-- Wspólna oprawa podstron, konta i konkordancji; jasny/ciemny motyw, układ mobilny,
-  etykiety formularzy, dostęp klawiaturą i ograniczone animacje.
-  Równoległe przekłady przewijają się w osobnym obszarze, bez rozszerzania strony na telefonie.
-- Bez zmian pipeline'u, uprawnień, danych i API; testy regresji szablonów oraz lokalnych zasobów.
+- Zastąpiono generyczną, chłodnoszarą oprawę AI ciepłą paletą welinowo-pergaminową z tuszem dębiankowym, akcentami kardynalskiego bordeaux oraz iluminowanego antycznego złota.
+- Wprowadzono szlachetną typografię szeryfową dla nagłówków, incipitów, kart traktatów, cytatów i paneli glosy/źródeł.
+- Dopracowano detale skryptorium: obramowania kodeksowe, medaliony numeracji perykop, karty pytań jako tabliczki lekcjonarza, formularz indagacji jako pulpit pisarski z pieczęcią lakową.
+- W trybie ciemnym wprowadzono klimat nocnego skryptorium (Nocturne Scriptoria) z ciepłym hebanem, skórą oprawy i pergaminem czytanym przy świecy.
+
+## 2026-10-06 — kompaktowy formularz i widoczne przykłady
+
+- Zmniejszono nagłówek, odstępy i wysokość pola pytania, bez zmniejszania tekstu odpowiedzi.
+- Tryb, wybór kontekstu i przekładów ułożone ciaśniej; wszystkie filtry nadal domyślnie widoczne.
+- Przykładowe pytania przed opisem „Tekst · Kontekst · Interpretacja”, w trzech kolumnach na szerokich ekranach.
+- Test logo akceptuje również nowszy plik użytkownika o innych wymiarach; nie zmienia obrazu.
+
+## 2026-10-06 — nowoczesna pracownia bez dodatkowych ilustracji
+
+- Przywrócono teksty „Czytaj głębiej. Pytaj u źródła.” i opis pracowni;
+  jedyną grafiką pozostaje logo użytkownika, bez ilustracji Biblii i SVG.
+- Spójna oprawa czatu i podstron: czytelne fonty systemowe, większe kontrolki,
+  jasny/ciemny motyw, karty pytań oraz panel źródeł i przypisów.
+- Filtry przekładów, autora, ANE i Ojców od razu rozwinięte; nadal można je zwinąć.
+  Tryb naukowy dla gości pozostaje ograniczony do publicznych źródeł.
+- Dostępność: skrót do treści i pytania, pełna widoczność linków menu po Tab,
+  lokalne przewijanie tabeli materiałów oraz obsługa ograniczonego ruchu.
+
+## 2026-10-06 — logo, menu i tryb naukowy dla gości
+
+- Wyłącznie logo użytkownika (`staticfiles/logo.png`), bez dodatkowych grafik;
+  nowocześniejsze górne menu z większą czcionką.
+- Przy `ALLOW_ANONYMOUS=true` goście mogą korzystać z trybów popularnego i naukowego,
+  zawsze tylko ze źródeł `open`. `ANONYMOUS_POPULAR_ONLY=false` domyślnie;
+  `true` pozostaje opcjonalnym ograniczeniem do trybu popularnego.
 
 ## 2026-10-01 — ewaluacje MLflow
 

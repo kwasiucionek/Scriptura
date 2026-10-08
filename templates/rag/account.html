@@ -62,6 +62,7 @@
       <div class="muted" style="margin-top:6px">Wgrywaj tylko materiały, do których masz prawo użytku własnego. Nie trafiają do wspólnego korpusu.</div>
     </form>
     {% if docs %}
+    <div class="table-scroll" role="region" aria-label="Moje materiały — tabela przewijana poziomo" tabindex="0">
     <table style="margin-top:16px">
       <tr><th>Tytuł</th><th>Autor</th><th>Typ / rejestr</th><th>Fragmenty</th><th>Dodano</th><th>Status</th><th></th></tr>
       {% for d in docs %}
@@ -104,6 +105,7 @@
       </tr>
       {% endfor %}
     </table>
+    </div>
     {% else %}<p class="muted" style="margin-top:12px">Nie masz jeszcze własnych materiałów.</p>{% endif %}
   </section>
 </div>

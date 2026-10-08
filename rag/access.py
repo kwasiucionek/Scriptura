@@ -3,7 +3,9 @@
 Grupy Django (nadawane w adminie):
   scriptura-licensed  -> widzi także dokumenty access=licensed (zgody autorów)
   scriptura-private   -> widzi także access=private (demo prywatne dla właściciela praw)
-Każdy zalogowany widzi `open`. Anonimowy (gdy ALLOW_ANONYMOUS): tylko `open`, tylko tryb popularny.
+Każdy zalogowany widzi `open`. Anonimowy (gdy ALLOW_ANONYMOUS): wyłącznie `open`.
+Anonimowy domyślnie może używać obu trybów; ANONYMOUS_POPULAR_ONLY=True ogranicza
+go do trybu popularnego, nie zmieniając dostępu do źródeł.
 Superużytkownik: wszystkie poziomy wspólne. Materiały personal: tylko właściciel.
 Właściciel widzi swoje dokumenty niezależnie od ich poziomu access.
 """

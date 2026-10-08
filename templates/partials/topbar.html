@@ -1,16 +1,9 @@
 {% comment %}Pasek górny: marka + nawigacja główna. `active` = ask | text | guide | corpus | about | authors | author;
 dla warstwy tekstu (namespace corpus) podświetlenie wynika z adresu, więc widoki korpusu nic nie przekazują.{% endcomment %}
+{% load static %}
 {% with ns=request.resolver_match.namespace %}
 <a class="brand" href="{% url 'rag:index' %}">
-  <svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6 15c6-1.5 12 0 18 3.5 6-3.5 12-5 18-3.5v23c-6-1.5-12 0-18 3.5C18 38 12 36.5 6 38V15Z" stroke="currentColor"/>
-    <path d="M24 18.5v23M11 22c3.5 0 6.5 1 9 2.5M11 28c3.5 0 6.5 1 9 2.5M28 24.5c2.5-1.5 5.5-2.5 9-2.5M28 30.5c2.5-1.5 5.5-2.5 9-2.5" stroke="currentColor"/>
-    <g class="olive">
-      <path d="M23 14c3-4.5 7-8 13-10" stroke="currentColor"/>
-      <path d="M27 10c-4 .5-6-1-6-4 3 0 5.5 1.5 6 4ZM29.5 8c.5-4 2.5-6 5.5-6-.5 3.5-2.5 5.5-5.5 6ZM32 6c2.5 0 5 1.5 5.5 4-3.5 0-5.5-1.5-5.5-4Z" fill="currentColor"/>
-    </g>
-  </svg>
-  <span class="brand-copy"><span class="brand-name">Scriptura<span class="edition">TEOLOGIA BIBLIJNA</span></span><span class="sub">Pracownia biblijna</span></span>
+  <img class="brand-logo" src="{% static 'images/logo.png' %}" width="320" height="292" alt="Scriptura — strona główna" decoding="async">
 </a>
 <nav class="mainnav" aria-label="Nawigacja główna">
   <a href="{% url 'rag:index' %}" {% if active == "ask" %}class="on" aria-current="page"{% endif %}>Asystent</a>
@@ -22,3 +15,4 @@ dla warstwy tekstu (namespace corpus) podświetlenie wynika z adresu, więc wido
   <a href="{% url 'pages:author' %}" {% if active == "author" %}class="on" aria-current="page"{% endif %}>Autor</a>
 </nav>
 {% endwith %}
+<script src="{% static 'navigation.js' %}" defer></script>

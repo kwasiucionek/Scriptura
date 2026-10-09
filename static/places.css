@@ -16,3 +16,5 @@
 .pl-list .badge.ok { background: var(--ok-soft); color: var(--ok); }
 .pl-more { margin-top: 8px; font: 600 12px var(--sans); }
 .pl-more a { text-decoration: none; color: var(--accent); }
+.pl-list .place.active { color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding-inline: 6px; margin-inline: -6px; }
+.pl-list .place:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }

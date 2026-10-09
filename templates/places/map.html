@@ -52,21 +52,33 @@
   const selectedIds = new Set(selected.map((p) => p.id));
   const mapEl = document.getElementById("big-map"), listEl = document.getElementById("pl-list"), countEl = document.getElementById("pl-count");
   const search = document.getElementById("pl-search"), allBox = document.getElementById("pl-all");
+  const verses = (n) => `${n} ${n === 1 ? "werset" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "wersety" : "wersetów"}`;
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   let all = [], map = null, layer = null;
+  const markers = new Map();  // id miejsca -> znacznik najbardziej prawdopodobnej lokalizacji
 
   function draw(places) {
     if (!map) { map = ScripturaPlaces.render(mapEl, [], {}); }
     if (layer) layer.remove();
     layer = L.layerGroup().addTo(map);
+    markers.clear();
     const color = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#7a1f2b";
     const bounds = [];
     places.forEach((p) => (p.locations || []).forEach((loc, j) => {
       const best = j === 0, sel = selectedIds.has(p.id), ll = [loc.lat, loc.lon];
       const m = L.circleMarker(ll, { radius: best ? (sel ? 8 : 5) : 4, color, weight: best ? 2 : 1, fillColor: color, fillOpacity: best ? (sel ? 0.9 : 0.55) : 0.05, opacity: best ? 1 : 0.5 });
-      m.bindPopup(`<div class="pl-pop"><b>${esc(p.name)}</b>${p.name_en !== p.name ? ` <span class="muted">(${esc(p.name_en)})</span>` : ""}<div>${esc(loc.name)}${loc.type ? " · " + esc(loc.type) : ""} · pewność ${Math.round(loc.confidence * 100)}%${best ? "" : " · inny kandydat"}</div><div class="muted">${p.verse_count} wersetów${(p.refs || []).length ? " · " + p.refs.map(esc).join(", ") : ""}</div><div><a href="${esc(p.url)}" target="_blank" rel="noopener">OpenBible</a>${p.wikidata ? ` · <a href="https://www.wikidata.org/wiki/${esc(p.wikidata)}" target="_blank" rel="noopener">Wikidata</a>` : ""}</div></div>`);
+      m.bindPopup(`<div class="pl-pop"><b>${esc(p.name)}</b>${p.name_en !== p.name ? ` <span class="muted">(${esc(p.name_en)})</span>` : ""}<div>${esc(loc.name)}${loc.type ? " · " + esc(loc.type) : ""} · pewność ${Math.round(loc.confidence * 100)}%${best ? "" : " · inny kandydat"}</div><div class="muted">${verses(p.verse_count)}${(p.refs || []).length ? " · " + p.refs.map(esc).join(", ") : ""}</div><div><a href="${esc(p.url)}" target="_blank" rel="noopener">OpenBible</a>${p.wikidata ? ` · <a href="https://www.wikidata.org/wiki/${esc(p.wikidata)}" target="_blank" rel="noopener">Wikidata</a>` : ""}</div></div>`);
       if (best && (sel || places.length <= 8)) m.bindTooltip(p.name, { permanent: places.length <= 25, direction: "right", className: "pl-label", offset: [6, 0] });
       m.addTo(layer);
+      if (best) {
+        markers.set(String(p.id), m);
+        // klik znacznika zaznacza i przewija pozycję na liście
+        m.on("popupopen", () => {
+          const item = listEl.querySelector(`.place[data-id="${p.id}"]`);
+          listEl.querySelectorAll(".place.active").forEach((x) => x.classList.remove("active"));
+          if (item) { item.classList.add("active"); item.scrollIntoView({ block: "nearest" }); }
+        });
+      }
       if (best && (sel || !selectedIds.size)) bounds.push(ll);
     }));
     if (bounds.length) map.fitBounds(bounds, { padding: [30, 30], maxZoom: bounds.length === 1 ? 9 : 11 });
@@ -75,10 +87,15 @@
   function renderList(places) {
     listEl.innerHTML = places.slice(0, 400).map((p) => {
       const loc = p.locations[0]; const more = p.locations.length - 1;
-      return `<div class="place ${selectedIds.has(p.id) ? "sel" : ""}" data-lat="${loc.lat}" data-lon="${loc.lon}"><b>${esc(p.name)}</b>${p.name_en !== p.name ? ` <span class="muted">${esc(p.name_en)}</span>` : ""} <span class="badge cur">${Math.round(loc.confidence * 100)}%</span>${more > 0 ? ` <span class="muted">+${more}</span>` : ""}<div class="s">${esc(loc.name)} · ${p.verse_count} wersetów${(p.refs || []).length ? " · " + p.refs.map(esc).join(", ") : ""}</div></div>`;
+      return `<div class="place ${selectedIds.has(p.id) ? "sel" : ""}" data-id="${p.id}" data-lat="${loc.lat}" data-lon="${loc.lon}" tabindex="0" role="button"><b>${esc(p.name)}</b>${p.name_en !== p.name ? ` <span class="muted">${esc(p.name_en)}</span>` : ""} <span class="badge cur">${Math.round(loc.confidence * 100)}%</span>${more > 0 ? ` <span class="muted">+${more}</span>` : ""}<div class="s">${esc(loc.name)} · ${verses(p.verse_count)}${(p.refs || []).length ? " · " + p.refs.map(esc).join(", ") : ""}</div></div>`;
     }).join("");
     countEl.textContent = places.length > 400 ? `${places.length} miejsc (lista pokazuje 400 — zawęź szukaniem)` : `${places.length} miejsc`;
-    listEl.querySelectorAll(".place").forEach((d) => d.addEventListener("click", () => map.setView([+d.dataset.lat, +d.dataset.lon], Math.max(map.getZoom(), 10))));
+    mapEl._markers = markers;
+    listEl.querySelectorAll(".place").forEach((d) => {
+      const show = () => ScripturaPlaces.focusPlace(mapEl, listEl, d, 11);
+      d.addEventListener("click", show);
+      d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } });
+    });
   }
 
   function fold(s) { return (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase(); }

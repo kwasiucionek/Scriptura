@@ -8,13 +8,14 @@
   const ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · miejsca: <a href="https://www.openbible.info/geo/">OpenBible.info</a> CC BY';
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const pct = (x) => Math.round((x || 0) * 100) + "%";
+  const verses = (n) => `${n} ${n === 1 ? "werset" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "wersety" : "wersetów"}`;
   const accent = () => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#7a1f2b";
 
   function popup(p, loc, best) {
     const refs = (p.refs || []).map(esc).join(", ");
     return `<div class="pl-pop"><b>${esc(p.name)}</b>${p.name_en && p.name_en !== p.name ? ` <span class="muted">(${esc(p.name_en)})</span>` : ""}
       <div>${esc(loc.name)}${loc.type ? ` · ${esc(loc.type)}` : ""} · pewność ${pct(loc.confidence)}${best ? "" : " · inny kandydat"}</div>
-      ${refs ? `<div class="muted">${refs}${p.verse_count > (p.refs || []).length ? ` · łącznie ${p.verse_count} wersetów` : ""}</div>` : ""}
+      ${refs ? `<div class="muted">${refs}${p.verse_count > (p.refs || []).length ? ` · łącznie ${verses(p.verse_count)}` : ""}</div>` : ""}
       ${p.url ? `<div><a href="${esc(p.url)}" target="_blank" rel="noopener">OpenBible</a>${p.wikidata ? ` · <a href="https://www.wikidata.org/wiki/${esc(p.wikidata)}" target="_blank" rel="noopener">Wikidata</a>` : ""}</div>` : ""}</div>`;
   }
 
@@ -26,6 +27,7 @@
     L.tileLayer(TILES, { maxZoom: 15, attribution: ATTR, referrerPolicy: "strict-origin-when-cross-origin" }).addTo(map);
     const color = accent();
     const bounds = [];
+    const markers = new Map();  // id miejsca -> znacznik najbardziej prawdopodobnej lokalizacji
     places.forEach((p, i) => {
       (p.locations || []).forEach((loc, j) => {
         const best = j === 0;
@@ -37,6 +39,7 @@
           m = L.circleMarker(ll, { radius: best ? 7 : 5, color, weight: best ? 2 : 1.5, fillColor: color, fillOpacity: best ? 0.85 : 0.08, opacity: best ? 1 : 0.55 });
         }
         m.bindPopup(popup(p, loc, best)).addTo(map);
+        if (best) markers.set(String(p.id), m);
         if (best) {
           m.bindTooltip(p.name, { permanent: places.length <= 6, direction: "right", className: "pl-label", offset: [6, 0] });
           bounds.push(ll);
@@ -46,6 +49,7 @@
     if (bounds.length) map.fitBounds(bounds, { padding: [24, 24], maxZoom: bounds.length === 1 ? 9 : 11 });
     else map.setView([31.8, 35.2], 6);
     el._leaflet = map;
+    el._markers = markers;
     return map;
   }
 
@@ -55,7 +59,7 @@
       const loc = (p.locations || [])[0];
       if (!loc) return "";
       const more = (p.locations || []).length - 1;
-      return `<div class="place" data-lat="${loc.lat}" data-lon="${loc.lon}"><b>${esc(p.name)}</b>${p.name_en && p.name_en !== p.name ? ` <span class="muted">${esc(p.name_en)}</span>` : ""}
+      return `<div class="place" data-id="${p.id}" data-lat="${loc.lat}" data-lon="${loc.lon}" tabindex="0" role="button"><b>${esc(p.name)}</b>${p.name_en && p.name_en !== p.name ? ` <span class="muted">${esc(p.name_en)}</span>` : ""}
         <span class="badge cur">${pct(loc.confidence)}</span>${more > 0 ? ` <span class="muted">+${more} ${more === 1 ? "kandydat" : "kandydatów"}</span>` : ""}${p.via === "name" ? ' <span class="badge ok">z pytania</span>' : ""}
         <div class="s">${esc(loc.name)}${p.refs?.length ? " · " + p.refs.map(esc).join(", ") : ""}</div></div>`;
     }).join("");
@@ -69,10 +73,22 @@
     const details = root.closest("details");
     if (details && !details.open) details.addEventListener("toggle", () => details.open && start(), { once: true });
     else start();
-    root.querySelectorAll(".place").forEach((d) => d.addEventListener("click", () => {
-      const m = mapEl._leaflet; if (!m) return;
-      m.setView([+d.dataset.lat, +d.dataset.lon], Math.max(m.getZoom(), 10));
-    }));
+    root.querySelectorAll(".place").forEach((d) => {
+      const show = () => focusPlace(mapEl, root, d);
+      d.addEventListener("click", show);
+      d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } });
+    });
+  }
+
+  // Klik w liście: przybliżenie na miejsce + otwarty dymek z opisem (jak przy kliknięciu znacznika)
+  function focusPlace(mapEl, listRoot, item, minZoom = 10) {
+    const map = mapEl._leaflet; if (!map) return;
+    const marker = mapEl._markers && mapEl._markers.get(item.dataset.id);
+    const ll = marker ? marker.getLatLng() : L.latLng(+item.dataset.lat, +item.dataset.lon);
+    listRoot.querySelectorAll(".place.active").forEach((x) => x.classList.remove("active"));
+    item.classList.add("active");
+    map.setView(ll, Math.max(map.getZoom(), minZoom), { animate: false });
+    if (marker) { marker.bringToFront?.(); marker.openPopup(); }
   }
 
   // Znaczniki HTML: <div class="pl-root"><script type="application/json" class="pl-data">…</script><div class="pl-map"></div><div class="pl-list"></div></div>
@@ -83,5 +99,5 @@
       <div class="muted small pl-attr">Lokalizacje wg OpenBible.info Bible Geocoding Data (CC BY 4.0); pewność = udział głosów źródeł za tą identyfikacją. Punkty, nie granice — przebieg tras i zasięg królestw to interpretacje, których tu nie ma.</div></div>`;
   }
 
-  window.ScripturaPlaces = { render, list, block, wire };
+  window.ScripturaPlaces = { render, list, block, wire, focusPlace };
 })();

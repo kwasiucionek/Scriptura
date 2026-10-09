@@ -682,7 +682,8 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
   widok tekstu). Testy: `places/tests/test_places.py` (parser, serwis, kanał w `/ask/stream`).
 - Strona **Mapa** (`/mapa/`, zakładka w nawigacji): wszystkie miejsca jednym JSON-em (`/mapa/dane.json`,
   cache 1 h), wyszukiwarka po nazwie/aliasach, `?q=<siglum>` albo `?ids=` zaznacza wybór (link „Otwórz
-  dużą mapę” z panelu źródeł i z widoku tekstu).
+  dużą mapę” z panelu źródeł i z widoku tekstu). Klik (lub Enter) na pozycji listy przybliża miejsce,
+  otwiera jego dymek i podświetla pozycję; klik znacznika na dużej mapie zaznacza i przewija listę.
 - Ustawienia: `RAG_PLACES` (domyślnie 12). Dane po stronie serwera: `fetch_sources places && import_places
   && translate_places`.
 

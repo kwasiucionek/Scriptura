@@ -674,7 +674,8 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
 - GUI: grupa **Miejsca** w panelu źródeł (Leaflet 1.9.4 z `static/vendor/`, kafelki OSM; pełny znacznik
   = najbardziej prawdopodobna lokalizacja, puste = inni kandydaci, okręgi dla regionów z promieniem;
   lista z pewnością i siglami, klik centruje; mapa inicjowana po rozwinięciu grupy) oraz sekcja mapy
-  pod wersetami w widoku tekstu (`corpus:reference`). Pliki: `static/places.js`, `static/places.css`.
+  pod wersetami w widoku tekstu (`corpus:reference`). Pliki: `static/places.js`, `static/places.css`. Z `vendor/leaflet/leaflet.js` usunięta linia
+  `sourceMappingURL` (brak pliku .map wywala `collectstatic` z ManifestStaticFilesStorage).
 - Strony: Korpus (karta + sekcja „Geografia”), O projekcie (wiersz tabeli), instrukcja (grupa Miejsca,
   widok tekstu). Testy: `places/tests/test_places.py` (parser, serwis, kanał w `/ask/stream`).
 - Ustawienia: `RAG_PLACES` (domyślnie 12). Dane po stronie serwera: `fetch_sources places && import_places

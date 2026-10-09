@@ -11,6 +11,7 @@
   <div class="card"><span class="num">{{ s.verses }}</span><h3>wersetów</h3><p>{{ s.works|length }} dzieł, {{ s.tokens }} tokenów z lematami i morfologią</p></div>
   <div class="card"><span class="num">{{ s.lexemes }}</span><h3>haseł leksykonu</h3><p>{{ s.lexemes_hbo }} hebrajskich i aramejskich, {{ s.lexemes_grc }} greckich · {{ s.links }} odsyłaczy między wersetami</p></div>
   <div class="card"><span class="num">{{ s.pat_passages }}</span><h3>pasaży Ojców Kościoła</h3><p>{{ s.pat_works_n }} dzieł w {{ s.pat_volumes|length }} tomach, {{ s.pat_refs }} odsyłaczy biblijnych</p></div>
+  <div class="card"><span class="num">{{ s.places }}</span><h3>miejsc na mapie</h3><p>{{ s.place_locations }} kandydatów lokalizacji, {{ s.place_refs }} wystąpień w wersetach{% if s.places_pl %} · {{ s.places_pl }} z polską nazwą{% endif %}</p></div>
   <div class="card"><span class="num">{{ s.ane_lines }}</span><h3>linii tekstów ANE</h3><p>{{ s.ane_texts|length }} tekstów mezopotamskich z eBL</p></div>
 </div>
 
@@ -75,6 +76,15 @@
   {% empty %}
   <tr><td colspan="4" class="muted">Brak zaimportowanych tekstów.</td></tr>
   {% endfor %}
+</table>
+
+<h2>Geografia</h2>
+<p>Miejsca wymienione w Biblii z <a href="https://www.openbible.info/geo/" rel="noopener" target="_blank">OpenBible.info Bible Geocoding Data</a> (CC BY 4.0): dla każdego miejsca kandydaci na współczesną lokalizację z pewnością identyfikacji wyliczoną z ponad 400 źródeł (komentarze, słowniki, atlasy). Pytanie z siglum albo nazwą miejsca dostaje grupę <strong>Miejsca</strong> z mapą; w widoku tekstu mapa pojawia się pod wersetami. Na mapie są wyłącznie punkty — bez granic królestw, tras i podziałów na pokolenia, bo to interpretacje, nie dane.</p>
+<table class="stats">
+  <tr><th>Co</th><th class="n">Ile</th><th>Uwagi</th></tr>
+  <tr><td>Miejsca z co najmniej jedną lokalizacją</td><td class="n">{{ s.places }}</td><td class="muted">Betel, Charan, Sychem, Ai…; homonimy osobno (Betel 1, 2, 3)</td></tr>
+  <tr><td>Kandydaci lokalizacji</td><td class="n">{{ s.place_locations }}</td><td class="muted">do 5 na miejsce, pewność = udział głosów źródeł</td></tr>
+  <tr><td>Wystąpienia w wersetach</td><td class="n">{{ s.place_refs }}</td><td class="muted">werset → miejsce; podkład mapy OpenStreetMap</td></tr>
 </table>
 
 <div class="callout"><span aria-hidden="true">＋</span><p>Brakuje Twoich publikacji albo chcesz, żeby coś tu było? Zobacz <a href="{% url 'pages:for_authors' %}">Dla autorów</a> — zgoda, licencja, udostępnienie własnych materiałów z konta.</p></div>

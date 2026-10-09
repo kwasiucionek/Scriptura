@@ -15,6 +15,7 @@ from corpus.models import Lexeme, Token, Verse, VerseLink
 from corpus.services.text import active_works
 from library.models import Author, DocType, Document
 from patristics.models import PatPassage, PatRef, PatWork
+from places.models import Place, PlaceLocation, PlaceRef
 from rag.access import access_for_user, document_access_q
 
 
@@ -85,6 +86,10 @@ def _corpus_stats(levels: list[str], user_id: int | None = None) -> dict:
         "pat_translated": PatPassage.objects.exclude(text_pl="").count(),
         "ane_texts": ane_texts,
         "ane_lines": AneLine.objects.count(),
+        "places": Place.objects.filter(locations__isnull=False).distinct().count(),
+        "places_pl": Place.objects.exclude(name_pl="").count(),
+        "place_locations": PlaceLocation.objects.count(),
+        "place_refs": PlaceRef.objects.count(),
     }
     return data
 

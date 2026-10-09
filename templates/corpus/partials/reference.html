@@ -38,3 +38,18 @@ function scripturaReload(el){
   {% for r in related %}<div style="font-size:13px;margin:3px 0"><a href="{% url 'corpus:reference' %}?q={{ r.ref|urlencode }}" hx-get="{% url 'corpus:reference' %}?q={{ r.ref|urlencode }}" hx-target="#panel" hx-push-url="true"><b>{{ r.ref }}</b></a> <span class="muted">{{ r.work }} · {{ r.votes }}</span> — {{ r.text|truncatechars:160 }}</div>{% endfor %}
 </section>
 {% endif %}
+{% if places %}
+<section class="places" style="margin-top:18px">
+  <h3 style="font-size:13px;margin:0 0 6px">Miejsca <span class="muted">({{ places|length }} · OpenBible geocoding, CC BY; punkty z pewnością identyfikacji)</span></h3>
+  <div id="ref-places"></div>
+  {{ places|json_script:"ref-places-data" }}
+  <script>
+  (function(){
+    const data = JSON.parse(document.getElementById("ref-places-data").textContent);
+    const host = document.getElementById("ref-places");
+    host.innerHTML = window.ScripturaPlaces ? ScripturaPlaces.block(data, "ref-places-root") : "";
+    if (window.ScripturaPlaces) ScripturaPlaces.wire(host.firstElementChild);
+  })();
+  </script>
+</section>
+{% endif %}

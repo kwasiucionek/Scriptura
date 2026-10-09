@@ -1,0 +1,16 @@
+/* --- Miejsca (mapa Leaflet) --- */
+.pl-map { height: 260px; border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; background: var(--panel-accent, var(--bg)); z-index: 0; }
+.pl-map .leaflet-tile { filter: saturate(.55) contrast(.95); }
+@media (prefers-color-scheme: dark) { .pl-map .leaflet-tile { filter: brightness(.72) invert(1) hue-rotate(180deg) saturate(.4); } }
+.pl-label { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font: 600 11px var(--sans); box-shadow: none; }
+.pl-label::before { display: none; }
+.pl-pop { font: 13px/1.5 var(--sans); color: var(--text); min-width: 180px; }
+.pl-pop .muted { color: var(--muted); font-size: 12px; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--text); }
+.pl-list .place { padding: 7px 0; border-bottom: 1px solid var(--line); font: 13px/1.5 var(--sans); cursor: pointer; }
+.pl-list .place:hover { color: var(--accent); }
+.pl-list .place .s { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.pl-attr { margin-top: 8px; font: 11px/1.5 var(--sans); }
+.pl-list .badge { display: inline-block; border-radius: 6px; font-size: 11px; line-height: 1.5; padding: 1px 7px; font-weight: 600; font-family: var(--sans); }
+.pl-list .badge.cur { background: var(--accent-soft); color: var(--accent); }
+.pl-list .badge.ok { background: var(--ok-soft); color: var(--ok); }

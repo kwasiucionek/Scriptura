@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "ane",
     "patristics",
     "pages",
+    "places",
 ]
 
 MIDDLEWARE = [
@@ -267,6 +268,9 @@ RAG_RELATED_VERSES = env(
 RAG_ANE_PASSAGES = env("RAG_ANE_PASSAGES", 3, int)
 # Baza powiązana Ojców Kościoła (ANF/NPNF z CCEL): pasaże w prompcie; 0 = wyłączone
 RAG_PATRISTIC_PASSAGES = env("RAG_PATRISTIC_PASSAGES", 4, int)
+# Baza powiązana geografii (OpenBible Geocoding): miejsca w panelu „Miejsca" i na mapie; 0 = wyłączone.
+# Nie trafiają do promptu — to warstwa dla czytelnika, nie dla modelu.
+RAG_PLACES = env("RAG_PLACES", 12, int)
 # Przekład chunków obcojęzycznych na polski przy ingestii (translate_chunks): TranslateGemma lokalnie
 TRANSLATE_MODEL = env("TRANSLATE_MODEL", "translategemma:27b")
 TRANSLATE_BASE_URL = env("TRANSLATE_BASE_URL", "") or OLLAMA_BASE_URL

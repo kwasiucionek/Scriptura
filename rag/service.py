@@ -26,6 +26,7 @@ from corpus.sigla import extract, format_ref, ordinal_range
 from library import llm
 from library.search import ChunkHit, diversify, expand_with_neighbors, retrieve
 from patristics.service import patristics_for_question
+from places.service import places_for_question
 from rag.quotes import check_citations, verify_quotes
 
 log = logging.getLogger(__name__)
@@ -682,6 +683,8 @@ def ask(
         patristics = patristics_for_question(
             question, sigla_ranges(question), include_patristics
         )
+        # geografia: tylko do panelu i mapy, poza budżetem promptu
+        places = places_for_question(question, ranges)
         verses_ms = int((time.monotonic() - t_v) * 1000)
         # przycięcie do budżetu przed `sources`, żeby numeracja [n] się zgadzała
         chunks, related, ane, patristics, budget_report = fit_to_budget(
@@ -722,6 +725,7 @@ def ask(
             "related": related,
             "ane": [asdict(h) for h in ane],
             "patristics": [asdict(h) for h in patristics],
+            "places": places,
         },
     )
 

@@ -1,6 +1,8 @@
 """Widoki warstwy tekstu. Każdy widok zwraca pełną stronę lub sam fragment
 (gdy żądanie przyszło z HTMX — nagłówek HX-Request)."""
 
+from dataclasses import asdict
+
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
@@ -9,6 +11,7 @@ from django.shortcuts import render
 from corpus.models import Work
 from corpus.services import text as svc
 from corpus.sigla import format_ref
+from places.service import places_for_ranges
 from rag.access import access_for_user
 
 PAGE_SIZE = 50
@@ -65,6 +68,10 @@ def reference(request: HttpRequest) -> HttpResponse:
             "rows": rows,
             "selected": [w.code for w in works],
             "related": related,
+            "places": [
+                asdict(p)
+                for p in places_for_ranges([ordinal_range(r) for r in refs], limit=20)
+            ],
         }
     )
     return render(request, _template(request, "reference"), ctx)

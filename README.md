@@ -22,8 +22,9 @@ Demo: https://scriptura.cytr.us · stan projektu i historia decyzji: [CHANGELOG.
 | literatura | artykuły, monografie, skrypty, recenzje, wpisy blogowe, wykłady wideo (harvest z DSpace/OPEN, OpenAlex, Scholar, WordPress, YouTube) | wg pozycji: open / licensed | chunki z siglami, cytowanie [n], weryfikacja cytatów, strony; wykłady z linkiem do minuty |
 | Ojcowie Kościoła | ANF/NPNF w ThML z CCEL (37 tomów, przekłady angielskie XIX w.) | domena publiczna | pasaże z odsyłaczami biblijnymi (`<scripRef>`) — „co Ojcowie mówią o tym wersecie” |
 | ANE | eBL (LMU): Gilgamesz, Enuma Elisz… | CC BY-NC-SA 4.0 | teksty porównawcze, cytowane z tabliczką i linią |
+| Geografia | OpenBible.info Bible Geocoding Data (1 285 miejsc, 3 361 kandydatów lokalizacji) | CC BY 4.0 | panel „Miejsca” z mapą (Leaflet + OSM) przy pytaniu z siglum/nazwą i w widoku tekstu; tylko punkty z pewnością identyfikacji, poza promptem |
 
-Bazy Ojców i ANE są **powiązane, nie zmieszane** z literaturą: osobne indeksy, osobne sekcje
+Bazy Ojców, ANE i geografii są **powiązane, nie zmieszane** z literaturą: osobne indeksy, osobne sekcje
 promptu z instrukcją, osobne oznaczenia w panelu źródeł ([P1], [A1]); włączane opcją albo
 automatycznie, gdy pytanie o nie pyta.
 
@@ -102,6 +103,7 @@ LLM → ingestia → audyt → przekład → reindeks → raport w `data/manifes
 | `reindex_chunks --recreate [--reuse-vectors\|--vectors-file]` | indeks literatury; wektory z indeksu lub pliku |
 | `export_vectors` | eksport embeddingów (chunks + ane + patristics) do przeniesienia na inny host |
 | `import_patristics`, `index_patristics` | Ojcowie z CCEL |
+| `fetch_sources places`, `import_places`, `translate_places` | geografia OpenBible: pobranie, import, polskie nazwy (BT) modelem czatu |
 | `import_ane`, `index_ane` | teksty ANE z eBL |
 | `merge_authors --apply` | scalanie dubletów autorów |
 | `eval_bootstrap`, `scripts/eval_retrieval.py` | zbiór syntetyczny i dotychczasowy benchmark retrievalu |
@@ -167,7 +169,7 @@ Pełna lista w `.env.example`; produkcja: `deploy/env.production.example`. Najwa
 | `RERANKER_BACKEND` | none | `llm` (chmura, bez GPU), `tei` (GPU), `none` |
 | `RAG_TOP_K`, `RAG_MAX_PER_DOC`, `RAG_CONTEXT_NEIGHBORS` | 8, 3, 1 | źródła, limit na dokument, sąsiedzi |
 | `RAG_DEFAULT_MODE`, `RAG_REGISTER_MODE` | scientific, soft | soft: tryb = poziom odpowiedzi + premia rankingowa |
-| `RAG_RELATED_VERSES`, `RAG_ANE_PASSAGES`, `RAG_PATRISTIC_PASSAGES` | 6, 3, 4 | 0 wyłącza warstwę |
+| `RAG_RELATED_VERSES`, `RAG_ANE_PASSAGES`, `RAG_PATRISTIC_PASSAGES`, `RAG_PLACES` | 6, 3, 4, 12 | 0 wyłącza warstwę |
 | `ALLOW_ANONYMOUS`, `ANONYMOUS_POPULAR_ONLY`, `RATE_LIMIT_ANON` | true, false, 20 | goście: oba tryby, zawsze `open`; `ANONYMOUS_POPULAR_ONLY=true` ogranicza do `popular`; `ALLOW_ANONYMOUS=false` wymaga logowania |
 | `PERSONAL_MAX_MB`, `PERSONAL_MAX_DOCS` | 25, 50 | materiały osobiste |
 | `HARVEST_MAILTO`, `HARVEST_COOKIE`, `SERPAPI_KEY` | | OpenAlex polite pool; JWT zapory ICM (7 dni); Scholar |
@@ -193,8 +195,9 @@ library/      literatura: modele, harvest/, ingestia, chunkowanie, fonty legacy,
 rag/          serwis RAG, prompt, weryfikacja cytatów, konta, materiały osobiste, zgody, eksport cytowań, GUI (SSE)
 ane/          baza powiązana: teksty ANE (eBL)
 patristics/   baza powiązana: Ojcowie Kościoła (CCEL ThML)
+places/       baza powiązana: geografia biblijna (OpenBible geocoding) — modele, importer, serwis miejsc dla sigli i nazw
 pages/        podstrony informacyjne: o projekcie, jak korzystać, korpus (żywe liczby), dla autorów, autor; procesor kontekstu (stopka, commit)
-static/       site.css — wspólne tokeny, pasek nawigacji i stopka
+static/       site.css (tokeny, pasek, stopka), workbench.css (czat), places.js/.css + vendor/leaflet (mapa)
 deploy/       systemd, nginx, skrypty wdrożeniowe
 services/     reranker ROCm/CUDA (FastAPI, API zgodne z TEI)
 scripts/      narzędzia jednorazowe (fonty legacy, place_downloads, eval)

@@ -40,7 +40,8 @@ STEP_FILES = {
     "TBESG.txt": "TBESG%20-%20Translators%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Greek%20-%20STEPBible.org%20CC%20BY.txt",
 }
 XREF_ZIP = "https://a.openbible.info/data/cross-references.zip"
-ALL_SOURCES = ["oshb", "morphgnt", "bg", "lxx", "step", "xref"]
+PLACES_RAW = "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/main/data/ancient.jsonl"
+ALL_SOURCES = ["oshb", "morphgnt", "bg", "lxx", "step", "xref", "places"]
 
 
 def _download(url: str, dest: Path, force: bool) -> bool:
@@ -113,6 +114,13 @@ class Command(BaseCommand):
                 dest.write_bytes(zf.read(name))
                 fetched += 1
             self.stdout.write("xref cross_references.txt")
+        if (
+            "places" in sources
+        ):  # geografia biblijna (OpenBible.info Bible Geocoding Data, CC BY)
+            fetched += _download(
+                PLACES_RAW, data / "places" / "ancient.jsonl", opts["force"]
+            )
+            self.stdout.write("places ancient.jsonl")
         if "step" in sources:
             for name, rel in STEP_FILES.items():
                 fetched += _download(

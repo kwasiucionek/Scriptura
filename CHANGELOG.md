@@ -659,6 +659,27 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
 - Ręczne wstawki w szablonach na serwerze (`*.bak-umami`) są zbędne — każde wdrożenie (`git reset --hard`)
   je usuwa; konfiguracja wyłącznie przez `.env`.
 
+## Sprint 30 — geografia biblijna (mapa miejsc)
+
+- **`places/`** — czwarta baza powiązana: OpenBible.info Bible Geocoding Data (CC BY 4.0). Modele `Place`
+  (nazwa EN/PL, aliasy z przekładów, klasa, typy, Wikidata, URL atlasu), `PlaceLocation` (kandydaci
+  lokalizacji, do 5 na miejsce, `confidence` = udział `best_path_score` w sumie; punkt/region/promień),
+  `PlaceRef` (werset → miejsce, ordinal jak w korpusie). Identyfikacje „special” (osoby) pomijane.
+- Komendy: `fetch_sources places` (ancient.jsonl z GitHuba), `import_places` (zastępuje dane, zachowuje
+  `name_pl`), `translate_places` (polskie nazwy w pisowni BT modelem czatu, weryfikacja regexem).
+- `places.service`: `places_for_ranges` (miejsca z wersetów pytania, kolejność pierwszego wystąpienia),
+  `places_for_names` (nazwa w pytaniu, PL/EN/alias, odmiana przez końcówkę ≤ 3 znaków, max 2 homonimy),
+  `places_for_question` (łączy oba kanały; `RAG_PLACES`, 0 = wyłączone). Miejsca **nie trafiają do
+  promptu** — to warstwa dla czytelnika; w SSE `sources.places`.
+- GUI: grupa **Miejsca** w panelu źródeł (Leaflet 1.9.4 z `static/vendor/`, kafelki OSM; pełny znacznik
+  = najbardziej prawdopodobna lokalizacja, puste = inni kandydaci, okręgi dla regionów z promieniem;
+  lista z pewnością i siglami, klik centruje; mapa inicjowana po rozwinięciu grupy) oraz sekcja mapy
+  pod wersetami w widoku tekstu (`corpus:reference`). Pliki: `static/places.js`, `static/places.css`.
+- Strony: Korpus (karta + sekcja „Geografia”), O projekcie (wiersz tabeli), instrukcja (grupa Miejsca,
+  widok tekstu). Testy: `places/tests/test_places.py` (parser, serwis, kanał w `/ask/stream`).
+- Ustawienia: `RAG_PLACES` (domyślnie 12). Dane po stronie serwera: `fetch_sources places && import_places
+  && translate_places`.
+
 ## Plan kolejnych sprintów
 
 5. **Dalsze korpusy**: LXX Rahlfs (Eliran Wong, CC BY-NC-SA), UBG, Wujek,

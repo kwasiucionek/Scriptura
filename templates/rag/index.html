@@ -7,6 +7,10 @@
 <meta name="description" content="Czytaj głębiej. Pytaj u źródła. Scriptura — pracownia teologii biblijnej: tekst Biblii, egzegeza, tradycja i świat starożytny, w odpowiedziach opartych na źródłach.">
 <link rel="stylesheet" href="{% static 'site.css' %}">
 <link rel="stylesheet" href="{% static 'workbench.css' %}">
+<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
+<link rel="stylesheet" href="{% static 'places.css' %}">
+<script defer src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script defer src="{% static 'places.js' %}"></script>
 {% include "partials/analytics.html" %}
 </head>
 <body>
@@ -208,13 +212,13 @@ async function exportCitations(fmt) {
 }
 function renderSources(el) {
   const { sources, result } = answerState.get(el);
-  const chunks = sources.chunks || [], verses = sources.verses || [], related = sources.related || [], ane = sources.ane || [], patristics = sources.patristics || [];
+  const chunks = sources.chunks || [], verses = sources.verses || [], related = sources.related || [], ane = sources.ane || [], patristics = sources.patristics || [], places = sources.places || [];
   const referenced = Array.isArray(result?.verified_citations) ? result.verified_citations : [
     ...(result?.citations || []).map((n) => `[${n}]`),
     ...((result?.answer || "").match(/\[\s*(?:[PA]\s*\d*|\d+)[^\[\]\n]*\]/g) || []).flatMap((marker) => citationRefs(marker)).filter((ref) => /^\[[PA]/.test(ref)),
   ];
-  $("source-count").textContent = chunks.length + verses.length + ane.length + patristics.length;
-  if (!chunks.length && !verses.length && !ane.length && !patristics.length) { $("sources").innerHTML = '<div class="empty">Brak fragmentów powyżej progu — pytanie poza korpusem.</div>'; return; }
+  $("source-count").textContent = chunks.length + verses.length + ane.length + patristics.length + places.length;
+  if (!chunks.length && !verses.length && !ane.length && !patristics.length && !places.length) { $("sources").innerHTML = '<div class="empty">Brak fragmentów powyżej progu — pytanie poza korpusem.</div>'; return; }
   const refSet = new Set(referenced);
   const group = (key, label, hint, count, open, inner) =>
     `<details class="grp" data-grp="${key}" ${(groupState[key] ?? open) ? "open" : ""}><summary><span class="gl">${label}</span> <span class="gc">${count}</span>${hint ? ` <span class="muted">${hint}</span>` : ""}</summary>${inner}</details>`;
@@ -245,6 +249,9 @@ function renderSources(el) {
         <div class="s">${esc(h.ref)}${h.url ? ` · <a href="${esc(h.url)}" target="_blank" rel="noopener">eBL</a>` : ""} · ${esc(h.license)}</div>
         <details><summary>pokaż fragment</summary><blockquote>${esc(h.translation_en.slice(0, 700))}${h.translation_en.length > 700 ? "…" : ""}</blockquote></details></div>`).join(""));
   }
+  if (places.length && window.ScripturaPlaces) {
+    html += group("places", "Miejsca", "OpenBible geocoding · mapa", places.length, false, ScripturaPlaces.block(places, "places-" + Date.now()));
+  }
   if (related.length) {
     html += group("rel", "Powiązane wersety", "OpenBible, wg głosów", related.length, false, related.map((r) => `
       <div class="verse"><span class="r">${esc(r.ref)}</span><span class="w">${esc(r.work)} · ${r.votes}</span>
@@ -255,6 +262,7 @@ function renderSources(el) {
   }
   $("sources").innerHTML = html;
   $("sources").querySelectorAll("details.grp").forEach((d) => d.addEventListener("toggle", () => { groupState[d.dataset.grp] = d.open; }));
+  if (places.length && window.ScripturaPlaces) $("sources").querySelectorAll(".pl-root").forEach((r) => ScripturaPlaces.wire(r));
 }
 
 function citationRefs(marker, checks = []) {

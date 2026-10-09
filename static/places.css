@@ -14,3 +14,5 @@
 .pl-list .badge { display: inline-block; border-radius: 6px; font-size: 11px; line-height: 1.5; padding: 1px 7px; font-weight: 600; font-family: var(--sans); }
 .pl-list .badge.cur { background: var(--accent-soft); color: var(--accent); }
 .pl-list .badge.ok { background: var(--ok-soft); color: var(--ok); }
+.pl-more { margin-top: 8px; font: 600 12px var(--sans); }
+.pl-more a { text-decoration: none; color: var(--accent); }

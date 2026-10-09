@@ -79,6 +79,7 @@
   function block(places, id) {
     return `<div class="pl-root" id="${esc(id || "")}"><script type="application/json" class="pl-data">${JSON.stringify(places).replace(/</g, "\\u003c")}</script>
       <div class="pl-map" role="img" aria-label="Mapa miejsc biblijnych"></div><div class="pl-list">${list(places)}</div>
+      <div class="pl-more"><a href="/mapa/?ids=${places.map((p) => p.id).join(",")}">Otwórz dużą mapę ↗</a></div>
       <div class="muted small pl-attr">Lokalizacje wg OpenBible.info Bible Geocoding Data (CC BY 4.0); pewność = udział głosów źródeł za tą identyfikacją. Punkty, nie granice — przebieg tras i zasięg królestw to interpretacje, których tu nie ma.</div></div>`;
   }
 

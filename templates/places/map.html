@@ -1,0 +1,102 @@
+{% extends "site.html" %}{% load static %}
+{% block title %}Mapa — Scriptura{% endblock %}
+{% block description %}Mapa miejsc biblijnych: {{ total }} miejsc z kandydatami lokalizacji i pewnością identyfikacji (OpenBible.info, CC BY). Punkty, nie granice.{% endblock %}
+{% block page_class %}wide map-page{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
+<link rel="stylesheet" href="{% static 'places.css' %}">
+<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'places.js' %}"></script>
+<style>
+  .map-page { max-width: none; padding: 16px clamp(16px, 2vw, 28px) 24px; }
+  .map-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+  .map-head h1 { font-size: clamp(22px, 2.6vw, 30px); margin: 0; }
+  .map-head form { display: flex; gap: 6px; margin-left: auto; }
+  .map-page .map-head input[type=text] { width: 260px; min-height: 40px; font: 14px var(--sans); padding: 8px 11px; background: var(--panel); }
+  .map-head button { font: 600 13px var(--sans); padding: 8px 12px; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 9px; cursor: pointer; }
+  .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; height: calc(100dvh - 230px); min-height: 480px; }
+  .map-layout .pl-map { height: 100%; margin: 0; }
+  .map-side { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .map-side .tools { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .map-page .map-side .tools input[type=search] { flex: 1 1 140px; width: 100%; min-width: 0; min-height: 36px; font: 13px var(--sans); padding: 7px 10px; }
+  .map-side .tools label { font: 12px var(--sans); color: var(--muted); display: flex; gap: 5px; align-items: center; white-space: nowrap; }
+  .map-side .pl-list { overflow-y: auto; padding: 0 12px; scrollbar-width: thin; }
+  .map-side .pl-list .place.sel { color: var(--accent); }
+  .map-side .count { padding: 6px 12px; font: 11px var(--sans); color: var(--muted); border-top: 1px solid var(--line); }
+  .map-note { margin-top: 10px; font: 12px/1.5 var(--sans); color: var(--muted); }
+  @media (max-width: 900px) { .map-layout { grid-template-columns: 1fr; height: auto; } .map-layout .pl-map { height: 60vh; } .map-side { max-height: 50vh; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="map-head">
+  <div class="eyebrow" style="margin:0">GEOGRAFIA BIBLIJNA</div>
+  <h1>{% if title %}Miejsca: {{ title }}{% else %}Mapa miejsc biblijnych{% endif %}</h1>
+  <form method="get" action="{% url 'places:map' %}"><input type="text" name="q" value="{{ q }}" placeholder="siglum: Rdz 12,1-9 · Wj 14 · Dz 13–14" aria-label="Siglum"><button>Pokaż</button></form>
+</div>
+<div class="map-layout">
+  <div class="pl-map" id="big-map" role="img" aria-label="Mapa miejsc biblijnych"></div>
+  <aside class="map-side" aria-label="Lista miejsc">
+    <div class="tools">
+      <input type="search" id="pl-search" placeholder="szukaj miejsca…" aria-label="Szukaj miejsca">
+      <label><input type="checkbox" id="pl-all" {% if not selected %}checked{% endif %}> wszystkie ({{ total }})</label>
+    </div>
+    <div class="pl-list" id="pl-list"></div>
+    <div class="count" id="pl-count"></div>
+  </aside>
+</div>
+<p class="map-note">Lokalizacje wg <a href="https://www.openbible.info/geo/" rel="noopener" target="_blank">OpenBible.info Bible Geocoding Data</a> (CC BY 4.0); podkład <a href="https://www.openstreetmap.org/copyright" rel="noopener" target="_blank">OpenStreetMap</a>. Pełny znacznik to najbardziej prawdopodobna identyfikacja, puste kółka — pozostali kandydaci; procent to udział głosów źródeł. Na mapie są tylko punkty: trasy, granice królestw i podział na pokolenia to interpretacje, których tu celowo nie ma.</p>
+{{ selected|json_script:"selected-data" }}
+<script>
+(function () {
+  const selected = JSON.parse(document.getElementById("selected-data").textContent);
+  const selectedIds = new Set(selected.map((p) => p.id));
+  const mapEl = document.getElementById("big-map"), listEl = document.getElementById("pl-list"), countEl = document.getElementById("pl-count");
+  const search = document.getElementById("pl-search"), allBox = document.getElementById("pl-all");
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let all = [], map = null, layer = null;
+
+  function draw(places) {
+    if (!map) { map = ScripturaPlaces.render(mapEl, [], {}); }
+    if (layer) layer.remove();
+    layer = L.layerGroup().addTo(map);
+    const color = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#7a1f2b";
+    const bounds = [];
+    places.forEach((p) => (p.locations || []).forEach((loc, j) => {
+      const best = j === 0, sel = selectedIds.has(p.id), ll = [loc.lat, loc.lon];
+      const m = L.circleMarker(ll, { radius: best ? (sel ? 8 : 5) : 4, color, weight: best ? 2 : 1, fillColor: color, fillOpacity: best ? (sel ? 0.9 : 0.55) : 0.05, opacity: best ? 1 : 0.5 });
+      m.bindPopup(`<div class="pl-pop"><b>${esc(p.name)}</b>${p.name_en !== p.name ? ` <span class="muted">(${esc(p.name_en)})</span>` : ""}<div>${esc(loc.name)}${loc.type ? " · " + esc(loc.type) : ""} · pewność ${Math.round(loc.confidence * 100)}%${best ? "" : " · inny kandydat"}</div><div class="muted">${p.verse_count} wersetów${(p.refs || []).length ? " · " + p.refs.map(esc).join(", ") : ""}</div><div><a href="${esc(p.url)}" target="_blank" rel="noopener">OpenBible</a>${p.wikidata ? ` · <a href="https://www.wikidata.org/wiki/${esc(p.wikidata)}" target="_blank" rel="noopener">Wikidata</a>` : ""}</div></div>`);
+      if (best && (sel || places.length <= 8)) m.bindTooltip(p.name, { permanent: places.length <= 25, direction: "right", className: "pl-label", offset: [6, 0] });
+      m.addTo(layer);
+      if (best && (sel || !selectedIds.size)) bounds.push(ll);
+    }));
+    if (bounds.length) map.fitBounds(bounds, { padding: [30, 30], maxZoom: bounds.length === 1 ? 9 : 11 });
+  }
+
+  function renderList(places) {
+    listEl.innerHTML = places.slice(0, 400).map((p) => {
+      const loc = p.locations[0]; const more = p.locations.length - 1;
+      return `<div class="place ${selectedIds.has(p.id) ? "sel" : ""}" data-lat="${loc.lat}" data-lon="${loc.lon}"><b>${esc(p.name)}</b>${p.name_en !== p.name ? ` <span class="muted">${esc(p.name_en)}</span>` : ""} <span class="badge cur">${Math.round(loc.confidence * 100)}%</span>${more > 0 ? ` <span class="muted">+${more}</span>` : ""}<div class="s">${esc(loc.name)} · ${p.verse_count} wersetów${(p.refs || []).length ? " · " + p.refs.map(esc).join(", ") : ""}</div></div>`;
+    }).join("");
+    countEl.textContent = places.length > 400 ? `${places.length} miejsc (lista pokazuje 400 — zawęź szukaniem)` : `${places.length} miejsc`;
+    listEl.querySelectorAll(".place").forEach((d) => d.addEventListener("click", () => map.setView([+d.dataset.lat, +d.dataset.lon], Math.max(map.getZoom(), 10))));
+  }
+
+  function fold(s) { return (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+  function refresh() {
+    const q = fold(search.value.trim());
+    let places = allBox.checked ? all : selected;
+    if (q) places = places.filter((p) => [p.name, p.name_en, ...(p.aliases || [])].some((n) => fold(n).includes(q)));
+    draw(places); renderList(places);
+  }
+
+  fetch("{% url 'places:map_data' %}").then((r) => r.json()).then((d) => {
+    all = d.places.filter((p) => p.locations && p.locations.length);
+    // zaznaczone miejsca z widoku (mają refs) zastępują swoje odpowiedniki z pełnej listy
+    const byId = new Map(all.map((p) => [p.id, p])); selected.forEach((p) => byId.set(p.id, Object.assign({}, byId.get(p.id) || {}, p)));
+    all = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "pl"));
+    refresh();
+  });
+  search.addEventListener("input", refresh); allBox.addEventListener("change", refresh);
+})();
+</script>
+{% endblock %}

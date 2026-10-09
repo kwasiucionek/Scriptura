@@ -680,6 +680,9 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
   same-origin` Django przeglądarka nie wysyła Referer, a OSM zwraca wtedy kafelek „Access blocked”.
 - Strony: Korpus (karta + sekcja „Geografia”), O projekcie (wiersz tabeli), instrukcja (grupa Miejsca,
   widok tekstu). Testy: `places/tests/test_places.py` (parser, serwis, kanał w `/ask/stream`).
+- Strona **Mapa** (`/mapa/`, zakładka w nawigacji): wszystkie miejsca jednym JSON-em (`/mapa/dane.json`,
+  cache 1 h), wyszukiwarka po nazwie/aliasach, `?q=<siglum>` albo `?ids=` zaznacza wybór (link „Otwórz
+  dużą mapę” z panelu źródeł i z widoku tekstu).
 - Ustawienia: `RAG_PLACES` (domyślnie 12). Dane po stronie serwera: `fetch_sources places && import_places
   && translate_places`.
 

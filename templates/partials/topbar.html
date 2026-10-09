@@ -8,6 +8,7 @@ dla warstwy tekstu (namespace corpus) podświetlenie wynika z adresu, więc wido
 <nav class="mainnav" aria-label="Nawigacja główna">
   <a href="{% url 'rag:index' %}" {% if active == "ask" %}class="on" aria-current="page"{% endif %}>Asystent</a>
   <a href="{% url 'corpus:index' %}" {% if active == "text" or ns == "corpus" %}class="on" aria-current="page"{% endif %}>Tekst i konkordancja</a>
+  <a href="{% url 'places:map' %}" {% if active == "map" %}class="on" aria-current="page"{% endif %}>Mapa</a>
   <a href="{% url 'pages:guide' %}" {% if active == "guide" %}class="on" aria-current="page"{% endif %}>Jak korzystać</a>
   <a href="{% url 'pages:corpus' %}" {% if active == "corpus" %}class="on" aria-current="page"{% endif %}>Korpus</a>
   <a href="{% url 'pages:about' %}" {% if active == "about" %}class="on" aria-current="page"{% endif %}>O projekcie</a>

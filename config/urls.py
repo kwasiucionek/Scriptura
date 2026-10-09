@@ -6,4 +6,5 @@ urlpatterns = [
     path("", include("rag.urls")),
     path("text/", include("corpus.urls")),
     path("", include("pages.urls")),
+    path("", include("places.urls")),
 ]

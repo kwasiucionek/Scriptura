@@ -40,7 +40,7 @@ function scripturaReload(el){
 {% endif %}
 {% if places %}
 <section class="places" style="margin-top:18px">
-  <h3 style="font-size:13px;margin:0 0 6px">Miejsca <span class="muted">({{ places|length }} · OpenBible geocoding, CC BY; punkty z pewnością identyfikacji)</span></h3>
+  <h3 style="font-size:13px;margin:0 0 6px">Miejsca <span class="muted">({{ places|length }} · OpenBible geocoding, CC BY; punkty z pewnością identyfikacji)</span> · <a href="{% url 'places:map' %}?q={{ q|urlencode }}">duża mapa ↗</a></h3>
   <div id="ref-places"></div>
   {{ places|json_script:"ref-places-data" }}
   <script>

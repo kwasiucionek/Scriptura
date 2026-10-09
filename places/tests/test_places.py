@@ -172,3 +172,24 @@ def test_ask_stream_sources_include_places(places_db):
     src = next(d for e, d in events if e == "sources")
     assert [p["name"] for p in src["places"]] == ["Betel"]
     assert src["places"][0]["locations"][0]["lat"] == pytest.approx(31.9228)
+
+
+@pytest.mark.django_db
+def test_map_page_and_data(places_db, client):
+    r = client.get("/mapa/dane.json")
+    names = [p["name"] for p in r.json()["places"]]
+    assert r.status_code == 200 and names == [
+        "Betel",
+        "Charan",
+    ]  # bez miejsc bez lokalizacji
+    r = client.get("/mapa/?q=Rdz%2012,1-9")
+    body = r.content.decode()
+    assert (
+        r.status_code == 200
+        and "Miejsca: Rdz 12,1-9" in body
+        and '"name": "Charan"' in body
+    )
+    haran_id = Place.objects.get(slug="haran").id
+    r = client.get(f"/mapa/?ids={haran_id},999999")
+    assert r.status_code == 200 and '"name": "Charan"' in r.content.decode()
+    assert 'aria-current="page"' in client.get("/mapa/").content.decode()

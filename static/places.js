@@ -22,7 +22,8 @@
     if (!window.L || !el || el.dataset.ready) return null;
     el.dataset.ready = "1";
     const map = L.map(el, { scrollWheelZoom: false, attributionControl: true });
-    L.tileLayer(TILES, { maxZoom: 15, attribution: ATTR }).addTo(map);
+    // referrerPolicy: Django ustawia Referrer-Policy: same-origin, a OSM bez nagłówka Referer zwraca kafelek „Access blocked”
+    L.tileLayer(TILES, { maxZoom: 15, attribution: ATTR, referrerPolicy: "strict-origin-when-cross-origin" }).addTo(map);
     const color = accent();
     const bounds = [];
     places.forEach((p, i) => {

@@ -36,3 +36,13 @@ data/manifests/report-*.md
 .gunicorn/
 *.patch
 *.djcache
+
+# kopie robocze i artefakty, które nie należą do repo
+*kopia*
+*.bak
+*.orig
+*.zip
+*.tgz
+*.whl
+/*.pdf
+/prompt*.txt

@@ -6,7 +6,7 @@ PWT Wrocław i UPJPII), leksykonem, tradycją Ojców Kościoła i tekstami staro
 Wschodu. Dwa tryby — naukowy (aparat, terminy oryginalne, hierarchia źródeł) i popularny
 (prosty język, te same źródła) — i weryfikacja cytatów po stronie systemu.
 
-Demo: https://scriptura.cytr.us · stan projektu i historia decyzji: [CHANGELOG.md](CHANGELOG.md)
+Demo: https://scriptura.cytr.us (mapa miejsc: [/mapa/](https://scriptura.cytr.us/mapa/)) · stan projektu i historia decyzji: [CHANGELOG.md](CHANGELOG.md)
 
 > PoC zbudowany na otwartych źródłach jako podstawa do rozmów z autorami o włączeniu ich
 > dorobku. Materiały bez wolnej licencji są w systemie widoczne tylko dla kont z dostępem
@@ -40,13 +40,15 @@ automatycznie, gdy pytanie o nie pyta.
    (bge-reranker-v2-m3 na GPU) albo `none`.
 4. **Kontekst**: ŹRÓDŁA [n] · WERSETY (oryginał + przekład) · LEKSYKON · POWIĄZANE WERSETY ·
    TRADYCJA PATRYSTYCZNA [P] · ANE [A].
-5. **Generacja** (Ollama, `gemma4:31b-cloud` lub lokalny model) ze strumieniem SSE; potem
+5. **Generacja** (`LLM_BACKEND`: Ollama — `gemma4:31b-cloud` lub model lokalny — albo serwer zgodny
+   z API OpenAI, np. NVIDIA NIM; klient w `library/llm.py`) ze strumieniem SSE; potem
    weryfikacja: czy przypisy [n]/[P]/[A] (także listy i zakresy) istnieją w kontekście oraz
    czy wykryte cytaty odpowiadają wskazanemu źródłu. Cytaty zmienione i niepotwierdzone
    są raportowane, także przekłady modelu. To kontrola tekstowa, nie gwarancja poprawności
    każdej tezy ani kompletności przypisów; przekłady wymagają porównania z oryginałem.
 6. **Panel źródeł**: zwijane grupy, fragmenty, linki do oryginałów, eksport cytowań
-   BibTeX / RIS (tylko przywołane pozycje, ze stronami pasaży Ojców).
+   BibTeX / RIS (tylko przywołane pozycje, ze stronami pasaży Ojców); grupa **Miejsca** z mapą
+   (poza promptem — warstwa dla czytelnika) i odnośnikiem do pełnej mapy `/mapa/`.
 
 Ewaluacja retrievalu (30 pytań, `eval_retrieval`): recall@5 0,87, near±1 1,00, MRR 0,67
 bez rerankera — szczegóły i decyzje w changelogu (sprint 10–11).
@@ -110,6 +112,7 @@ LLM → ingestia → audyt → przekład → reindeks → raport w `data/manifes
 | `eval_mlflow <JSONL> --task retrieval\|rag` | natywne ewaluacje MLflow GenAI, wyniki per przypadek i porównanie konfiguracji |
 | `update_corpus [--dry-run]` | pełny pipeline aktualizacji |
 | `warmup` | rozgrzewka embeddingów i rerankera po starcie |
+| `llm_ping [--think] [--raw]` | test backendu czatu: model, strumień, rozumowanie, tokeny, czas |
 
 ## Ewaluacje MLflow
 
@@ -197,11 +200,13 @@ ane/          baza powiązana: teksty ANE (eBL)
 patristics/   baza powiązana: Ojcowie Kościoła (CCEL ThML)
 places/       baza powiązana: geografia biblijna (OpenBible geocoding) — modele, importer, serwis miejsc dla sigli i nazw
 pages/        podstrony informacyjne: o projekcie, jak korzystać, korpus (żywe liczby), dla autorów, autor; procesor kontekstu (stopka, commit)
-static/       site.css (tokeny, pasek, stopka), workbench.css (czat), places.js/.css + vendor/leaflet (mapa)
+static/       site.css (tokeny, pasek, stopka), workbench.css (czat), places.js/.css + vendor/leaflet (mapa), images/
 deploy/       systemd, nginx, skrypty wdrożeniowe
 services/     reranker ROCm/CUDA (FastAPI, API zgodne z TEI)
-scripts/      narzędzia jednorazowe (fonty legacy, place_downloads, eval)
-templates/    GUI: site.html (szkielet), partials/ (pasek, użytkownik), czat, konto, logowanie, tekst i konkordancja, pages/
+docker/       obraz OpenSearch z pluginami (docker-compose.yml: reranker TEI, opcjonalnie OpenSearch)
+scripts/      narzędzia: eval_retrieval, MLflow (bramka, sędziowie), basal_guard, place_downloads, manifest_diff, fonty legacy
+templates/    GUI: site.html (szkielet), partials/ (pasek, użytkownik, Umami), czat, konto, logowanie, tekst i konkordancja, pages/, places/ (mapa)
+data/         tylko przykłady i opis ewaluacji — dane, baza i PDF-y są poza repo (.gitignore)
 ```
 
 Testy: `pytest` (backendy zastępcze i atrapy usług, bez integracyjnego OpenSearch/PostgreSQL).
@@ -229,7 +234,7 @@ wielohostowe wymagają innego backendu współdzielonych limitów.
 ## Stan i plan
 
 Działa: pełny łańcuch od harvestu po odpowiedź z weryfikacją, konta i materiały osobiste,
-bazy powiązane, eksport cytowań, wdrożenie na VPS. Do zrobienia: zgody autorów na materiały
+bazy powiązane (Ojcowie, ANE, geografia z mapą), eksport cytowań, ewaluacje MLflow, wdrożenie na VPS. Do zrobienia: zgody autorów na materiały
 `licensed` (w toku), skrypty UPJPII Majewskiego, Postgres przed otwarciem kont dla wielu
 użytkowników, więcej tomów Ojców z przekładem, ORACC dla inskrypcji i listów, warstwa
 patrystyczna po polsku (gdy pojawi się źródło z otwartą licencją).

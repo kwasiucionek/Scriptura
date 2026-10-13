@@ -687,6 +687,16 @@ pytaniach spoza korpusu, (2) 6/8 chunków z jednej pracy i dublety wydań, (3) p
 - Ustawienia: `RAG_PLACES` (domyślnie 12). Dane po stronie serwera: `fetch_sources places && import_places
   && translate_places`.
 
+## Porządki w repozytorium (X 2026)
+
+- Usunięte pliki przypadkowo dodane do repo: `prompt_rag.txt` (prompt z innego projektu), `19982195.pdf`
+  (PDF artykułu — publikacje trzymamy poza repo), plik cache Django `*.djcache`, kopie robocze
+  `docker-compose kopia.yml` i `data/eval/questions.jsonl kopia`. `.gitignore` blokuje odtąd kopie
+  (`*kopia*`, `*.bak`, `*.orig`), archiwa (`*.zip`, `*.tgz`, `*.whl`), PDF-y i `prompt*.txt` w katalogu głównym.
+- README i `deploy/README.md` zaktualizowane: backend czatu (`LLM_BACKEND`, `llm_ping`), mapa `/mapa/`,
+  układ repozytorium, repo publiczne (sekrety wyłącznie w `.env` na serwerze), serwer MLflow
+  (`mlflow.cytr.us` za basic auth), komendy geografii w sekcji danych.
+
 ## Plan kolejnych sprintów
 
 5. **Dalsze korpusy**: LXX Rahlfs (Eliran Wong, CC BY-NC-SA), UBG, Wujek,

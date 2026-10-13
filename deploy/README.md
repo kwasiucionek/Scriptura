@@ -29,17 +29,16 @@ mkdir -p /cytrus/scriptura/{data,cache} && chown -R scriptura:scriptura /cytrus/
 chmod 755 /opt/scriptura
 ```
 
-## 1a. Stan po sesji 2026-09-23 (zrobione przez MCP)
-Użytkownik `scriptura`, katalogi `/opt/scriptura` i `/cytrus/scriptura/{data,cache}`, unity systemd
-(`scriptura-web` enabled, `scriptura-update.timer` enabled), nginx `sites-enabled/scriptura` (40021),
-`/opt/scriptura/.env` z wygenerowanym SECRET_KEY (**do uzupełnienia: OLLAMA_API_KEY, HARVEST_MAILTO**),
-`analysis-icu` w kontenerze OpenSearch, `snowflake-arctic-embed2` w Ollamie, `/root/MCP_documentation.md`.
-Pozostało: `./deploy/deploy.sh --data --replace-db` z komputera (kod + PDF-y + manifesty + wektory + snapshot bazy),
-potem na serwerze `bash /opt/scriptura/deploy/setup_after_rsync.sh`, panel Mikrusa (subdomena → 40021).
+## 1a. Co jest na serwerze
+Użytkownik `scriptura`, katalogi `/opt/scriptura` (klon repo) i `/cytrus/scriptura/{data,cache}`, unity systemd
+(`scriptura-web` i `scriptura-update.timer`, oba enabled), nginx `sites-enabled/scriptura` (40021),
+`/opt/scriptura/.env` (sekrety tylko tam), `analysis-icu` w kontenerze OpenSearch, `snowflake-arctic-embed2` w Ollamie.
+Pierwsze przeniesienie danych: `./deploy/deploy.sh --data --replace-db` z komputera, potem na serwerze
+`bash /opt/scriptura/deploy/setup_after_rsync.sh`.
 
 ## 1b. Git zamiast rsync dla kodu (od sprintu 26)
-Kod żyje w repo (GitHub, prywatne); serwer ma klon w `/opt/scriptura` z kluczem deploy (tylko odczyt).
-Pierwsze ustawienie:
+Kod żyje w publicznym repo na GitHubie (bez danych i sekretów); serwer ma klon w `/opt/scriptura`
+z kluczem deploy (tylko odczyt). Pierwsze ustawienie:
 ```bash
 # lokalnie (w katalogu projektu):
 git init && git add -A && git commit -m "Scriptura: sprint 26" && git remote add origin https://github.com/kwasiucionek/Scriptura.git && git push -u origin master
@@ -86,6 +85,8 @@ Sam snapshot, bez transferu:
 Narzędzie odrzuca nadpisanie istniejącego pliku docelowego.
 
 (albo od zera: `fetch_sources && import_corpus oshb/morphgnt/lxx/json`, `import_lexicon`, `import_xref`, `ingest_manifest` …).
+Geografia (niezależna od bazy z komputera, ok. 2 s + tłumaczenie nazw modelem czatu):
+`fetch_sources places && import_places && translate_places`.
 Indeksy: `index_search --recreate` (wersety, bez wektorów, ~2 min) i `reindex_chunks --recreate --vectors-file /cytrus/scriptura/data/vectors.jsonl.gz`
 (wektory z pliku — bez liczenia; bez pliku 5 tys. chunków na 2 vCPU to ~1,5 h). ANE: `index_ane --recreate --vectors-file …`.
 
@@ -135,8 +136,12 @@ sudo -u scriptura .venv/bin/python manage.py eval_mlflow \
 
 Pełna instrukcja: [../data/eval/README.md](../data/eval/README.md).
 Rzeczywiste benchmarki JSONL muszą być dostępne na serwerze osobno; zwykły deploy kodu
-nie kopiuje prywatnych zbiorów ewaluacyjnych. Panel MLflow pozostaw lokalny lub użyj
-tunelu SSH; nie wystawiaj nowego publicznego portu bez zabezpieczeń.
+nie kopiuje prywatnych zbiorów ewaluacyjnych.
+
+Serwer śledzenia MLflow działa osobno od aplikacji: `mlflow.service` (127.0.0.1:8535, baza
+i artefakty w `/cytrus/mlflow/`), wystawiony jako `https://mlflow.cytr.us` przez nginx na tym samym
+porcie 40021 (rozdział po `server_name`) **wyłącznie z basic auth** (`/etc/nginx/auth/mlflow.htpasswd`).
+Klient: `MLFLOW_TRACKING_URI=https://mlflow.cytr.us` + `MLFLOW_TRACKING_USERNAME/PASSWORD`.
 
 ## 7. Backup i kontrola dostępu
 

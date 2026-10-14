@@ -45,7 +45,7 @@ pairs = [(c, have[c.os_id]) for c in chunks if c.os_id in have]
 new = embed([f'{c.document.title}\n{c.section}\n{c.text_pl or c.text}' for c, _ in pairs])
 cos = [sum(a * b for a, b in zip(u, v)) / math.sqrt(sum(a * a for a in u) * sum(b * b for b in v)) for (_, u), v in zip(pairs, new)]
 print('cosinus min', round(min(cos), 5), 'z', len(cos))
-sys.exit(0 if cos and min(cos) > 0.995 else 3)
+sys.exit(0 if cos and min(cos) > 0.95 else 3)  # inny model ≈ 0; różnice sprzętu/kwantyzacji ≈ 0,98
 " || { echo "wektory z laptopa nie zgadzają się z indeksem — sprawdź model (ollama show snowflake-arctic-embed2)"; exit 3; }
     echo "$(date +%T) wektory przez $TUNNEL i indeks (tylko dokumenty niepełne w indeksie)"
     EMBEDDINGS_BASE_URL="$TUNNEL" EMBEDDINGS_BATCH="${EMBEDDINGS_BATCH_GPU:-64}" \

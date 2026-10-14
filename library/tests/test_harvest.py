@@ -238,33 +238,42 @@ def test_blog_post_to_entry(tmp_path):
     assert e.abstract.startswith("Pytanie o imię Boga")
 
 
-def test_openalex_works_for_source_filters_and_paginates():
+def test_openalex_works_for_source_filters_and_paginates(settings):
+    """Bez klucza: strony numerowane (kursor za 1. stroną wymaga OPENALEX_API_KEY — HTTP 401)."""
+    settings.OPENALEX_API_KEY = ""
+    w = lambda i: {"id": f"https://openalex.org/W{i}", "display_name": f"T{i}"}  # noqa: E731
+    page1 = {"results": [w(i) for i in range(100)], "meta": {"count": 150}}
+    page2 = {"results": [w(i) for i in range(100, 150)], "meta": {"count": 150}}
+    with mock.patch.object(openalex, "_get", side_effect=[page1, page2]) as g:
+        out = openalex.works_for_source(
+            "https://openalex.org/S123", only_oa=True, from_year=2015
+        )
+    assert len(out) == 150 and g.call_count == 2
+    first, second = (c[0][1] for c in g.call_args_list)
+    assert first["filter"] == (
+        "primary_location.source.id:S123,is_oa:true,from_publication_date:2015-01-01"
+    )
+    assert (first["page"], second["page"]) == (1, 2) and "cursor" not in first
+    import pytest
+
+    with pytest.raises(ValueError):
+        openalex.works_for_source("A123")  # id autora zamiast czasopisma
+
+
+def test_openalex_cursor_with_api_key(settings):
+    settings.OPENALEX_API_KEY = "k"
     page1 = {
         "results": [{"id": "https://openalex.org/W1", "display_name": "A"}],
         "meta": {"next_cursor": "c2"},
     }
     page2 = {
-        "results": [{"id": "https://openalex.org/W2", "display_name": "B"}],
-        "meta": {"next_cursor": "c3"},
-    }
-    page3 = {
         "results": [],
-        "meta": {"next_cursor": "c4"},
+        "meta": {"next_cursor": "c3"},
     }  # pusta strona kończy pętlę mimo kursora
-    with mock.patch.object(openalex, "_get", side_effect=[page1, page2, page3]) as g:
-        out = openalex.works_for_source(
-            "https://openalex.org/S123", only_oa=True, from_year=2015
-        )
-    assert [e.title for e in out] == ["A", "B"]
-    flt = g.call_args_list[0][0][1]["filter"]
-    assert (
-        flt
-        == "primary_location.source.id:S123,is_oa:true,from_publication_date:2015-01-01"
-    )
-    import pytest
-
-    with pytest.raises(ValueError):
-        openalex.works_for_source("A123")  # id autora zamiast czasopisma
+    with mock.patch.object(openalex, "_get", side_effect=[page1, page2]) as g:
+        out = openalex.works_for_source("S123")
+    assert [e.title for e in out] == ["A"]
+    assert [c[0][1]["cursor"] for c in g.call_args_list] == ["*", "c2"]
 
 
 def test_openalex_find_sources():

@@ -14,6 +14,8 @@
 - Harvest całych czasopism z OpenAlex: `harvest openalex --journal "…"` (kandydaci S…),
   `--journal-id S… [--only-oa] [--from-year R]`. Kurator bez `--author` działa w trybie czasopisma:
   odsiewa teksty niebiblijne (dogmatyka, prawo kanoniczne, pastoralna…), nie imienników.
+- OpenAlex: kursor za pierwszą stroną wymaga teraz klucza API (HTTP 401). Bez `OPENALEX_API_KEY`
+  harvester stronicuje numerami stron (do 10 tys. wyników); z kluczem — kursorem.
 - Korpus: M. Majewski, „Pięcioksiąg odczytany na nowo” (WN UPJPII 2018, CC BY 4.0) — PDF
   z platformy wydawnictwa uzupełniony w manifeście OpenAlex.
 

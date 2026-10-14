@@ -19,8 +19,12 @@ BASE = "https://api.openalex.org"
 
 
 def _get(path: str, params: dict, mailto: str = "") -> dict:
+    from django.conf import settings
+
     if mailto:
         params = {**params, "mailto": mailto}
+    if key := getattr(settings, "OPENALEX_API_KEY", ""):
+        params = {**params, "api_key": key}
     url = f"{BASE}{path}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(
         url, headers={"User-Agent": f"scriptura-harvest/0.1 {mailto}".strip()}
@@ -121,18 +125,41 @@ def _norm_id(raw: str, prefix: str) -> str:
     return value
 
 
+PAGE_SIZE = 100
+PAGE_LIMIT = (
+    10_000  # stronicowanie numerami stron: OpenAlex oddaje najwyżej 10 tys. wyników
+)
+
+
 def _works(flt: str, mailto: str = "") -> list[ManifestEntry]:
-    """Wszystkie prace dla filtra (paginacja kursorem)."""
+    """Wszystkie prace dla filtra. Kursor wymaga (od 2026) darmowego klucza OPENALEX_API_KEY;
+    bez klucza strony numerowane — do 10 tys. wyników, co wystarcza na autora i czasopismo."""
+    from django.conf import settings
+
     entries: list[ManifestEntry] = []
-    cursor = "*"
-    while cursor:
+    if getattr(settings, "OPENALEX_API_KEY", ""):
+        cursor = "*"
+        while cursor:
+            data = _get(
+                "/works",
+                {"filter": flt, "per-page": PAGE_SIZE, "cursor": cursor},
+                mailto,
+            )
+            results = data.get("results", [])
+            entries += [work_to_entry(w) for w in results]
+            cursor = (data.get("meta") or {}).get("next_cursor") if results else None
+        return entries
+    page = 1
+    while True:
         data = _get(
-            "/works", {"filter": flt, "per-page": 100, "cursor": cursor}, mailto
+            "/works", {"filter": flt, "per-page": PAGE_SIZE, "page": page}, mailto
         )
         results = data.get("results", [])
         entries += [work_to_entry(w) for w in results]
-        cursor = (data.get("meta") or {}).get("next_cursor") if results else None
-    return entries
+        total = min((data.get("meta") or {}).get("count") or 0, PAGE_LIMIT)
+        if not results or page * PAGE_SIZE >= total:
+            return entries
+        page += 1
 
 
 def works_for_author(

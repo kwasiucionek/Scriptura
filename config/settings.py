@@ -184,6 +184,9 @@ MANIFESTS_DIR = Path(env("MANIFESTS_DIR", str(DATA_DIR / "manifests")))
 HARVEST_MAILTO = env(
     "HARVEST_MAILTO", ""
 )  # e-mail do nagłówków (OpenAlex polite pool, DSpace UA)
+OPENALEX_API_KEY = env(
+    "OPENALEX_API_KEY", ""
+)  # darmowy klucz (openalex.org/settings/api): kursor bez limitu 10 tys. wyników
 HARVEST_COOKIE = env(
     "HARVEST_COOKIE", ""
 )  # np. token Anubis z przeglądarki (ważny ~7 dni)

@@ -1,5 +1,14 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-14 — duże książki na serwerze CPU
+
+- Embeddingi: rozmiar partii i limit czasu z ustawień (`EMBEDDINGS_BATCH`, domyślnie 32;
+  `EMBEDDINGS_TIMEOUT`, domyślnie 300 s zamiast stałych 120 s). Na 2 rdzeniach jeden fragment
+  to ~5 s, więc partia 32 nie mieściła się w starym limicie i ingestia 400-stronicowej monografii
+  przerywała się po zapisaniu chunków, przed indeksem.
+- Korpus: M. Majewski, „Pięcioksiąg odczytany na nowo” (WN UPJPII 2018, CC BY 4.0) — PDF
+  z platformy wydawnictwa uzupełniony w manifeście OpenAlex.
+
 ## 2026-10-08 — biblijno-skryptoryjny styl wizualny
 
 - Zastąpiono generyczną, chłodnoszarą oprawę AI ciepłą paletą welinowo-pergaminową z tuszem dębiankowym, akcentami kardynalskiego bordeaux oraz iluminowanego antycznego złota.

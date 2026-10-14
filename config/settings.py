@@ -232,6 +232,10 @@ RAG_THINK = env(
 
 # --- Embeddingi: "ollama" (lokalnie / OLLAMA_BASE_URL) | "tei" (serwer TEI: lokalny lub HF Inference Endpoint) ---
 EMBEDDINGS_BACKEND = env("EMBEDDINGS_BACKEND", "ollama")
+EMBEDDINGS_BATCH = env("EMBEDDINGS_BATCH", 32, int)  # tekstów na jedno żądanie
+EMBEDDINGS_TIMEOUT = env(
+    "EMBEDDINGS_TIMEOUT", 300, int
+)  # s na partię; CPU 2 rdzenie: ~5 s/fragment -> partia 32 ≈ 3 min
 TEI_EMBED_URL = env("TEI_EMBED_URL", "http://localhost:8080")
 TEI_TOKEN = env(
     "TEI_TOKEN", ""

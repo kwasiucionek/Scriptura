@@ -4,6 +4,8 @@
     python manage.py harvest dspace --query "Rosik Mariusz" --base-url https://open.icm.edu.pl ...
     python manage.py harvest openalex --author "Marcin Majewski"            # lista kandydatów z afiliacją
     python manage.py harvest openalex --author-id A5012345678 --only-oa --out data/manifests/majewski-oa.jsonl
+    python manage.py harvest openalex --journal "Verbum Vitae"                 # kandydaci czasopism (S…)
+    python manage.py harvest openalex --journal-id S4210212345 --only-oa --from-year 2015 --out data/manifests/vv.jsonl
     python manage.py harvest scholar --scholar-id r0NgMwMAAAAJ --out data/manifests/majewski-scholar.jsonl
     python manage.py harvest bibtex --file ~/Pobrane/citations.bib --out data/manifests/majewski-scholar.jsonl
 
@@ -46,6 +48,15 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--author-id", help="openalex: id autora (A…) do pobrania prac"
+        )
+        parser.add_argument(
+            "--journal", help="openalex: nazwa czasopisma do wyszukania kandydatów"
+        )
+        parser.add_argument(
+            "--journal-id", help="openalex: id czasopisma (S…) do pobrania prac"
+        )
+        parser.add_argument(
+            "--from-year", type=int, help="openalex --journal-id: od rocznika"
         )
         parser.add_argument(
             "--only-oa",
@@ -126,7 +137,19 @@ class Command(BaseCommand):
             entries = bibtex.parse(Path(o["file"]).read_text(encoding="utf-8"))
 
         else:  # openalex
-            if o["author_id"]:
+            if o["journal_id"]:
+                entries = openalex.works_for_source(
+                    o["journal_id"], mailto, o["only_oa"], o["from_year"]
+                )
+            elif o["journal"]:
+                for src in openalex.find_sources(o["journal"], mailto):
+                    self.stdout.write(
+                        f"  {src['id'].rsplit('/', 1)[-1]:12} {src['display_name'][:50]:50} "
+                        f"ISSN {src['issn'] or '-':9}  {src['works_count']:>6} prac  {src['publisher'][:30]}"
+                    )
+                self.stdout.write("Wybierz --journal-id i uruchom ponownie.")
+                return
+            elif o["author_id"]:
                 entries = openalex.works_for_author(
                     o["author_id"], mailto, o["only_oa"]
                 )

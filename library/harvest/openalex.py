@@ -1,8 +1,10 @@
-"""Harvester OpenAlex — wyszukiwanie autora i jego prac z informacją o OA i licencji.
+"""Harvester OpenAlex — prace autora albo całego czasopisma z informacją o OA i licencji.
 
   /authors?search=<name>            -> kandydaci (ujednoznacznienie po afiliacji)
-  /works?filter=author.id:<A...>    -> prace: open_access, primary_location.license,
-                                       best_oa_location.pdf_url, DOI, czasopismo, rok
+  /sources?search=<name>            -> kandydaci czasopism (ISSN, wydawca, liczba prac)
+  /works?filter=author.id:<A...>    -> prace autora
+  /works?filter=primary_location.source.id:<S...>  -> prace czasopisma
+                                       (open_access, licencja, pdf_url, DOI, rok, abstrakt)
 Bez klucza; `mailto` w parametrze daje szybszą pulę (polite pool).
 """
 
@@ -96,21 +98,60 @@ def work_to_entry(w: dict) -> ManifestEntry:
     )
 
 
-def works_for_author(
-    author_id: str, mailto: str = "", only_oa: bool = False
-) -> list[ManifestEntry]:
-    author_id = author_id.rsplit("/", 1)[
-        -1
-    ].strip()  # akceptuj A… i https://openalex.org/A…
-    if not re.fullmatch(r"A\d+", author_id):
-        raise ValueError(f"Niepoprawne id autora OpenAlex: {author_id!r}")
+def find_sources(name: str, mailto: str = "") -> list[dict]:
+    """Kandydaci czasopism: [{id, display_name, works_count, issn, publisher}]"""
+    data = _get("/sources", {"search": name, "per-page": 10}, mailto)
+    return [
+        {
+            "id": src["id"],
+            "display_name": src.get("display_name", ""),
+            "works_count": src.get("works_count", 0),
+            "issn": src.get("issn_l") or "",
+            "publisher": src.get("host_organization_name") or "",
+        }
+        for src in data.get("results", [])
+    ]
+
+
+def _norm_id(raw: str, prefix: str) -> str:
+    """Akceptuj A…/S… i https://openalex.org/A…"""
+    value = raw.rsplit("/", 1)[-1].strip()
+    if not re.fullmatch(rf"{prefix}\d+", value):
+        raise ValueError(f"Niepoprawne id OpenAlex ({prefix}…): {raw!r}")
+    return value
+
+
+def _works(flt: str, mailto: str = "") -> list[ManifestEntry]:
+    """Wszystkie prace dla filtra (paginacja kursorem)."""
     entries: list[ManifestEntry] = []
     cursor = "*"
     while cursor:
-        flt = f"author.id:{author_id}" + (",is_oa:true" if only_oa else "")
         data = _get(
             "/works", {"filter": flt, "per-page": 100, "cursor": cursor}, mailto
         )
-        entries += [work_to_entry(w) for w in data.get("results", [])]
-        cursor = (data.get("meta") or {}).get("next_cursor")
+        results = data.get("results", [])
+        entries += [work_to_entry(w) for w in results]
+        cursor = (data.get("meta") or {}).get("next_cursor") if results else None
     return entries
+
+
+def works_for_author(
+    author_id: str, mailto: str = "", only_oa: bool = False
+) -> list[ManifestEntry]:
+    flt = f"author.id:{_norm_id(author_id, 'A')}"
+    return _works(flt + (",is_oa:true" if only_oa else ""), mailto)
+
+
+def works_for_source(
+    source_id: str,
+    mailto: str = "",
+    only_oa: bool = False,
+    from_year: int | None = None,
+) -> list[ManifestEntry]:
+    """Prace czasopisma (np. Verbum Vitae); from_year zawęża do nowszych roczników."""
+    flt = f"primary_location.source.id:{_norm_id(source_id, 'S')}"
+    if only_oa:
+        flt += ",is_oa:true"
+    if from_year:
+        flt += f",from_publication_date:{int(from_year)}-01-01"
+    return _works(flt, mailto)

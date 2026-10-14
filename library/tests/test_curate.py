@@ -176,3 +176,26 @@ def test_ingest_title_dedup_respects_authors(db):
     assert _title_exists(
         "Tomasz Niemas, Perspektywa eschatologiczna proegzystencji"
     )  # bez autorów: ostrożnie
+
+
+def test_journal_mode_uses_topic_prompt(settings, monkeypatch):
+    """Bez autora (całe czasopismo) kurator odsiewa teksty niebiblijne, nie imienników."""
+    settings.LLM_BACKEND = "ollama"
+    settings.CURATE_REVIEW_CONFIDENCE = 0.5
+    entries = [
+        _e("Kanoniczne przesłanki nieważności małżeństwa"),
+        _e("Gniew bogów świata umarłych"),
+    ]
+    prompts = []
+
+    def fake(prompt, num_predict=4000):
+        prompts.append(prompt)
+        return [
+            {"i": 1, "relevant": False, "kind": "article", "confidence": 0.9, "reason": "prawo kanoniczne"},
+            {"i": 2, "relevant": True, "kind": "article", "confidence": 0.9, "reason": "religie ANE"},
+        ]  # fmt: skip
+
+    monkeypatch.setattr(cur, "chat_json", fake)
+    rep = cur.curate(entries, None)
+    assert [d.access for d in rep.decisions] == ["skip", "open"]
+    assert "CAŁEGO czasopisma" in prompts[0] and "AUTOR:" not in prompts[0]

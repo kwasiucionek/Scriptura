@@ -236,3 +236,40 @@ def test_blog_post_to_entry(tmp_path):
     )
     assert "- Echad\n- Adir" in text and "x()" not in text and "menu" not in text
     assert e.abstract.startswith("Pytanie o imię Boga")
+
+
+def test_openalex_works_for_source_filters_and_paginates():
+    page1 = {
+        "results": [{"id": "https://openalex.org/W1", "display_name": "A"}],
+        "meta": {"next_cursor": "c2"},
+    }
+    page2 = {
+        "results": [{"id": "https://openalex.org/W2", "display_name": "B"}],
+        "meta": {"next_cursor": "c3"},
+    }
+    page3 = {
+        "results": [],
+        "meta": {"next_cursor": "c4"},
+    }  # pusta strona kończy pętlę mimo kursora
+    with mock.patch.object(openalex, "_get", side_effect=[page1, page2, page3]) as g:
+        out = openalex.works_for_source(
+            "https://openalex.org/S123", only_oa=True, from_year=2015
+        )
+    assert [e.title for e in out] == ["A", "B"]
+    flt = g.call_args_list[0][0][1]["filter"]
+    assert (
+        flt
+        == "primary_location.source.id:S123,is_oa:true,from_publication_date:2015-01-01"
+    )
+    import pytest
+
+    with pytest.raises(ValueError):
+        openalex.works_for_source("A123")  # id autora zamiast czasopisma
+
+
+def test_openalex_find_sources():
+    data = {"results": [{"id": "https://openalex.org/S9", "display_name": "Verbum Vitae", "works_count": 1200,
+                         "issn_l": "1644-8561", "host_organization_name": "KUL"}]}  # fmt: skip
+    with mock.patch.object(openalex, "_get", return_value=data):
+        (src,) = openalex.find_sources("Verbum Vitae")
+    assert src["display_name"] == "Verbum Vitae" and src["issn"] == "1644-8561"

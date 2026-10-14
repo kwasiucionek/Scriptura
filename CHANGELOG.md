@@ -11,6 +11,9 @@
   pomijał ταρταρόω — jedyne wystąpienie w NT (2 P 2,4); teraz oba hasła trafiają do promptu.
 - Prompt: legenda skrótów ksiąg z sigli wersetów i leksykonu („Hi = Księga Hioba”) — model
   rozwijał „Hi” w zmyśloną „Księgę Hexechausa”.
+- Harvest całych czasopism z OpenAlex: `harvest openalex --journal "…"` (kandydaci S…),
+  `--journal-id S… [--only-oa] [--from-year R]`. Kurator bez `--author` działa w trybie czasopisma:
+  odsiewa teksty niebiblijne (dogmatyka, prawo kanoniczne, pastoralna…), nie imienników.
 - Korpus: M. Majewski, „Pięcioksiąg odczytany na nowo” (WN UPJPII 2018, CC BY 4.0) — PDF
   z platformy wydawnictwa uzupełniony w manifeście OpenAlex.
 

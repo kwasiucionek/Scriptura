@@ -2,6 +2,7 @@
 
 python manage.py curate_manifest data/manifests/rosik-openalex.jsonl --author "Mariusz Rosik"
 python manage.py curate_manifest data/manifests/rosik-openalex.jsonl --author "Mariusz Rosik" --apply
+python manage.py curate_manifest data/manifests/verbum-vitae.jsonl --apply   # całe czasopismo: tylko teksty biblijne
 """
 
 from pathlib import Path
@@ -17,14 +18,18 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("manifest")
-        parser.add_argument("--author", required=True)
+        parser.add_argument(
+            "--author",
+            default="",
+            help="manifest autora: odsiew imienników; bez --author (czasopismo): odsiew tekstów niebiblijnych",
+        )
         parser.add_argument("--apply", action="store_true")
         parser.add_argument("--no-llm", action="store_true", help="tylko reguły")
 
     def handle(self, *args, **o):
         path = Path(o["manifest"])
         entries = manifest.read(path)
-        report = cur.curate(entries, o["author"], use_llm=not o["no_llm"])
+        report = cur.curate(entries, o["author"] or None, use_llm=not o["no_llm"])
         for d in report.decisions:
             e = entries[d.index]
             if d.access in ("skip", "review") and e.access != d.access:

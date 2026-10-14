@@ -54,6 +54,31 @@ POZYCJE:
 {items}"""
 
 
+CURATE_PROMPT_JOURNAL = """Jesteś kuratorem korpusu RAG z zakresu teologii biblijnej. Lista pochodzi z CAŁEGO czasopisma
+teologicznego, więc są w niej też teksty spoza biblistyki — do korpusu mają wejść tylko biblijne.
+Oceń każdą pozycję i zwróć JSON: lista obiektów, po jednym na pozycję, w tej samej kolejności:
+{{"i": <numer>, "relevant": true|false, "kind": "article|review|report|editorial|book|other",
+  "register": "scientific|popular|mixed", "language": "pl|en|it|de|fr|la|other",
+  "journal_ok": true, "journal_fix": "", "confidence": 0.0-1.0, "reason": "<jedno zdanie po polsku>"}}
+
+Zasady:
+- relevant=true, gdy głównym przedmiotem jest Biblia: egzegeza i teologia biblijna ST/NT, filologia biblijna
+  (hebrajski, aramejski, grecki), historia, archeologia i kultura świata biblijnego, religie starożytnego
+  Bliskiego Wschodu, judaizm Drugiej Świątyni, Qumran i apokryfy, przekłady Biblii, hermeneutyka biblijna,
+  interpretacja Biblii u Ojców Kościoła i w tradycji żydowskiej. Recenzje książek biblijnych też.
+- relevant=false: dogmatyka, teologia moralna i pastoralna, prawo kanoniczne, liturgika, katechetyka,
+  pedagogika, filozofia, historia Kościoła, nauki społeczne — chyba że tekst biblijny i jego interpretacja
+  są głównym przedmiotem pracy (wtedy relevant=true).
+- kind: report = sprawozdanie/konferencja; editorial = wstępniak redakcyjny; review = recenzja książki.
+- register: popular = teksty popularyzatorskie i duszpasterskie; scientific = artykuły naukowe;
+  mixed = teksty pośrednie.
+- confidence < 0.5 tylko wtedy, gdy naprawdę nie da się rozstrzygnąć z podanych danych.
+Zwróć TYLKO JSON.
+
+POZYCJE:
+{items}"""
+
+
 @dataclass
 class Decision:
     index: int
@@ -217,7 +242,7 @@ def _item_line(i: int, e: ManifestEntry) -> str:
 
 def llm_decisions(
     entries: list[ManifestEntry],
-    author: str,
+    author: str | None,
     decisions: list[Decision],
     batch: int = 10,
 ) -> None:
@@ -226,7 +251,12 @@ def llm_decisions(
     for start in range(0, len(pending), batch):
         chunk = pending[start : start + batch]
         lines = [_item_line(n + 1, entries[d.index]) for n, d in enumerate(chunk)]
-        template = CURATE_PROMPT.replace("{author}", author)
+        # z autorem: odsiew imienników; bez autora (całe czasopismo): odsiew tekstów niebiblijnych
+        template = (
+            CURATE_PROMPT.replace("{author}", author)
+            if author
+            else CURATE_PROMPT_JOURNAL
+        )
         try:
             rows = chat_json(template.format(items="\n".join(lines)))
         except Exception as exc:
@@ -262,7 +292,7 @@ def llm_decisions(
 
 
 def curate(
-    entries: list[ManifestEntry], author: str, use_llm: bool = True
+    entries: list[ManifestEntry], author: str | None, use_llm: bool = True
 ) -> CurationReport:
     decisions = rule_decisions(entries)
     if use_llm and llm.enabled():

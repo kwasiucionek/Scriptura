@@ -235,21 +235,54 @@ _TRANSLIT_STOP = {
 }  # słowa polskie / nazwy, które nie są terminem do leksykonu (po canonical_translit)
 
 
+# Dopasowanie po rdzeniu: odcinamy końcówkę (greckie -os/-on…, polska fleksja) i szukamy haseł
+# zaczynających się od rdzenia. „Tartaros” -> „tartar” dokłada ταρταρόω (jedyne wystąpienie w NT,
+# 2 P 2,4), a polskie „Tartar” — bez dokładnego hasła — znajduje oba. Rdzeń krótszy niż 6 znaków
+# odpada (logos, pneuma, hesed: tylko dokładne dopasowanie), żeby nie łapać przypadkowych haseł.
+_STEM_ENDINGS = ("os", "on", "ou", "es", "is", "as", "a", "e", "o", "u", "y", "i")
+_STEM_MIN = 6
+
+
+def translit_stem(key: str) -> str:
+    """Rdzeń transliteracji do dopasowania prefiksowego; pusty, gdy za krótki."""
+    for end in _STEM_ENDINGS:
+        if key.endswith(end) and len(key) - len(end) >= _STEM_MIN:
+            return key[: -len(end)]
+    return key if len(key) >= _STEM_MIN else ""
+
+
 def lexemes_from_transliteration(question: str, limit: int = 3) -> list[Lexeme]:
-    """Transliterowane terminy w pytaniu („hesed”, „szalom”, „logos”) -> hasła leksykonu STEP."""
+    """Transliterowane terminy w pytaniu („hesed”, „szalom”, „logos”) -> hasła leksykonu STEP.
+    Najpierw dokładna transliteracja (do 2 haseł), potem hasła o tym samym rdzeniu (najkrótsze
+    najpierw; 1 obok dokładnego, 2 gdy dokładnego brak)."""
+    from django.db.models.functions import Length
+
     from corpus.translit import canonical_translit
 
     words = re.findall(
         r"[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻżĀāĒēĪīŌōŪūḤḥŠšṢṣṬṭ'’ʾʿ.-]{3,}", question
     )
     seen: set[str] = set()
+    ids: set[int] = set()
     out: list[Lexeme] = []
     for w in words:
         key = canonical_translit(w)
         if len(key) < 3 or key in _TRANSLIT_STOP or key in seen:
             continue
         seen.add(key)
-        for lx in Lexeme.objects.filter(translit_fold=key).order_by("strong")[:2]:
+        found = list(Lexeme.objects.filter(translit_fold=key).order_by("strong")[:2])
+        stem = translit_stem(key)
+        if stem:
+            found += list(
+                Lexeme.objects.filter(translit_fold__startswith=stem)
+                .exclude(id__in=[lx.id for lx in found])
+                .annotate(n=Length("translit_fold"))
+                .order_by("n", "strong")[: 1 if found else 2]
+            )
+        for lx in found:
+            if lx.id in ids:
+                continue
+            ids.add(lx.id)
             out.append(lx)
             if len(out) >= limit:
                 return out
@@ -355,6 +388,20 @@ def lexeme_verses_for_question(
     return out
 
 
+def book_legend(refs) -> str:
+    """„Hi = Księga Hioba; Prz = Księga Przysłów” dla skrótów z sigli w promptcie. Bez tego model
+    rozwija skróty sam i potrafi zmyślić księgę (np. „Hi” -> „Księga Hexechausa”)."""
+    from corpus.books import lookup
+
+    names: dict[str, str] = {}
+    for ref in refs:
+        m = re.match(r"\s*((?:[1-4]\s?)?[^\d\s,]+)", ref or "")
+        b = lookup(m.group(1)) if m else None
+        if b and b.abbr not in names:
+            names[b.abbr] = b.name_pl
+    return "; ".join(f"{a} = {n}" for a, n in names.items())
+
+
 def build_messages(
     question: str,
     chunks: list[ChunkHit],
@@ -379,6 +426,16 @@ def build_messages(
         src_lines.append(f"{head}\n{h.text}")
     verse_lines = [f"{v.ref} ({v.work}): {v.text}" for v in verses]
     lex_lines = lexicon_lines(question, verses, access=access)
+    legend = book_legend(
+        [v.ref for v in verses]
+        + [r["ref"] for r in related or []]
+        + [
+            part
+            for line in lex_lines
+            for m in re.finditer(r"najczęściej: ([^\]]+)\]", line)
+            for part in m.group(1).split(", ")
+        ]
+    )
     user = (
         f"PYTANIE:\n{question}\n\n"
         f"ŹRÓDŁA (literatura):\n"
@@ -386,6 +443,7 @@ def build_messages(
         + "\n\n"
         "WERSETY (tekst biblijny z korpusu):\n"
         + ("\n".join(verse_lines) if verse_lines else "(brak)")
+        + (f"\n(Skróty ksiąg: {legend})" if legend else "")
         + (
             "\n\nLEKSYKON (STEPBible, glosy angielskie — pomocniczo do terminów):\n"
             + "\n".join(lex_lines)

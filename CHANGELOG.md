@@ -6,6 +6,11 @@
   `EMBEDDINGS_TIMEOUT`, domyślnie 300 s zamiast stałych 120 s). Na 2 rdzeniach jeden fragment
   to ~5 s, więc partia 32 nie mieściła się w starym limicie i ingestia 400-stronicowej monografii
   przerywała się po zapisaniu chunków, przed indeksem.
+- Leksykon w pytaniu: dopasowanie transliteracji także po rdzeniu (≥ 6 znaków, bez końcówki
+  -os/-on/…/polskiej fleksji). „Tartar” (brak dokładnego hasła) dawał odmowę, a „Tartaros”
+  pomijał ταρταρόω — jedyne wystąpienie w NT (2 P 2,4); teraz oba hasła trafiają do promptu.
+- Prompt: legenda skrótów ksiąg z sigli wersetów i leksykonu („Hi = Księga Hioba”) — model
+  rozwijał „Hi” w zmyśloną „Księgę Hexechausa”.
 - Korpus: M. Majewski, „Pięcioksiąg odczytany na nowo” (WN UPJPII 2018, CC BY 4.0) — PDF
   z platformy wydawnictwa uzupełniony w manifeście OpenAlex.
 

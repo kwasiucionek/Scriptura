@@ -235,6 +235,9 @@ RAG_THINK = env(
 
 # --- Embeddingi: "ollama" (lokalnie / OLLAMA_BASE_URL) | "tei" (serwer TEI: lokalny lub HF Inference Endpoint) ---
 EMBEDDINGS_BACKEND = env("EMBEDDINGS_BACKEND", "ollama")
+# osobny adres Ollamy tylko dla embeddingów (np. GPU na laptopie przez tunel SSH przy dużej ingestii);
+# pusty = OLLAMA_BASE_URL. Ustawiać w środowisku procesu ingestii, nie w .env strony.
+EMBEDDINGS_BASE_URL = env("EMBEDDINGS_BASE_URL", "") or OLLAMA_BASE_URL
 EMBEDDINGS_BATCH = env("EMBEDDINGS_BATCH", 32, int)  # tekstów na jedno żądanie
 EMBEDDINGS_TIMEOUT = env(
     "EMBEDDINGS_TIMEOUT", 300, int

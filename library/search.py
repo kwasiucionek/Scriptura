@@ -191,6 +191,25 @@ def delete_document_from_index(document: Document, index: str | None = None) -> 
         )
 
 
+def indexed_counts(index: str | None = None) -> dict[int, int]:
+    """Liczba chunków w indeksie dla każdego dokumentu (agregacja po document_id)."""
+    from corpus.search.client import get_client, index_name
+
+    name = index or index_name("chunks")
+    client = get_client()
+    if not client.indices.exists(index=name):
+        return {}
+    body = {
+        "size": 0,
+        "aggs": {"docs": {"terms": {"field": "document_id", "size": 65535}}},
+    }
+    res = client.search(index=name, body=body)
+    return {
+        int(b["key"]): int(b["doc_count"])
+        for b in res["aggregations"]["docs"]["buckets"]
+    }
+
+
 def fetch_vectors(
     index: str, document_ids: list[int] | None = None
 ) -> dict[str, list[float]]:

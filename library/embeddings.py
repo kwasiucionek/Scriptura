@@ -1,6 +1,6 @@
 """Embeddingi: Ollama (/api/embed) lub serwer TEI (/embed) — lokalny albo HF Inference Endpoint.
 
-EMBEDDINGS_BACKEND=ollama  -> OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL (keep_alive 24h)
+EMBEDDINGS_BACKEND=ollama  -> EMBEDDINGS_BASE_URL (domyślnie OLLAMA_BASE_URL), OLLAMA_EMBED_MODEL (keep_alive 24h)
 EMBEDDINGS_BACKEND=tei     -> TEI_EMBED_URL (+ TEI_TOKEN dla endpointów HF), model wybrany po stronie serwera
 Prefiks zapytania (EMBEDDING_QUERY_PREFIX) doklejany tak samo w obu backendach.
 Partie: EMBEDDINGS_BATCH tekstów na żądanie, EMBEDDINGS_TIMEOUT sekund na partię — na CPU
@@ -51,7 +51,7 @@ def embed(
             )
         else:
             data = _post(
-                f"{settings.OLLAMA_BASE_URL}/api/embed",
+                f"{settings.EMBEDDINGS_BASE_URL.rstrip('/')}/api/embed",
                 {
                     "model": model or settings.OLLAMA_EMBED_MODEL,
                     "input": batch,

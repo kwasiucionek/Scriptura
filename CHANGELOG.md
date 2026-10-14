@@ -20,6 +20,10 @@
   (translate_chunks, translate_ane, translate_patristics, recompute_sigla), padały z „database is locked”,
   gdy w tym czasie zapisała strona (SQLITE_BUSY_SNAPSHOT — timeout nie pomaga). Teraz `library.batching.in_batches`:
   lista kluczy, partie wczytane w całości, zapis przy zamkniętym odczycie.
+- Duża ingestia z wektorami na zewnętrznym GPU: `EMBEDDINGS_BASE_URL` (osobny adres Ollamy tylko dla
+  embeddingów), `reindex_chunks --missing` (dokumenty niepełne w indeksie; wznawialne),
+  `ingest_manifest --delay` (przerwa między pobraniami, domyślnie 1 s) i `deploy/bulk-ingest.sh`
+  (ingest → translate → embed przez tunel SSH do laptopa).
 - Korpus: M. Majewski, „Pięcioksiąg odczytany na nowo” (WN UPJPII 2018, CC BY 4.0) — PDF
   z platformy wydawnictwa uzupełniony w manifeście OpenAlex.
 

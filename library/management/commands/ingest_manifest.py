@@ -14,6 +14,7 @@ Plik bez nagłówka %PDF- jest odrzucany.
 """
 
 import re
+import time
 import unicodedata
 import urllib.parse
 import urllib.request
@@ -102,6 +103,12 @@ class Command(BaseCommand):
         )
         parser.add_argument("--dry-run", action="store_true")
         parser.add_argument("--no-index", action="store_true")
+        parser.add_argument(
+            "--delay",
+            type=float,
+            default=1.0,
+            help="przerwa (s) między pobraniami — repozytoria czasopism blokują serie żądań",
+        )
 
     def handle(self, *args, **o):
         entries = [
@@ -113,7 +120,8 @@ class Command(BaseCommand):
         files_dir: Path = settings.DATA_DIR / "library"
         files_dir.mkdir(parents=True, exist_ok=True)
         done = skipped = 0
-        for e in entries:
+        downloaded = False
+        for n, e in enumerate(entries, start=1):
             if Document.objects.filter(
                 source_path__contains=e.source_id
             ).exists() or _title_exists(e.title):
@@ -130,10 +138,15 @@ class Command(BaseCommand):
                     continue
             else:
                 dest = files_dir / f"{e.source}-{_slug(e.source_id)}.pdf"
-                self.stdout.write(f"  {e.title[:70]}  <- {e.pdf_url}")
+                self.stdout.write(
+                    f"  [{n}/{len(entries)}] {e.title[:70]}  <- {e.pdf_url}"
+                )
             if o["dry_run"]:
                 continue
             if not e.local_file and not dest.exists():
+                if downloaded and o["delay"] > 0:
+                    time.sleep(o["delay"])
+                downloaded = True
                 try:
                     ok = download_pdf(e.pdf_url, dest)
                 except (

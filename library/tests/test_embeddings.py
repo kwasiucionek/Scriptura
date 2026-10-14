@@ -8,7 +8,11 @@ def test_embed_batches_and_timeout(monkeypatch, settings):
     settings.EMBEDDINGS_BATCH = 2
     settings.EMBEDDINGS_TIMEOUT = 777
     settings.EMBEDDING_QUERY_PREFIX = "query: "
+    settings.EMBEDDINGS_BASE_URL = (
+        "http://127.0.0.1:11435/"  # np. GPU laptopa przez tunel SSH
+    )
     calls = []
+    urls = []
 
     class Resp:
         def __init__(self, n):
@@ -24,6 +28,7 @@ def test_embed_batches_and_timeout(monkeypatch, settings):
         import json
 
         body = json.loads(req.data)
+        urls.append(req.full_url)
         calls.append((body["input"], timeout))
         return Resp(len(body["input"]))
 
@@ -35,6 +40,7 @@ def test_embed_batches_and_timeout(monkeypatch, settings):
     assert len(out) == 5
     assert [len(c[0]) for c in calls] == [2, 2, 1]
     assert {c[1] for c in calls} == {777}
+    assert set(urls) == {"http://127.0.0.1:11435/api/embed"}
     calls.clear()
     embeddings.embed(["pytanie"], is_query=True)
     assert calls[0][0] == ["query: pytanie"]

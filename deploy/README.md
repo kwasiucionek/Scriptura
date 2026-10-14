@@ -90,6 +90,13 @@ Geografia (niezależna od bazy z komputera, ok. 2 s + tłumaczenie nazw modelem 
 Indeksy: `index_search --recreate` (wersety, bez wektorów, ~2 min) i `reindex_chunks --recreate --vectors-file /cytrus/scriptura/data/vectors.jsonl.gz`
 (wektory z pliku — bez liczenia; bez pliku 5 tys. chunków na 2 vCPU to ~1,5 h). ANE: `index_ane --recreate --vectors-file …`.
 
+Duża ingestia (całe czasopisma: `harvest openalex --journal-id S… --only-oa` → `curate_manifest … --apply`)
+idzie skryptem `deploy/bulk-ingest.sh` w trzech etapach: `ingest` (PDF → chunki w bazie, bez indeksu;
+`--delay` 1 s między pobraniami), `translate` (chunki nie-pl, model w chmurze) i `embed` (wektory na GPU
+laptopa przez tunel SSH `ssh -p 10141 -N -R 127.0.0.1:11435:127.0.0.1:11434 root@steve141.mikrus.xyz`,
+potem `reindex_chunks --missing`). Na 2 vCPU serwera ten sam etap trwałby dni i spowalniał stronę.
+`EMBEDDINGS_BASE_URL` ustawia skrypt tylko dla tego procesu — strona dalej liczy wektory pytań lokalnie.
+
 ## 4. systemd + nginx
 ```bash
 cp deploy/scriptura-web.service deploy/scriptura-update.service deploy/scriptura-update.timer /etc/systemd/system/

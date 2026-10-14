@@ -16,6 +16,10 @@
   odsiewa teksty niebiblijne (dogmatyka, prawo kanoniczne, pastoralna…), nie imienników.
 - OpenAlex: kursor za pierwszą stroną wymaga teraz klucza API (HTTP 401). Bez `OPENALEX_API_KEY`
   harvester stronicuje numerami stron (do 10 tys. wyników); z kluczem — kursorem.
+- SQLite (WAL): komendy, które czytały `qs.iterator()` i zapisywały w tej samej pętli
+  (translate_chunks, translate_ane, translate_patristics, recompute_sigla), padały z „database is locked”,
+  gdy w tym czasie zapisała strona (SQLITE_BUSY_SNAPSHOT — timeout nie pomaga). Teraz `library.batching.in_batches`:
+  lista kluczy, partie wczytane w całości, zapis przy zamkniętym odczycie.
 - Korpus: M. Majewski, „Pięcioksiąg odczytany na nowo” (WN UPJPII 2018, CC BY 4.0) — PDF
   z platformy wydawnictwa uzupełniony w manifeście OpenAlex.
 

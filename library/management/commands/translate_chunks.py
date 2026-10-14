@@ -19,6 +19,7 @@ import urllib.request
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from library.batching import in_batches
 from library.models import Chunk
 
 LANG_NAMES = {
@@ -93,12 +94,11 @@ class Command(BaseCommand):
         if not o["force"]:
             qs = qs.filter(text_pl="")
         qs = qs.order_by("document_id", "order")
-        if o["limit"]:
-            qs = qs[: o["limit"]]
-        total = qs.count()
+        total = min(qs.count(), o["limit"]) if o["limit"] else qs.count()
         self.stdout.write(f"{total} chunków do przetłumaczenia modelem {o['model']}")
         done, t0 = 0, time.monotonic()
-        for ch in qs.iterator(chunk_size=50):
+        # bez otwartego kursora w czasie zapisów (SQLite WAL: „database is locked”) — patrz library.batching
+        for ch in in_batches(qs, 50, o["limit"]):
             try:
                 ch.text_pl = translate(
                     ch.text,

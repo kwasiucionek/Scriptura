@@ -7,6 +7,7 @@ Potem: reindex_chunks --recreate (indeks trzyma kopię sigli).
 
 from django.core.management.base import BaseCommand
 
+from library.batching import in_batches
 from library.ingest import sigla_for
 from library.models import Chunk
 
@@ -23,7 +24,7 @@ class Command(BaseCommand):
             qs = qs.filter(document_id__in=o["documents"])
         changed = 0
         batch: list[Chunk] = []
-        for ch in qs.iterator(chunk_size=500):
+        for ch in in_batches(qs, 500):
             new = sigla_for(ch.text)
             if new != ch.sigla:
                 ch.sigla = new

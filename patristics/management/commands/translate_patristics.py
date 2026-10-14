@@ -12,6 +12,7 @@ import time
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from library.batching import in_batches
 from library.management.commands.translate_chunks import translate
 from patristics.models import PatPassage
 
@@ -34,7 +35,7 @@ class Command(BaseCommand):
             qs = qs.filter(text_pl="")
         total, done, t0 = qs.count(), 0, time.monotonic()
         self.stdout.write(f"{total} pasaży do przetłumaczenia modelem {o['model']}")
-        for p in qs.iterator(chunk_size=50):
+        for p in in_batches(qs, 50):
             try:
                 p.text_pl = translate(
                     p.text_en,

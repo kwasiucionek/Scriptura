@@ -27,7 +27,7 @@ case "$stage" in
     ;;
   translate)
     echo "$(date +%T) przekład chunków obcojęzycznych"
-    $PY manage.py translate_chunks
+    $PY manage.py translate_chunks --workers "${TRANSLATE_WORKERS:-4}"
     ;;
   embed)
     curl -fsS -m 10 "$TUNNEL/api/tags" >/dev/null || {

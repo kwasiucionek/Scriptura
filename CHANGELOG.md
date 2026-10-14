@@ -24,6 +24,8 @@
   embeddingów), `reindex_chunks --missing` (dokumenty niepełne w indeksie; wznawialne),
   `ingest_manifest --delay` (przerwa między pobraniami, domyślnie 1 s) i `deploy/bulk-ingest.sh`
   (ingest → translate → embed przez tunel SSH do laptopa).
+- `translate_chunks --workers N`: równoległe żądania do modelu w chmurze (zapis w głównym wątku);
+  `bulk-ingest.sh translate` używa 4 (`TRANSLATE_WORKERS`).
 - Korpus: M. Majewski, „Pięcioksiąg odczytany na nowo” (WN UPJPII 2018, CC BY 4.0) — PDF
   z platformy wydawnictwa uzupełniony w manifeście OpenAlex.
 

@@ -15,6 +15,7 @@ ogólnych (np. gemma4:31b-cloud) prompt dostaje dopisek o zachowaniu sigli i tra
 import json
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -84,6 +85,12 @@ class Command(BaseCommand):
             "--force", action="store_true", help="tłumacz także chunki z text_pl"
         )
         parser.add_argument("--limit", type=int, default=0)
+        parser.add_argument(
+            "--workers",
+            type=int,
+            default=1,
+            help="równoległe żądania do modelu (model w chmurze); zapis do bazy zawsze w głównym wątku",
+        )
 
     def handle(self, *args, **o):
         qs = Chunk.objects.exclude(document__language__startswith="pl").select_related(
@@ -97,26 +104,46 @@ class Command(BaseCommand):
         total = min(qs.count(), o["limit"]) if o["limit"] else qs.count()
         self.stdout.write(f"{total} chunków do przetłumaczenia modelem {o['model']}")
         done, t0 = 0, time.monotonic()
-        # bez otwartego kursora w czasie zapisów (SQLite WAL: „database is locked”) — patrz library.batching
-        for ch in in_batches(qs, 50, o["limit"]):
+        workers = max(1, o["workers"])
+
+        def _one(ch):  # wątek: tylko żądanie do modelu, bez dostępu do bazy
             try:
-                ch.text_pl = translate(
+                text = translate(
                     ch.text,
                     ch.document.language,
                     o["model"],
                     o["base_url"],
                     settings.OLLAMA_API_KEY,
                 )
+                return ch, text, None
             except Exception as exc:
-                self.stderr.write(f"  {ch.document_id}:{ch.order} błąd: {exc}")
-                continue
-            ch.save(update_fields=["text_pl"])
-            done += 1
-            if done % 10 == 0:
-                rate = (time.monotonic() - t0) / done
-                self.stdout.write(
-                    f"  {done}/{total}  ~{rate:.1f} s/chunk, zostało ~{int(rate * (total - done) / 60)} min"
-                )
+                return ch, None, exc
+
+        def _flush(pool, batch) -> int:
+            n = 0
+            for ch, text, exc in pool.map(_one, batch):
+                if exc is not None:
+                    self.stderr.write(f"  {ch.document_id}:{ch.order} błąd: {exc}")
+                    continue
+                ch.text_pl = text
+                ch.save(update_fields=["text_pl"])
+                n += 1
+            return n
+
+        # bez otwartego kursora w czasie zapisów (SQLite WAL: „database is locked”) — patrz library.batching
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            batch: list[Chunk] = []
+            for ch in in_batches(qs, 50, o["limit"]):
+                batch.append(ch)
+                if len(batch) >= max(10, workers * 4):
+                    done += _flush(pool, batch)
+                    batch = []
+                    rate = (time.monotonic() - t0) / max(done, 1)
+                    self.stdout.write(
+                        f"  {done}/{total}  ~{rate:.1f} s/chunk, zostało ~{int(rate * (total - done) / 60)} min"
+                    )
+            if batch:
+                done += _flush(pool, batch)
         from library.search import reset_language_cache
 
         reset_language_cache()

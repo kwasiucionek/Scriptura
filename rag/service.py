@@ -232,6 +232,16 @@ _TRANSLIT_STOP = {
     "pana",
     "kosciol",
     "kosciola",
+    # polskie słowa funkcyjne równe transliteracji hebrajskiej (kim = ki im, ani = a.ni, sam = sam…)
+    "kim",
+    "tam",
+    "ani",
+    "nam",
+    "ona",
+    "ono",
+    "oni",
+    "sam",
+    "sama",
 }  # słowa polskie / nazwy, które nie są terminem do leksykonu (po canonical_translit)
 
 

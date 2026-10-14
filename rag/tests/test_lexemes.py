@@ -20,6 +20,22 @@ def tartaros_db():
     _lx("G21215", "Ταρταρόπαις", "Tartaropais", "tartaropais", "child of Tartarus")
     _lx("G3056", "λόγος", "logos", "logos", "word")
     _lx("G3058", "λοιδορέω", "loidoreō", "loidoreo", "to revile")
+    Lexeme.objects.create(
+        strong="H3588b",
+        language="hbo",
+        lemma="כִּי אִם",
+        lemma_norm="כי אם",
+        transliteration="ki im",
+        translit_fold="kim",
+    )
+    Lexeme.objects.create(
+        strong="H5799",
+        language="hbo",
+        lemma="עֲזָאזֵל",
+        lemma_norm="עזאזל",
+        transliteration="a.za.zel",
+        translit_fold="azazel",
+    )
 
 
 def test_translit_stem():
@@ -68,3 +84,13 @@ def test_prompt_contains_book_legend(monkeypatch):
     verses = [service.VerseSource(ref="Hi 40,20", work="LXX", text="…ἐν τῷ ταρτάρῳ…")]
     user = service.build_messages("Czym jest Tartaros?", [], verses)[1]["content"]
     assert "(Skróty ksiąg: Hi = Księga Hioba)" in user
+
+
+@pytest.mark.django_db
+def test_polish_function_words_are_not_terms(tartaros_db):
+    # „Kim” = hebr. ki im — zajmowało miejsca prawdziwych terminów
+    got = [
+        lx.strong
+        for lx in service.lexemes_from_transliteration("Kim był Azazel w Kpł 16?")
+    ]
+    assert got == ["H5799"]

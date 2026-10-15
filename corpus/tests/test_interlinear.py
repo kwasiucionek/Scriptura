@@ -341,3 +341,80 @@ def test_gloss_tokens_command(monkeypatch):
         "początku",
         "ten",
     ]
+
+
+# --- limit modelu w chmurze ------------------------------------------------------------------
+
+
+def test_chat_raises_usage_limit_without_retries(monkeypatch):
+    import io
+    import urllib.error
+
+    calls = []
+
+    def fake_urlopen(req, timeout=0):
+        calls.append(1)
+        raise urllib.error.HTTPError(
+            req.full_url,
+            429,
+            "Too Many Requests",
+            {},
+            io.BytesIO(b'{"error":"you (x) have reached your session usage limit"}'),
+        )
+
+    monkeypatch.setattr(interlinear.urllib.request, "urlopen", fake_urlopen)
+    with pytest.raises(interlinear.UsageLimitError):
+        interlinear.chat("s", "u", "m", "http://x")
+    assert len(calls) == 1
+
+
+def test_gloss_verses_propagates_usage_limit(monkeypatch):
+    def fake(*a, **k):
+        raise interlinear.UsageLimitError("limit")
+
+    monkeypatch.setattr(interlinear, "request_glosses", fake)
+    with pytest.raises(interlinear.UsageLimitError):
+        interlinear.gloss_verses([_verse()], "m", "http://x")
+
+
+@pytest.mark.django_db
+def test_gloss_tokens_stops_on_usage_limit(monkeypatch):
+    from django.core.management.base import CommandError
+
+    gnt = Work.objects.create(
+        code="SBLGNT", name="GNT", language="grc", kind=WorkKind.ORIGINAL
+    )
+    import_records(
+        gnt,
+        iter(
+            [
+                VerseRecord("John", 1, v, "λόγος", [TokenRecord("λόγος")])
+                for v in range(1, 6)
+            ]
+        ),
+    )
+    calls = []
+
+    def fake(verses, model, base_url, api_key=""):
+        calls.append(1)
+        raise interlinear.UsageLimitError("session usage limit")
+
+    monkeypatch.setattr(interlinear, "request_glosses", fake)
+    with pytest.raises(CommandError, match="limit"):
+        call_command(
+            "gloss_tokens", "--works", "SBLGNT", "--workers", "1", "--max-words", "1"
+        )
+    assert len(calls) <= 2  # bez dalszych paczek po pierwszym 429
+    assert Token.objects.filter(gloss_pl="").count() == 5
+
+
+def test_llm_user_message_hides_details():
+    from library.llm import LLMHTTPError, user_message
+
+    msg = user_message(
+        LLMHTTPError(
+            "Ollama", 429, "you (kwasiucionek) have reached your session usage limit"
+        )
+    )
+    assert "limit" in msg and "kwasiucionek" not in msg
+    assert "HTTP 500" in user_message(LLMHTTPError("Ollama", 500, "x"))

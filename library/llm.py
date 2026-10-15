@@ -64,6 +64,29 @@ class LLMHTTPError(RuntimeError):
         super().__init__(f"{backend} HTTP {code}: {detail}")
 
 
+def is_usage_limit(exc: BaseException) -> bool:
+    """429 z wyczerpanym limitem konta (Ollama Cloud: „reached your session/weekly usage limit”)."""
+    return isinstance(exc, LLMHTTPError) and exc.code == 429
+
+
+def user_message(exc: BaseException) -> str:
+    """Komunikat dla czytelnika bez szczegółów technicznych (konto, identyfikatory żądań)."""
+    if is_usage_limit(exc):
+        return (
+            "Asystent jest chwilowo niedostępny: wyczerpał się limit modelu językowego "
+            "w chmurze. Spróbuj ponownie później — źródła powyżej, tekst Biblii, interlinia "
+            "i słownik działają bez zmian."
+        )
+    if isinstance(exc, LLMHTTPError):
+        return (
+            f"Model językowy ({exc.backend}) zwrócił błąd (HTTP {exc.code}). "
+            "Spróbuj ponownie za chwilę."
+        )
+    if isinstance(exc, LLMStreamError):  # opis bez danych konta: format strumienia
+        return f"Model językowy przerwał odpowiedź ({exc}). Spróbuj ponownie za chwilę."
+    return "Model językowy nie odpowiedział. Spróbuj ponownie za chwilę."
+
+
 def enabled() -> bool:
     """Czy jest prawdziwy model (nie echo)."""
     return settings.LLM_BACKEND in ("ollama", "openai")

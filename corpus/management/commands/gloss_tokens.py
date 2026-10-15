@@ -13,7 +13,7 @@ import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from corpus import interlinear
@@ -84,17 +84,25 @@ class Command(BaseCommand):
                 running[pool.submit(self._work, batch, o, api_key)] = batch
                 if len(running) >= workers * 2:
                     break
+            limit_hit = ""
             while running:
                 finished, _ = wait(running, return_when=FIRST_COMPLETED)
                 for fut in finished:
                     batch = running.pop(fut)
-                    glosses, failed = fut.result()
+                    try:
+                        glosses, failed = fut.result()
+                    except interlinear.UsageLimitError as exc:
+                        limit_hit = str(exc)
+                        continue
                     self._save(glosses)
                     failed_all += failed
                     done_words += sum(len(v.words) for v in batch)
-                    nxt = next(queue, None)
+                    nxt = None if limit_hit else next(queue, None)
                     if nxt is not None:
                         running[pool.submit(self._work, nxt, o, api_key)] = nxt
+                if limit_hit:  # nie zjadamy dalej limitu, z którego korzysta asystent
+                    # zostają tylko paczki już w toku (cancel() zwraca False)
+                    running = {f: b for f, b in running.items() if not f.cancel()}
                 elapsed = time.monotonic() - t0
                 rate = done_words / elapsed if elapsed else 0
                 eta = (total_words - done_words) / rate / 60 if rate else 0
@@ -108,6 +116,11 @@ class Command(BaseCommand):
                 self.style.WARNING(
                     f"bez glos ({len(failed_all)}): {' '.join(failed_all[:50])}"
                 )
+            )
+        if limit_hit:
+            raise CommandError(
+                "zatrzymano: wyczerpany limit modelu w chmurze — uruchom ponownie później "
+                f"(komenda wznowi od brakujących wersetów). {limit_hit[:200]}"
             )
         self.stdout.write(self.style.SUCCESS("gotowe"))
 

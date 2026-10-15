@@ -11,10 +11,10 @@ jest opisana jako przekład roboczy; definicje STEP i Stronga zostają w orygina
 
 import json
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from corpus import interlinear
@@ -111,6 +111,8 @@ class Command(BaseCommand):
                         ),
                         items,
                     )
+                except interlinear.UsageLimitError:
+                    raise
                 except Exception:  # noqa: BLE001
                     return {}
 
@@ -120,9 +122,20 @@ class Command(BaseCommand):
                 got.update(ask(rest))
             return chunk, got
 
+        limit_hit = ""
         with ThreadPoolExecutor(max(1, o["workers"])) as pool:
-            for fut in as_completed([pool.submit(_one, c) for c in chunks]):
-                chunk, got = fut.result()
+            futures = [pool.submit(_one, c) for c in chunks]
+            for fut in as_completed(futures):
+                try:
+                    chunk, got = fut.result()
+                except interlinear.UsageLimitError as exc:
+                    # nie zjadamy dalej limitu, z którego korzysta asystent
+                    limit_hit = str(exc)
+                    for f in futures:
+                        f.cancel()
+                    continue
+                except CancelledError:
+                    continue
                 for e in chunk:
                     if e.strong in got:
                         e.gloss_pl = got[e.strong]
@@ -140,5 +153,10 @@ class Command(BaseCommand):
         if missing:
             self.stdout.write(
                 self.style.WARNING("bez wyniku: " + " ".join(missing[:80]))
+            )
+        if limit_hit:
+            raise CommandError(
+                "zatrzymano: wyczerpany limit modelu w chmurze — uruchom ponownie później. "
+                + limit_hit[:200]
             )
         self.stdout.write(self.style.SUCCESS("gotowe"))

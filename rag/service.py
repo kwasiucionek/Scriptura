@@ -874,7 +874,7 @@ def ask(
                     yield "delta", {"text": rec.content}
         except Exception as exc:
             log.exception("llm")
-            yield "error", {"detail": f"Błąd modelu: {exc}"}
+            yield "error", {"detail": llm.user_message(exc)}
             return
         result.answer = "".join(parts).strip()
         result.refused = bool(

@@ -99,6 +99,11 @@ def parse_response(text: str, verses: list[VerseItem]) -> dict[int, dict[int, st
     return out
 
 
+class UsageLimitError(RuntimeError):
+    """Wyczerpany limit konta modelu w chmurze (HTTP 429 „usage limit”). Zadanie wsadowe ma się
+    zatrzymać, a nie ponawiać: ten sam limit obsługuje asystenta na stronie."""
+
+
 def chat(
     system: str,
     user: str,
@@ -133,6 +138,10 @@ def chat(
             with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
                 return json.load(resp)["message"]["content"]
         except urllib.error.HTTPError as exc:
+            if exc.code == 429:
+                detail = exc.read().decode("utf-8", "replace")[:300]
+                if "limit" in detail.lower():
+                    raise UsageLimitError(detail) from exc
             if exc.code not in (429, 500, 502, 503, 504) or attempt == attempts - 1:
                 raise
         except (urllib.error.URLError, TimeoutError, ConnectionError):
@@ -177,6 +186,8 @@ def gloss_verses(
         result = parse_response(
             request_glosses(verses, model, base_url, api_key), verses
         )
+    except UsageLimitError:
+        raise
     except Exception:  # noqa: BLE001 — paczka przechodzi w tryb pojedynczy
         result = {}
     failed = []
@@ -188,6 +199,8 @@ def gloss_verses(
                 one = parse_response(
                     request_glosses([v], model, base_url, api_key), [v]
                 )
+            except UsageLimitError:
+                raise
             except Exception:  # noqa: BLE001
                 one = {}
             if one:

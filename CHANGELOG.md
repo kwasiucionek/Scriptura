@@ -1,5 +1,14 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-15 — limit modelu w chmurze
+
+- Incydent: przebieg `gloss_tokens` (dwa procesy po 4 wątki) wyczerpał sesyjny limit konta Ollama
+  Cloud; od ok. 19:33 asystent zwracał „Błąd modelu: Ollama HTTP 429 … usage limit” (z nazwą konta).
+- Asystent: komunikat dla czytelnika bez szczegółów technicznych (`llm.user_message`; limit ->
+  „chwilowo niedostępny … źródła, tekst, interlinia i słownik działają”); szczegóły tylko w logu.
+- `gloss_tokens` i `translate_lexicon`: 429 z „usage limit” -> `UsageLimitError` bez ponawiania;
+  komenda kończy paczki w toku, nie wysyła nowych i wychodzi z błędem (wznowienie od braków).
+
 ## 2026-10-15 — prawa do przekładów przy cytatach
 
 - `Work.attribution` (migracja z notami dla BG1632, WLC, SBLGNT, LXX): nota o prawach pokazywana

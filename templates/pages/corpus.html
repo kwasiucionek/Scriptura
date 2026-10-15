@@ -8,6 +8,7 @@
 
 <div class="cards">
   <div class="card"><span class="num">{{ s.docs_total }}</span><h3>publikacji w literaturze</h3><p>{{ s.chunks_total }} fragmentów do cytowania{% if s.docs_hidden %} · {{ s.docs_hidden }} pozycji poza Twoim dostępem (bez zgody autora lub demo prywatne){% endif %}</p></div>
+  <div class="card"><span class="num">{{ s.church|length }}</span><h3>dokumentów Kościoła</h3><p>encykliki, dekrety soborów, dokumenty Papieskiej Komisji Biblijnej, wczesne wykazy ksiąg · {{ s.church_chunks }} fragmentów</p></div>
   <div class="card"><span class="num">{{ s.verses }}</span><h3>wersetów</h3><p>{{ s.works|length }} dzieł, {{ s.tokens }} tokenów z lematami i morfologią</p></div>
   <div class="card"><span class="num">{{ s.lexemes }}</span><h3>haseł leksykonu</h3><p>{{ s.lexemes_hbo }} hebrajskich i aramejskich, {{ s.lexemes_grc }} greckich · {{ s.links }} odsyłaczy między wersetami</p></div>
   <div class="card"><span class="num">{{ s.pat_passages }}</span><h3>pasaży Ojców Kościoła</h3><p>{{ s.pat_works_n }} dzieł w {{ s.pat_volumes|length }} tomach, {{ s.pat_refs }} odsyłaczy biblijnych</p></div>
@@ -16,7 +17,11 @@
 </div>
 
 <h2>Literatura</h2>
-<p>Publikacje biblistów: artykuły, monografie, skrypty, recenzje, wpisy i wykłady. Do korpusu publicznego trafiają tylko pozycje z wolną licencją (Creative Commons, open access z prawem do ponownego użycia) albo takie, na które autor wyraził zgodę. Pozostałe — jeśli zostały przygotowane — czekają zamknięte i nie są tu wymieniane z nazwiska.</p>
+<p>Publikacje biblistów: artykuły, monografie, skrypty, recenzje, wpisy i wykłady — z repozytoriów uczelni, całych czasopism w otwartym dostępie (m.in. <em>Verbum Vitae</em>, <em>The Biblical Annals</em>) i stron autorów. Do korpusu publicznego trafiają tylko pozycje z wolną licencją (Creative Commons, open access z prawem do ponownego użycia) albo takie, na które autor wyraził zgodę. Pozostałe — jeśli zostały przygotowane — czekają zamknięte i nie są tu wymieniane z nazwiska. Teksty obcojęzyczne mają polski przekład maszynowy wyłącznie do wyszukiwania; cytowany jest oryginał.</p>
+{% if s.type_rows %}
+<p class="small muted">Wg typu: {% for t in s.type_rows %}{{ t.label }} — {{ t.n }}{% if not forloop.last %} · {% endif %}{% endfor %}.</p>
+{% endif %}
+<details class="more"><summary>Autorzy ({{ s.authors|length }})</summary>
 <table class="stats">
   <tr><th>Autor</th><th>Afiliacja</th><th class="n">Publikacji{% if extended %} (w tym otwartych){% endif %}</th></tr>
   {% for a in s.authors %}
@@ -24,9 +29,15 @@
   {% empty %}
   <tr><td colspan="3" class="muted">Brak publikacji w korpusie.</td></tr>
   {% endfor %}
-</table>
-{% if s.type_rows %}
-<p class="small muted">Wg typu: {% for t in s.type_rows %}{{ t.label }} — {{ t.n }}{% if not forloop.last %} · {% endif %}{% endfor %}.</p>
+</table></details>
+{% if s.journals %}
+<details class="more"><summary>Czasopisma i wydawnictwa ({{ s.journals|length }})</summary>
+<table class="stats">
+  <tr><th>Tytuł</th><th class="n">Publikacji</th></tr>
+  {% for j in s.journals %}
+  <tr><td>{{ j.journal }}</td><td class="n">{{ j.n }}</td></tr>
+  {% endfor %}
+</table></details>
 {% endif %}
 {% if s.recent %}
 <details class="more"><summary>Ostatnio dodane</summary>
@@ -34,6 +45,23 @@
   <tr><th>Tytuł</th><th>Autor</th><th>Rok</th><th>Typ</th><th>Licencja</th></tr>
   {% for d in s.recent %}
   <tr><td>{% if d.url %}<a href="{{ d.url }}" rel="noopener" target="_blank">{{ d.title }}</a>{% else %}{{ d.title }}{% endif %}</td><td>{% for a in d.authors.all %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td class="n">{{ d.year|default:"—" }}</td><td><span class="tag">{{ d.get_doc_type_display }}</span></td><td class="muted small">{{ d.license|default:"—" }}{% if d.access != "open" %} <span class="tag warn">{{ d.get_access_display }}</span>{% endif %}</td></tr>
+  {% endfor %}
+</table></details>
+{% endif %}
+
+<h2>Dokumenty Kościoła</h2>
+<p>Nauczanie Kościoła o Piśmie Świętym — od najstarszych wykazów ksiąg (Kanon Muratoriego, Atanazy, synody afrykańskie) przez dekrety soborów (Trydent, Vaticanum I i II) po encykliki i dokumenty Papieskiej Komisji Biblijnej. W odpowiedziach są oznaczone jako stanowisko Kościoła, odrębne od opinii egzegetów.</p>
+<ul class="small">
+  <li><strong>Teksty z vatican.va</strong> (także skany <em>Acta Apostolicae Sedis</em>) — według ustawy watykańskiej o prawie autorskim z 2011 r. wolno je rozpowszechniać bez celu zarobkowego i bez zmian. Gdy na vatican.va nie ma wersji polskiej, korpus ma oryginał, a odpowiedź i panel źródeł pokazują krótki fragment <em>przekładu roboczego</em> z odsyłaczem do oficjalnego tekstu.</li>
+  <li><strong>Teksty z domeny publicznej</strong> (autor zmarł ponad 70 lat temu: Leon XIII, Pius X, Benedykt XV, Pius XI, sobory, Ojcowie) — pełny polski przekład roboczy z oryginału łacińskiego (albo z XIX‑wiecznego przekładu angielskiego), z linkiem do źródła.</li>
+  <li>Przekład roboczy jest maszynowy i nie zastępuje przekładu oficjalnego — przy cytowaniu w pracy sięgnij do źródła.</li>
+</ul>
+{% if s.church %}
+<details class="more"><summary>Lista dokumentów ({{ s.church|length }})</summary>
+<table class="stats church-docs">
+  <tr><th class="n">Rok</th><th>Dokument</th><th>Autor</th><th>Tekst</th><th>Źródło</th></tr>
+  {% for c in s.church %}
+  <tr><td class="n">{{ c.doc.year|default:"—" }}</td><td>{% if c.doc.url %}<a href="{{ c.doc.url }}" rel="noopener" target="_blank">{{ c.doc.title }}</a>{% else %}{{ c.doc.title }}{% endif %}</td><td>{% for a in c.doc.authors.all %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td><td class="muted small">{{ c.form }}</td><td class="muted small">{{ c.doc.journal|default:"—" }}</td></tr>
   {% endfor %}
 </table></details>
 {% endif %}

@@ -32,7 +32,7 @@
 <h2>3. Czytanie odpowiedzi</h2>
 <p>Przypisy w tekście są klikalne: wybierają źródła tej konkretnej odpowiedzi i prowadzą do fragmentu w panelu <strong>Źródła</strong>. Przycisk <strong>Źródła tej odpowiedzi</strong> pozwala wrócić do jej całego kontekstu, również po odtworzeniu historii:</p>
 <ul>
-  <li><code>[1]</code>, <code>[2]</code>… — literatura: artykuł, monografia, skrypt, wpis, wykład (z minutą nagrania);</li>
+  <li><code>[1]</code>, <code>[2]</code>… — literatura: artykuł, monografia, skrypt, wpis, wykład (z minutą nagrania), a także dokumenty Kościoła (encykliki, dekrety soborów, dokumenty Papieskiej Komisji Biblijnej) — model przedstawia je jako stanowisko Kościoła, osobno od opinii egzegetów i z numerem punktu, np. „Dei Verbum 9”;</li>
   <li><code>[P1]</code>… — Ojcowie Kościoła (przekład maszynowy z angielskiego wydania, oryginał do rozwinięcia);</li>
   <li><code>[A1]</code>… — teksty starożytnego Bliskiego Wschodu, cytowane z tabliczką i linią;</li>
   <li>sigla w odpowiedzi (podkreślone kropkami) otwierają tekst w widoku równoległym.</li>
@@ -55,7 +55,8 @@
 <ul>
   <li>Grupy (<strong>Literatura</strong>, <strong>Wersety</strong>, <strong>Ojcowie Kościoła</strong>, <strong>Teksty ANE</strong>, <strong>Miejsca</strong>, <strong>Powiązane wersety</strong>) są domyślnie zwinięte; stan zwinięcia pamiętany jest między odpowiedziami. Fragmenty z potwierdzonym numerem przypisu mają kolorowy pasek z lewej, także dla list i zakresów przypisów. Potwierdzenie numeru oznacza obecność źródła w kontekście, nie potwierdzenie każdej tezy.</li>
   <li>Każda pozycja ma <strong>„pokaż fragment”</strong> (dokładny tekst, który dostał model) i link <strong>„źródło”</strong> do oryginału: PDF w repozytorium, wpis na stronie, nagranie od właściwej minuty.</li>
-  <li>Znaczki przy pozycji: <span class="tag">popularne</span> (rejestr popularnonaukowy), <span class="tag">wykład</span>, <span class="tag">blog</span>, <span class="tag">recenzja</span>, <span class="tag ok">moje</span> (materiał osobisty).</li>
+  <li>Znaczki przy pozycji: <span class="tag">popularne</span> (rejestr popularnonaukowy), <span class="tag">wykład</span>, <span class="tag">blog</span>, <span class="tag">recenzja</span>, <span class="tag">dokument Kościoła</span>, <span class="tag ok">moje</span> (materiał osobisty).</li>
+  <li>Dokument Kościoła bez wersji polskiej na vatican.va pokazuje fragment <strong>przekładu roboczego</strong> (maszynowego), pod nim rozwijany oryginał i link do oficjalnego tekstu. Przekład roboczy nie zastępuje oficjalnego — w pracy cytuj z oryginału albo z wydania polskiego.</li>
   <li><strong>Eksport cytowań</strong> — BibTeX lub RIS dla pozycji przywołanych w wybranej odpowiedzi — tej, której źródła są aktualnie w panelu. Obejmuje literaturę, Ojców jako rozdziały w tomach ANF/NPNF i teksty ANE; do Zotero, JabRef, EndNote.</li>
   <li><strong>Powiązane wersety</strong> pochodzą z OpenBible (głosy społeczności) — to podpowiedź do dalszej lektury, nie teza systemu.</li>
   <li><strong>Miejsca</strong> — mapa miejsc wymienionych w wersetach pytania albo w samym pytaniu („gdzie leżał Charan”). Pełny znacznik to najbardziej prawdopodobna lokalizacja, puste kółka to pozostali kandydaci; procent przy nazwie to pewność identyfikacji wg źródeł zebranych przez OpenBible (CC BY). Model nie dostaje tych danych i nie wyznacza lokalizacji — mapa jest dla czytelnika. „Otwórz dużą mapę” prowadzi do zakładki <a href="{% url 'places:map' %}">Mapa</a> ze wszystkimi miejscami, wyszukiwarką i wyborem po siglum.</li>

@@ -2,6 +2,11 @@
 
 ## 2026-10-15 — dokumenty Kościoła o Piśmie Świętym
 
+- Strona Korpus: „Literatura” zwinięta — liczby i typy na wierzchu, a autorzy, czasopisma
+  i ostatnio dodane w rozwijanych listach; nowa sekcja „Dokumenty Kościoła” (zasady praw
+  i przekładów roboczych, lista z postacią tekstu i źródłem) i karta z ich liczbą. Dokumenty
+  Kościoła nie wliczają się do literatury ani listy autorów. O projekcie i Instrukcja: warstwa
+  dokumentów Kościoła, zasada krótkich cytatów, znaczek „dokument Kościoła” i przekład roboczy.
 - Harvester dokumentów Kościoła (`library.harvest.vatican`) poza stronami vatican.va: skany AAS
   (PDF, zakres stron, bez żywej paginy), łacińskie Wikiźródła (`?action=render`, kolumny Migne'a
   usuwane), CCEL (sekcja tomu ThML bez przypisów). Wyciąg z dłuższej strony: `start`/`end`

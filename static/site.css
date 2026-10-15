@@ -224,6 +224,12 @@ table.stats th { font-size: 13px; font-family: var(--serif); font-variant-caps: 
 table.stats tr:hover td { background: var(--gold-soft); }
 table.stats tr:last-child td { border-bottom: 0; }
 table.stats td.n, table.stats th.n { text-align: right; font-variant-numeric: tabular-nums; }
+/* Korpus → Dokumenty Kościoła: szeroka kolumna tytułu, wąskie rok i źródło */
+.page table.stats.church-docs th:nth-child(1) { width: 8%; }
+.page table.stats.church-docs th:nth-child(2) { width: 42%; }
+.page table.stats.church-docs th:nth-child(3) { width: 17%; }
+.page table.stats.church-docs th:nth-child(4) { width: 18%; }
+.page table.stats.church-docs th:nth-child(5) { width: 15%; }
 .tag { display: inline-block; max-width: 100%; border-radius: 5px; font-size: 12px; line-height: 1.5; padding: 2px 7px; font-weight: 650; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-soft); vertical-align: middle; }
 .tag.ok { background: var(--ok-soft); color: var(--ok); border-color: var(--ok-soft); }
 .tag.warn { background: var(--warn-soft); color: var(--warn); border-color: var(--warn-soft); }

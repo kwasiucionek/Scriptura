@@ -131,3 +131,46 @@ def test_umami_snippet_only_when_configured(client, settings):
         assert (
             'data-website-id="abc-123"' in body and "cloud.umami.is/script.js" in body
         ), url
+
+
+@pytest.mark.django_db
+def test_corpus_separates_church_documents_from_literature(client):
+    from library.models import Author, Document
+
+    a = Author.objects.create(name="Jan Biblista", slug="jan-biblista")
+    d = Document.objects.create(
+        title="Artykuł", journal="Verbum Vitae", access="open", chunk_count=3
+    )
+    d.authors.add(a)
+    dv = Document.objects.create(
+        title="Dei Verbum",
+        doc_type="church",
+        language="en",
+        access="open",
+        chunk_count=7,
+        journal="vatican.va",
+    )
+    dv.authors.add(
+        Author.objects.create(name="Sobór Watykański II", slug="sobor-wat-ii")
+    )
+    Document.objects.create(
+        title="Providentissimus Deus (przekład roboczy z łaciny)",
+        doc_type="church",
+        language="pl",
+        access="open",
+    )
+    r = client.get(reverse("pages:corpus"))
+    s = r.context["s"]
+    assert s["docs_total"] == 1 and s["chunks_total"] == 3
+    assert [x.name for x in s["authors"]] == [
+        "Jan Biblista"
+    ]  # autorzy dokumentów Kościoła osobno
+    assert s["journals"] == [{"journal": "Verbum Vitae", "n": 1}]
+    forms = {c["doc"].title: c["form"] for c in s["church"]}
+    assert forms["Dei Verbum"] == "tekst angielski + fragmenty przekładu roboczego"
+    assert (
+        forms["Providentissimus Deus (przekład roboczy z łaciny)"]
+        == "pełny przekład roboczy"
+    )
+    html = r.content.decode()
+    assert "<summary>Autorzy (1)</summary>" in html and "Lista dokumentów (2)" in html

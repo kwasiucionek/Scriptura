@@ -12,7 +12,7 @@
 </div>
 
 <h2>Po co to powstało</h2>
-<p>Punktem wyjścia jest polska biblistyka. System zbudowano na otwartych publikacjach biblistów z Papieskiego Wydziału Teologicznego we Wrocławiu i Uniwersytetu Papieskiego Jana Pawła II — tych, które w repozytoriach OPEN i theo‑logos mają wolne licencje (Creative Commons). Wszystko, co takiej licencji nie ma, jest w systemie zamknięte, dopóki autor nie wyrazi zgody. Aktualny skład korpusu i liczby są na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>.</p>
+<p>Punktem wyjścia jest polska biblistyka. System zbudowano na otwartych publikacjach biblistów z Papieskiego Wydziału Teologicznego we Wrocławiu i Uniwersytetu Papieskiego Jana Pawła II — tych, które w repozytoriach OPEN i theo‑logos mają wolne licencje (Creative Commons) — a dalej na całych czasopismach biblijnych w otwartym dostępie i dokumentach Kościoła o Piśmie Świętym. Wszystko, co takiej licencji nie ma, jest w systemie zamknięte, dopóki autor nie wyrazi zgody. Aktualny skład korpusu i liczby są na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>.</p>
 <p>Scriptura jest prototypem badawczym: sprawdza, czy asystent oparty na źródłach może być pomocą w studium biblijnym — dla studenta, katechety, duszpasterza i czytelnika, który chce wiedzieć, <em>kto</em> tak twierdzi i <em>gdzie</em> to napisał.</p>
 
 <h2>Co system ma w środku</h2>
@@ -22,6 +22,7 @@
   <tr><td>Leksykon</td><td>STEPBible (Tyndale House, Cambridge)</td><td>CC BY</td><td>hasła: lemat, transliteracja, glosa, definicja — także dla pytań o słowa zapisane po polsku (<em>hesed</em>, <em>szalom</em>, <em>logos</em>)</td></tr>
   <tr><td>Odsyłacze</td><td>OpenBible.info cross‑references</td><td>CC BY</td><td>„powiązane wersety” dla każdego miejsca</td></tr>
   <tr><td>Literatura</td><td>artykuły, monografie, skrypty, recenzje, wpisy blogowe, wykłady (OPEN, theo‑logos, OpenAlex, strony autorów, YouTube)</td><td>wg pozycji</td><td>cytowanie z numerem i stroną; weryfikacja cytatów; wykłady z linkiem do minuty</td></tr>
+  <tr><td>Dokumenty Kościoła</td><td>encykliki i dokumenty o Piśmie Świętym (od Leona XIII do Benedykta XVI), dekrety soborów, wczesne wykazy ksiąg (vatican.va, <em>Acta Apostolicae Sedis</em>, Wikiźródła, CCEL)</td><td>vatican.va: użytek niekomercyjny; starsze: domena publiczna</td><td>stanowisko Kościoła oddzielone od opinii egzegetów; polski przekład roboczy — pełny przy tekstach z domeny publicznej, przy pozostałych krótkie fragmenty z odsyłaczem do oryginału</td></tr>
   <tr><td>Ojcowie Kościoła</td><td>Ante‑Nicene / Nicene and Post‑Nicene Fathers (CCEL)</td><td>domena publiczna</td><td>„co Ojcowie mówią o tym wersecie” — po odsyłaczach biblijnych w tekście, nie po podobieństwie słów</td></tr>
   <tr><td>Geografia</td><td>OpenBible.info Bible Geocoding Data</td><td>CC BY</td><td>miejsca z wersetów i pytania na mapie, z kandydatami lokalizacji i pewnością identyfikacji — tylko punkty, bez granic i tras</td></tr>
   <tr><td>Starożytny Bliski Wschód</td><td>electronic Babylonian Library (LMU München): Gilgamesz, Enuma Elisz…</td><td>CC BY‑NC‑SA</td><td>teksty porównawcze cytowane z tabliczką i linią</td></tr>
@@ -45,6 +46,7 @@
   <li><strong>Model nie odpowiada z pamięci.</strong> Brak źródeł oznacza jawną odmowę, nie zgadywanie.</li>
   <li><strong>Materiały osobiste są osobiste.</strong> Każdy użytkownik może mieć własne notatki i teksty, widoczne tylko dla siebie — i sam decyduje, czy coś z nich udostępnić.</li>
   <li><strong>Odpowiedź zawsze linkuje do oryginału.</strong> Artykuł w repozytorium, wpis na stronie autora, minuta wykładu.</li>
+  <li><strong>Cytuje krótko.</strong> Dosłownie tylko kilka zdań w cudzysłowie, reszta własnymi słowami; pełnych tekstów system nie odtwarza — odsyła do źródła.</li>
 </ul>
 
 <h2>Technika</h2>

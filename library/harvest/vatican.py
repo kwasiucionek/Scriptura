@@ -107,20 +107,22 @@ def _is_content(attrs: dict) -> bool:
 
 
 class _Regions(_Text):
-    """Tekst (z nagłówkami i akapitami jak w blog._Text) osobno dla każdego regionu treści."""
+    """Tekst (z nagłówkami i akapitami jak w blog._Text) osobno dla każdego regionu treści.
+    Region = element `tag` spełniający `match` (domyślnie div.vaticanrichtext / div#corpo)."""
 
-    def __init__(self):
+    def __init__(self, tag: str = "div", match=_is_content):
         super().__init__()
         self.outside: list[str] = []
         self.parts = self.outside
         self.regions: list[list[str]] = []
-        self.depth = 0  # zagnieżdżenie <div> w bieżącym regionie; 0 = poza regionem
+        self.tag, self.match = tag, match
+        self.depth = 0  # zagnieżdżenie `tag` w bieżącym regionie; 0 = poza regionem
 
     def handle_starttag(self, tag, attrs):
-        if tag == "div":
+        if tag == self.tag:
             if self.depth:
                 self.depth += 1
-            elif _is_content(dict(attrs)):
+            elif self.match(dict(attrs)):
                 self.depth = 1
                 self.regions.append([])
                 self.parts = self.regions[-1]
@@ -129,7 +131,7 @@ class _Regions(_Text):
             super().handle_starttag(tag, attrs)
 
     def handle_endtag(self, tag):
-        if self.depth and tag == "div":
+        if self.depth and tag == self.tag:
             self.depth -= 1
             if not self.depth:
                 self.parts = self.outside
@@ -152,12 +154,17 @@ class _Regions(_Text):
 
 def page_text(raw: str) -> str:
     """Treść dokumentu ze strony vatican.va: najdłuższy region, bez paska języków i stopki."""
-    p = _Regions()
-    p.feed(raw)
-    p.close()
-    texts = p.region_texts()
+    texts: list[str] = []
+    # najstarsze strony (np. dokumenty PKB z lat 60.) nie mają kontenera treści — wtedy <body>
+    for tag, match in (("div", _is_content), ("body", lambda _attrs: True)):
+        p = _Regions(tag, match)
+        p.feed(raw)
+        p.close()
+        texts = [t for t in p.region_texts() if t.strip()]
+        if texts:
+            break
     if not texts:
-        raise ValueError("brak regionu treści (div.vaticanrichtext / div#corpo)")
+        raise ValueError("brak treści (div.vaticanrichtext / div#corpo / body)")
     text = max(texts, key=len).replace("\xa0", " ")
     # <br> w obrębie akapitu (bloki tytułowe, adresaci) -> spacja; inaczej każda linia tytułu
     # WIELKIMI LITERAMI stałaby się osobną sekcją z jednozdaniowym chunkiem

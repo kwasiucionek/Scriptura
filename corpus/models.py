@@ -143,6 +143,8 @@ class Token(models.Model):
     morph = models.CharField(max_length=32, blank=True)  # kod morfologiczny źródła
     pos = models.CharField(max_length=8, blank=True)  # część mowy (MorphGNT)
     prefixes = models.CharField(max_length=16, blank=True)  # OSHB: b/, c/, d/…
+    # interlinia: polski odpowiednik słowa w tym kontekście (przekład roboczy modelu, gloss_tokens)
+    gloss_pl = models.CharField(max_length=120, blank=True)
 
     class Meta:
         ordering = ["verse_text", "position"]
@@ -174,7 +176,20 @@ class Lexeme(models.Model):
     )  # canonical_translit()
     morph = models.CharField(max_length=24, blank=True)  # STEP: H:N-M, G:V…
     gloss = models.CharField(max_length=200, blank=True)  # krótka glosa (EN)
-    meaning = models.TextField(blank=True)  # skrócona definicja (EN, do 600 zn.)
+    meaning = models.TextField(
+        blank=True
+    )  # skrócona definicja (EN, do 600 zn.) — do promptu
+    definition = models.TextField(
+        blank=True
+    )  # pełna definicja STEP (Abbott-Smith / skrócony BDB) — strona słownika
+    gloss_pl = models.CharField(
+        max_length=200, blank=True
+    )  # polskie znaczenia (przekład roboczy glos STEP)
+    # Strong (1890/1894; JSON Open Scriptures, CC BY-SA): definicja, pochodzenie, przekład w KJV
+    strong_def = models.TextField(blank=True)
+    strong_deriv = models.CharField(max_length=300, blank=True)
+    strong_kjv = models.TextField(blank=True)
+    strong_pron = models.CharField(max_length=64, blank=True)  # wymowa wg Stronga
 
     class Meta:
         ordering = ["strong"]

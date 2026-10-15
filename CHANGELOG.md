@@ -1,5 +1,22 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-15 — interlinia i słownik (warstwa danych)
+
+- Leksykon: pełna definicja STEP (`Lexeme.definition`: Abbott-Smith dla greki, skrócony BDB dla
+  hebrajskiego; podziały wierszy, pogrubienia, odsyłacze `[[Php.2.6|…]]`) obok skróconego
+  `meaning` do promptu. `import_lexicon` aktualizuje hasła zamiast je kasować (zostają pola spoza
+  STEP) i dopisuje numery Stronga tokenom greckim po lemacie (`GreekStrongIndex`: dokładny lemat,
+  postać znormalizowana, forma czynna lematu medialnego; przy kilku kandydatach numer klasyczny).
+- Słowniki Stronga (Open Scriptures JSON, CC BY-SA): `fetch_sources strongs` + `import_strongs`
+  -> `Lexeme.strong_def`, `strong_deriv`, `strong_kjv`, `strong_pron`.
+- Polskie glosy: `translate_lexicon` (Lexeme.gloss_pl — odpowiedniki słownikowe) i `gloss_tokens`
+  (Token.gloss_pl — odpowiednik słowa w kontekście wersetu) modelem z Ollamy
+  (`INTERLINEAR_MODEL`, domyślnie deepseek-v4.1-flash:cloud bez trybu thinking; w teście
+  24 wersety w ~10 s, wyrównanie po pozycjach). Wersety źle wyrównane idą ponownie pojedynczo;
+  komenda jest wznawialna i zapisuje po każdej paczce.
+- `corpus.morph_pl`: polski opis kodów MorphGNT i OSHM (skrót + pełny opis);
+  `corpus.translit.greek_translit` (konwencja SBL bez akcentów).
+
 ## 2026-10-15 — dokumenty Kościoła o Piśmie Świętym
 
 - Strona Korpus: „Literatura” zwinięta — liczby i typy na wierzchu, a autorzy, czasopisma

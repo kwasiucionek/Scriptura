@@ -5,6 +5,7 @@ python manage.py fetch_sources oshb       # tylko OSHB
 python manage.py fetch_sources oshb --books Gen Isa Ps
 python manage.py fetch_sources lxx        # Septuaginta (Rahlfs 1935, E. Wong) — 3 pliki, ~60 MB
 python manage.py fetch_sources step       # TBESH + TBESG (Tyndale House, CC BY 4.0) — ~15 MB
+python manage.py fetch_sources strongs    # słowniki Stronga (Open Scriptures JSON, CC BY-SA) — ~3 MB
 """
 
 import urllib.request
@@ -39,9 +40,14 @@ STEP_FILES = {
     "TBESH.txt": "TBESH%20-%20Translators%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Hebrew%20-%20STEPBible.org%20CC%20BY.txt",
     "TBESG.txt": "TBESG%20-%20Translators%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Greek%20-%20STEPBible.org%20CC%20BY.txt",
 }
+STRONGS_RAW = "https://raw.githubusercontent.com/openscriptures/strongs/master/"
+STRONGS_FILES = {
+    "strongs-greek-dictionary.js": "greek/strongs-greek-dictionary.js",
+    "strongs-hebrew-dictionary.js": "hebrew/strongs-hebrew-dictionary.js",
+}
 XREF_ZIP = "https://a.openbible.info/data/cross-references.zip"
 PLACES_RAW = "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/main/data/ancient.jsonl"
-ALL_SOURCES = ["oshb", "morphgnt", "bg", "lxx", "step", "xref", "places"]
+ALL_SOURCES = ["oshb", "morphgnt", "bg", "lxx", "step", "strongs", "xref", "places"]
 
 
 def _download(url: str, dest: Path, force: bool) -> bool:
@@ -127,6 +133,12 @@ class Command(BaseCommand):
                     STEP_RAW + rel, data / "step" / name, opts["force"]
                 )
                 self.stdout.write(f"step {name}")
+        if "strongs" in sources:
+            for name, rel in STRONGS_FILES.items():
+                fetched += _download(
+                    STRONGS_RAW + rel, data / "strongs" / name, opts["force"]
+                )
+                self.stdout.write(f"strongs {name}")
 
         self.stdout.write(
             self.style.SUCCESS(f"Pobrano {fetched} nowych plików do {data}")

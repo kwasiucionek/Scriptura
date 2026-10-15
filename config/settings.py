@@ -287,6 +287,9 @@ TRANSLATE_BASE_URL = env("TRANSLATE_BASE_URL", "") or OLLAMA_BASE_URL
 TRANSLATE_TIMEOUT = env(
     "TRANSLATE_TIMEOUT", 180, int
 )  # s na fragment; typowo 2–10 s, dłużej = zapętlenie albo kolejka w chmurze
+# Interlinia: kontekstowe polskie glosy słów (gloss_tokens) i polskie znaczenia haseł (translate_lexicon)
+INTERLINEAR_MODEL = env("INTERLINEAR_MODEL", "deepseek-v4.1-flash:cloud")
+INTERLINEAR_BASE_URL = env("INTERLINEAR_BASE_URL", "") or OLLAMA_BASE_URL
 # Kurator manifestów (update_corpus): model do oceny wstępnej; progi pewności dla decyzji automatycznych
 CURATE_MODEL = env("CURATE_MODEL", "")  # pusty = model czatu backendu
 CURATE_REVIEW_CONFIDENCE = env(

@@ -1,5 +1,11 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-16 — przykład „Materiały własne”
+
+- Przykładowe pytanie „Czym jest chrzest w Duchu Świętym?” (tylko dla zalogowanych): pokaz
+  materiałów własnych — odpowiedź korzysta z publikacji dodanej na koncie (widocznej wyłącznie
+  dla właściciela) obok wspólnego korpusu. Filtr przykładów w `rag.views.examples_for`.
+
 ## 2026-10-15 — Przekład dosłowny EIB (SNPD) z przypisami
 
 - Import modułów MySword (`import_mysword`, `corpus.importers.mysword`): tekst wersetu (do

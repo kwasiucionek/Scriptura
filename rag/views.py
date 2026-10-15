@@ -92,7 +92,25 @@ EXAMPLES = [
         "q": "Jakie imiona Boga zna Biblia i co znaczy, że Elohim jest w liczbie mnogiej?",
         "access": "licensed",
     },
+    {
+        # pokaz materiałów własnych: odpowiedź korzysta z publikacji dodanej na koncie
+        # (widocznej tylko dla właściciela) obok wspólnego korpusu
+        "title": "Materiały własne",
+        "q": "Czym jest chrzest w Duchu Świętym?",
+        "login": True,
+    },
 ]
+
+
+def examples_for(user) -> list[dict]:
+    """Przykładowe pytania dostępne dla użytkownika (poziom dostępu, wymóg logowania)."""
+    levels = access_for_user(user)
+    return [
+        {k: v for k, v in e.items() if k in ("title", "q")}
+        for e in EXAMPLES
+        if (not e.get("access") or e["access"] in levels)
+        and (not e.get("login") or user is not None)
+    ]
 
 
 def _user(request: HttpRequest):
@@ -111,14 +129,7 @@ def index(request: HttpRequest) -> HttpResponse:
         request,
         "rag/index.html",
         {
-            "examples_json": json.dumps(
-                [
-                    e
-                    for e in EXAMPLES
-                    if not e.get("access") or e["access"] in access_for_user(user)
-                ],
-                ensure_ascii=False,
-            ),
+            "examples_json": json.dumps(examples_for(user), ensure_ascii=False),
             "authors": Author.objects.filter(
                 documents__in=visible_documents(user)
             ).distinct(),

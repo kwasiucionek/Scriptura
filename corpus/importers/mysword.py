@@ -210,23 +210,60 @@ def details(path: Path) -> dict:
         con.close()
 
 
-def parse_module(
-    path: Path, books: set[str] | None = None, ref_url: str = "/text/ref/"
-) -> Iterator[ParsedVerse]:
+def read_rows(path: Path) -> tuple[list[tuple[int, int, int, str]], list[str]]:
+    """Wiersze modułu (księga, rozdział, werset, tekst) i lista usterek. Werset bez numeru
+    dostaje jedyny brakujący numer w swoim rozdziale (jeśli luka jest dokładnie jedna)."""
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     try:
-        rows = con.execute(
-            "SELECT Book, Chapter, Verse, Scripture FROM Bible ORDER BY Book, Chapter, Verse"
-        )
-        for book_no, chapter, verse, scripture in rows:
-            if not 1 <= int(book_no) <= len(BOOK_NUMBERS):
-                continue
-            osis = BOOK_NUMBERS[int(book_no) - 1]
-            if books and osis not in books:
-                continue
-            text, markup, notes = parse_scripture(scripture or "", ref_url)
-            if not text:
-                continue
-            yield ParsedVerse(osis, int(chapter), int(verse), text, markup, notes)
+        raw = con.execute(
+            "SELECT Book, Chapter, Verse, Scripture FROM Bible"
+        ).fetchall()
     finally:
         con.close()
+    issues: list[str] = []
+    chapters: dict[tuple[int, int], set[int]] = {}
+    for b, c, v, _ in raw:
+        if b is not None and c is not None and v is not None:
+            chapters.setdefault((int(b), int(c)), set()).add(int(v))
+    rows = []
+    for b, c, v, text in raw:
+        if b is None or c is None:
+            issues.append(f"wiersz bez księgi/rozdziału: {b} {c} {v}")
+            continue
+        b, c = int(b), int(c)
+        name = BOOK_NUMBERS[b - 1] if 1 <= b <= len(BOOK_NUMBERS) else str(b)
+        if v is None:
+            have = chapters.get((b, c), set())
+            gaps = sorted(set(range(1, max(have, default=0) + 2)) - have)
+            if len(gaps) == 1 or (
+                len(gaps) == 2 and gaps[-1] == max(have, default=0) + 1
+            ):
+                v = gaps[0]
+                issues.append(f"{name} {c}: werset bez numeru — przyjęto {v}")
+            else:
+                issues.append(f"{name} {c}: werset bez numeru — pominięty")
+                continue
+        rows.append((b, c, int(v), text or ""))
+    rows.sort(key=lambda r: r[:3])
+    return rows, issues
+
+
+def parse_module(
+    path: Path,
+    books: set[str] | None = None,
+    ref_url: str = "/text/ref/",
+    issues: list[str] | None = None,
+) -> Iterator[ParsedVerse]:
+    rows, found = read_rows(path)
+    if issues is not None:
+        issues.extend(found)
+    for book_no, chapter, verse, scripture in rows:
+        if not 1 <= book_no <= len(BOOK_NUMBERS):
+            continue
+        osis = BOOK_NUMBERS[book_no - 1]
+        if books and osis not in books:
+            continue
+        text, markup, notes = parse_scripture(scripture, ref_url)
+        if not text:
+            continue
+        yield ParsedVerse(osis, chapter, verse, text, markup, notes)

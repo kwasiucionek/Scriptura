@@ -68,7 +68,10 @@ class Command(BaseCommand):
 
         ref_url = reverse("corpus:reference")
         books = set(o["books"]) if o["books"] else None
-        parsed = list(mysword.parse_module(path, books, ref_url))
+        issues: list[str] = []
+        parsed = list(mysword.parse_module(path, books, ref_url, issues))
+        for issue in issues:  # usterki modułu — do raportu dla wydawcy
+            self.stdout.write(self.style.WARNING(f"uwaga: {issue}"))
         if not parsed:
             raise CommandError(
                 "moduł nie zawiera wersetów (albo filtr ksiąg nic nie zostawił)"

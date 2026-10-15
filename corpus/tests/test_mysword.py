@@ -77,6 +77,9 @@ def _module(path):
         [
             (1, 1, 1, VERSE),
             (50, 2, 6, "<CM>Werset testowy,<RF q=[3]>uwaga<Rf>"),
+            (50, 3, 1, "<CM>Werset pierwszy."),
+            (50, 3, 3, "<CM>Werset trzeci."),
+            (50, 3, None, "<CM>Werset bez numeru."),  # jedyna luka w rozdziale: 3,2
         ],
     )
     con.commit()
@@ -90,6 +93,10 @@ def test_import_mysword_and_private_access(tmp_path, client):
     call_command("import_mysword", "--file", str(path), "--code", "SNPD")
     work = Work.objects.get(code="SNPD")
     assert work.access == "private" and "v1.1.2" in work.notes
+    assert (
+        VerseText.objects.get(work=work, verse__osis_id="Phil.3.2").text
+        == "Werset bez numeru."
+    )
     vt = VerseText.objects.get(work=work, verse__osis_id="Gen.1.1")
     assert vt.text == "Pierwsze słowa drugie słowa wersetu."
     assert VerseNote.objects.filter(verse_text__work=work).count() == 3

@@ -26,6 +26,11 @@
   (ingest → translate → embed przez tunel SSH do laptopa).
 - `translate_chunks --workers N`: równoległe żądania do modelu w chmurze (zapis w głównym wątku);
   `bulk-ingest.sh translate` używa 4 (`TRANSLATE_WORKERS`).
+- Język dokumentu z treści (`library/langdetect.py`, słowa funkcyjne pl/en/de/it/fr): OpenAlex zgaduje
+  po tytule, więc ok. połowa „obcojęzycznych” prac z czasopism to polskie recenzje obcych książek.
+  `ingest_document` przyjmuje język z treści przy wyraźnej przewadze; `fix_languages [--apply]` poprawia
+  istniejące (dla polskich czyści zbędny text_pl). Przekład: `num_predict` ≈ 2× wejście
+  i `TRANSLATE_TIMEOUT` (180 s zamiast 600) — zapętlony model nie blokuje wątku na 10 minut.
 - Korpus: M. Majewski, „Pięcioksiąg odczytany na nowo” (WN UPJPII 2018, CC BY 4.0) — PDF
   z platformy wydawnictwa uzupełniony w manifeście OpenAlex.
 

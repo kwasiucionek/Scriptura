@@ -61,7 +61,12 @@ def translate(text: str, src: str, model: str, base_url: str, api_key: str = "")
         "messages": [{"role": "user", "content": build_prompt(text, src, model)}],
         "stream": False,
         "think": False,
-        "options": {"temperature": 0.0, "num_ctx": 8192},
+        # limit odpowiedzi ~2× długość wejścia: zapętlony model kończy się szybko, zamiast trzymać wątek
+        "options": {
+            "temperature": 0.0,
+            "num_ctx": 8192,
+            "num_predict": len(text) // 2 + 256,
+        },
         "keep_alive": "1h",
     }
     headers = {"Content-Type": "application/json"}
@@ -70,7 +75,7 @@ def translate(text: str, src: str, model: str, base_url: str, api_key: str = "")
     req = urllib.request.Request(
         f"{base_url}/api/chat", data=json.dumps(body).encode(), headers=headers
     )
-    with urllib.request.urlopen(req, timeout=600) as resp:  # noqa: S310
+    with urllib.request.urlopen(req, timeout=settings.TRANSLATE_TIMEOUT) as resp:  # noqa: S310
         return json.load(resp)["message"]["content"].strip()
 
 

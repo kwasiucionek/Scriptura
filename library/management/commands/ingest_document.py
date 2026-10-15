@@ -15,6 +15,7 @@ from django.utils.text import slugify
 
 from corpus.models import Access
 from library.ingest import build_chunks
+from library.langdetect import detect_document
 from library.models import DEFAULT_REGISTER, Author, Chunk, DocType, Document, Register
 
 
@@ -68,6 +69,16 @@ class Command(BaseCommand):
             )
             return
         drafts = build_chunks(path)
+        language = o["language"]
+        detected = detect_document([d.text for d in drafts])
+        if detected and detected != language[:2]:
+            # metadane zgadują po tytule (recenzja włoskiej książki pisana po polsku -> „it”)
+            self.stdout.write(
+                self.style.WARNING(
+                    f"  język wg metadanych {language}, wg treści {detected} — przyjmuję {detected}"
+                )
+            )
+            language = detected
         with transaction.atomic():
             doc = Document.objects.create(
                 title=o["title"],
@@ -83,7 +94,7 @@ class Command(BaseCommand):
                 source_path=str(path),
                 content_hash=content_hash,
                 chunk_count=len(drafts),
-                language=o["language"],
+                language=language,
                 register=o["register"]
                 or DEFAULT_REGISTER.get(o["type"], Register.SCIENTIFIC),
             )

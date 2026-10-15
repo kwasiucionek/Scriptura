@@ -284,6 +284,9 @@ RAG_PLACES = env("RAG_PLACES", 12, int)
 # Przekład chunków obcojęzycznych na polski przy ingestii (translate_chunks): TranslateGemma lokalnie
 TRANSLATE_MODEL = env("TRANSLATE_MODEL", "translategemma:27b")
 TRANSLATE_BASE_URL = env("TRANSLATE_BASE_URL", "") or OLLAMA_BASE_URL
+TRANSLATE_TIMEOUT = env(
+    "TRANSLATE_TIMEOUT", 180, int
+)  # s na fragment; typowo 2–10 s, dłużej = zapętlenie albo kolejka w chmurze
 # Kurator manifestów (update_corpus): model do oceny wstępnej; progi pewności dla decyzji automatycznych
 CURATE_MODEL = env("CURATE_MODEL", "")  # pusty = model czatu backendu
 CURATE_REVIEW_CONFIDENCE = env(

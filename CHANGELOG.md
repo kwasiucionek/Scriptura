@@ -2,6 +2,17 @@
 
 ## 2026-10-15 — dokumenty Kościoła o Piśmie Świętym
 
+- Harvester dokumentów Kościoła (`library.harvest.vatican`) poza stronami vatican.va: skany AAS
+  (PDF, zakres stron, bez żywej paginy), łacińskie Wikiźródła (`?action=render`, kolumny Migne'a
+  usuwane), CCEL (sekcja tomu ThML bez przypisów). Wyciąg z dłuższej strony: `start`/`end`
+  (pierwsze i ostatnie słowa, odstępy dowolne; brak znacznika = błąd zamiast złego fragmentu).
+  Nowe pozycje: Vigilantiae studiique, Scripturae Sanctae, Praestantia Scripturae, Vinea electa,
+  Bibliorum scientiam (AAS 1924), Kanon Muratoriego, Laodycea kan. 59–60, Atanazy list 39,
+  Kanony Apostolskie 85, kanon synodów afrykańskich, Innocenty I, Decretum Gelasianum, Vienne,
+  Florencja (dekret dla Jakobitów), Trydent sesje IV i V, Vaticanum I Dei Filius II — pełny
+  przekład roboczy (domena publiczna); Sedula cura, Dominum et Vivificantem (po polsku z vatican.va)
+  i instrukcja PKB 1950 (łacina z AAS; status praw niepewny, więc tylko fragmenty przekładu).
+- langdetect rozpoznaje łacinę (`la`); translate_chunks zna grekę (`grc`).
 - Autor w wyszukiwaniu: `authors` ma podpole `authors.text` (pl_stem) w BM25, więc pytanie
   o „Leona XIII” czy „Rosika” trafia w jego dokumenty (filtr po autorze dalej po keyword).
   Istniejący indeks: `reindex_chunks --update-mapping` (dopisuje pole i przelicza w tle,

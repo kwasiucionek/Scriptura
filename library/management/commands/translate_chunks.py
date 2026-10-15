@@ -33,6 +33,7 @@ LANG_NAMES = {
     "it": "Italian",
     "es": "Spanish",
     "la": "Latin",
+    "grc": "Ancient Greek",
 }
 PROMPT = (
     "You are a professional {src_name} ({src}) to Polish (pl) translator. Your goal is to accurately "

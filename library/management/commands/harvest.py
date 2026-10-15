@@ -100,7 +100,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--polish-pd",
             action="store_true",
-            help="vatican: pełny polski przekład roboczy z łaciny dokumentów z domeny publicznej",
+            help="vatican: pełny polski przekład roboczy z oryginału (łacina/greka/angielski) tekstów z domeny publicznej",
         )
         parser.add_argument(
             "--translate-model",
@@ -182,30 +182,29 @@ class Command(BaseCommand):
                 from library.management.commands.translate_chunks import translate
 
                 model = o["translate_model"]
-
-                def to_polish(text: str) -> str:
-                    return translate(
-                        text,
-                        "la",
-                        model,
-                        settings.TRANSLATE_BASE_URL,
-                        settings.OLLAMA_API_KEY,
-                    )
-
                 docs = [
                     d
                     for d in vatican.DOCUMENTS
-                    if d.public_domain
-                    and d.latin_path
-                    and (not o["keys"] or d.key in o["keys"])
+                    if d.public_domain and (not o["keys"] or d.key in o["keys"])
                 ]
                 entries = []
                 for d in docs:
-                    self.stdout.write(f"  {d.key}: przekład z łaciny modelem {model}…")
+                    lang = d.original_language
+                    self.stdout.write(f"  {d.key}: przekład ({lang}) modelem {model}…")
+
+                    def to_polish(text: str, lang: str = lang) -> str:
+                        return translate(
+                            text,
+                            lang,
+                            model,
+                            settings.TRANSLATE_BASE_URL,
+                            settings.OLLAMA_API_KEY,
+                        )
+
                     entries.append(
                         vatican.polish_translation(
                             d,
-                            vatican.fetch(vatican.BASE + d.latin_path),
+                            vatican.source_text(d, d.original_url),
                             out_dir,
                             to_polish,
                             o["translate_workers"],

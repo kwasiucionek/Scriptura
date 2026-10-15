@@ -41,3 +41,15 @@ def test_fix_languages_apply_clears_text_pl_for_polish():
     assert (review.language, eng.language, ok.language) == ("pl", "en", "it")
     assert review.chunks.get().text_pl == ""  # oryginał zamiast przeróbki
     assert eng.chunks.get().text_pl == "przekład"  # przekład z angielskiego zostaje
+
+
+def test_detect_latin_church_document():
+    from library.langdetect import detect
+
+    latin = (
+        "Unum atque eundem Deum Veteris et Novi Testamenti, hoc est Legis et Prophetarum atque "
+        "Evangelii profitetur auctorem: quoniam eodem Spiritu Sancto inspirante utriusque "
+        "Testamenti Sancti locuti sunt, quorum libros suscipit et veneratur, qui titulis "
+        "sequentibus continentur. Sed et ea quae ab Ecclesia tradita sunt, nec sine causa."
+    )
+    assert detect(latin) == "la"

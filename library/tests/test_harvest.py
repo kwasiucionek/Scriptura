@@ -287,7 +287,7 @@ def test_openalex_find_sources():
     assert src["display_name"] == "Verbum Vitae" and src["issn"] == "1644-8561"
 
 
-# --- vatican.va -------------------------------------------------------------
+# --- dokumenty Kościoła (library.harvest.vatican) -------------------------------
 
 _VATICAN_CONTENT = (
     "<html><head><script>x()</script></head><body><nav>menu</nav>"
@@ -299,6 +299,12 @@ _VATICAN_CONTENT = (
     '<p class="copyright">Copyright © Dicastero per la Comunicazione</p>'
     "</div><footer><div>FAQ</div></footer></body></html>"
 )
+
+
+def _doc(key):
+    from library.harvest import vatican
+
+    return next(d for d in vatican.DOCUMENTS if d.key == key)
 
 
 def test_vatican_page_text_content_region():
@@ -321,8 +327,9 @@ def test_vatican_page_text_falls_back_to_body():
         '<td><p align="center">PONTIFICIA COMMISSIONE BIBLICA</p>'
         "<p>La Santa Madre Chiesa\n (1 Tm 3,15).</p></td></tr></table></body></html>"
     )
-    assert vatican.page_text(raw) == (
-        "PONTIFICIA COMMISSIONE BIBLICA\n\nLa Santa Madre Chiesa (1 Tm 3,15)."
+    assert (
+        vatican.page_text(raw)
+        == "PONTIFICIA COMMISSIONE BIBLICA\n\nLa Santa Madre Chiesa (1 Tm 3,15)."
     )
 
 
@@ -338,18 +345,102 @@ def test_vatican_decode_declared_latin1_as_cp1252():
     assert vatican.decode("zażółć".encode(), "text/html;charset=utf-8") == "zażółć"
 
 
+def test_vatican_excerpt_markers_ignore_whitespace_and_fail_loudly():
+    from library.harvest import vatican
+
+    text = "Wstęp redakcji.\nCAPUT  II\nDE REVELATIONE Eadem   Sancta Mater.\nCAPUT III dalej"
+    assert vatican.excerpt(text, "CAPUT II DE REVELATIONE", "Sancta Mater.") == (
+        "CAPUT  II\nDE REVELATIONE Eadem   Sancta Mater."
+    )
+    with pytest.raises(ValueError, match="początku"):
+        vatican.excerpt(text, "CAPUT IV")
+    with pytest.raises(ValueError, match="końca"):
+        vatican.excerpt(text, "CAPUT II", "nie ma")
+
+
+def test_vatican_source_text_wikisource_excerpt_and_migne_columns():
+    from library.harvest import vatican
+
+    raw = (
+        "<div><p>editio: Migne</p><p>CAP. VII. 13. Qui vero libri (0501A)recipiantur in canone, "
+        "brevis annexus ostendit. Data X kalendas Martias, viris clarissimis consulibus.</p>"
+        "<p>EPISTOLA VII.</p></div>"
+    )
+    doc = _doc("innocenty-i-consulenti-tibi")
+    with mock.patch.object(vatican, "fetch", return_value=raw) as fetch:
+        text = vatican.source_text(doc, doc.url)
+    assert fetch.call_args.args[0].endswith("?action=render")
+    assert text == (
+        "CAP. VII. 13. Qui vero libri recipiantur in canone, brevis annexus ostendit. "
+        "Data X kalendas Martias, viris clarissimis consulibus."
+    )
+
+
+def test_vatican_source_text_drops_editor_numbering():
+    from library.harvest import vatican
+
+    raw = (
+        "<p>1334 706 Unum atque eundem Deum Veteris et Novi Testamenti profitetur: 1335 706 "
+        "Quinque Moysi; Actibus Apostolorum et Apocalypsi Johannis. 1336 707 Propterea</p>"
+    )
+    doc = _doc("sobor-florencki-dekret-dla-jakobitow")
+    with mock.patch.object(vatican, "fetch", return_value=raw):
+        text = vatican.source_text(doc, doc.url)
+    assert text == (
+        "Unum atque eundem Deum Veteris et Novi Testamenti profitetur: Quinque Moysi; "
+        "Actibus Apostolorum et Apocalypsi Johannis."
+    )
+
+
+def test_vatican_ccel_section_skips_notes_and_joins_following():
+    from library.harvest import vatican
+
+    xml = (
+        b'<ThML><ThML.body><div1 id="viii"><div4 id="viii.vii.iii.lxiv"><p>No psalms composed'
+        b"<note>Hefele says.</note> by private individuals.</p></div4>"
+        b'<div4 id="viii.vii.iii.lxv"><p>These are all the books.</p></div4>'
+        b'<div4 id="viii.vii.iii.lxvi"><p>Next canon.</p></div4></div1></ThML.body></ThML>'
+    )
+    assert vatican.ccel_section(xml, "viii.vii.iii.lxiv", following=1) == (
+        "No psalms composed by private individuals.\n\nThese are all the books."
+    )
+    with pytest.raises(ValueError, match="brak sekcji"):
+        vatican.ccel_section(xml, "viii.vii.iii.c")
+
+
+def test_vatican_pdf_text_drops_running_heads_and_joins_hyphens():
+    import pymupdf
+
+    from library.harvest import vatican
+
+    pdf = pymupdf.open()
+    for body in (
+        "180 Acta Apostolicae Sedis - Commentarium Officiale\nBibliorum scientiam quanti Eccle-\nsia fecerit.",
+        "Acta Pii PP. XI 181\nDatum Romae. PIUS PP. XI",
+    ):
+        pdf.new_page().insert_text((72, 72), body)
+    data = pdf.tobytes()
+    assert vatican.pdf_text(data, (1, 2)) == (
+        "Bibliorum scientiam quanti Ecclesia fecerit. Datum Romae. PIUS PP. XI"
+    )
+
+
 def test_vatican_to_entry(tmp_path):
     from library.harvest import vatican
 
-    doc = next(d for d in vatican.DOCUMENTS if d.key == "dei-verbum")
-    e = vatican.to_entry(doc, _VATICAN_CONTENT, tmp_path)
+    doc = _doc("dei-verbum")
+    e = vatican.to_entry(doc, vatican.page_text(_VATICAN_CONTENT), tmp_path)
     assert (e.doc_type, e.access, e.register, e.language) == (
         "church",
         "open",
         "mixed",
         "en",
     )
-    assert e.authors == ["Sobór Watykański II"] and e.year == 1965
+    assert (
+        e.authors == ["Sobór Watykański II"]
+        and e.year == 1965
+        and e.journal == "vatican.va"
+    )
     assert (
         e.url.startswith("https://www.vatican.va/")
         and e.source_id == "vatican-dei-verbum"
@@ -357,6 +448,8 @@ def test_vatican_to_entry(tmp_path):
     assert len(e.license) <= 128 and len(e.note) <= 300
     text = open(e.local_file, encoding="utf-8").read()
     assert text.startswith(f"# {doc.title}\n\nDEI VERBUM")
+    aas = vatican.to_entry(_doc("instrukcja-pkb-1950"), "INSTRUCTIO", tmp_path)
+    assert aas.url.endswith(".pdf#page=495") and aas.language == "la"
 
 
 def test_vatican_documents_are_unique_and_valid():
@@ -365,10 +458,19 @@ def test_vatican_documents_are_unique_and_valid():
 
     keys = [d.key for d in vatican.DOCUMENTS]
     assert len(keys) == len(set(keys)) and "church" in DocType.values
-    assert all(
-        d.path.startswith("/") and d.language in ("pl", "en", "it")
-        for d in vatican.DOCUMENTS
-    )
+    for d in vatican.DOCUMENTS:
+        assert d.url.startswith("https://") and d.language in (
+            "pl",
+            "en",
+            "it",
+            "la",
+        ), d.key
+        assert d.original_language in ("la", "en", "grc"), d.key
+        assert not d.path.lower().endswith(".pdf") or d.pages, d.key
+        if d.public_domain:
+            license_, note = vatican.pd_license(d)
+            assert len(license_) <= 128 and len(note) <= 300, d.key
+        assert len(d.source) <= 200 and len(d.title) <= 300
 
 
 def test_harvest_vatican_command(tmp_path, settings):
@@ -401,15 +503,16 @@ def test_vatican_split_for_translation_keeps_sentences():
 def test_vatican_polish_translation_public_domain_only(tmp_path):
     from library.harvest import vatican
 
-    pd = next(d for d in vatican.DOCUMENTS if d.key == "providentissimus-deus")
-    raw = '<div class="vaticanrichtext"><p>Prima pars.</p><p>Secunda pars. Tertia sententia.</p></div>'
     calls = []
 
     def fake(text):
         calls.append(text)
         return f"PL({text})"
 
-    e = vatican.polish_translation(pd, raw, tmp_path, fake, workers=2)
+    original = "Prima pars.\n\nSecunda pars. Tertia sententia."
+    e = vatican.polish_translation(
+        _doc("providentissimus-deus"), original, tmp_path, fake, workers=2
+    )
     assert sorted(calls) == ["Prima pars.", "Secunda pars. Tertia sententia."]
     assert (e.language, e.doc_type, e.access, e.source_id) == (
         "pl",
@@ -421,18 +524,29 @@ def test_vatican_polish_translation_public_domain_only(tmp_path):
     assert e.title.endswith("(przekład roboczy z łaciny)") and len(e.license) <= 128
     text = open(e.local_file, encoding="utf-8").read()
     assert text.endswith("PL(Prima pars.)\n\nPL(Secunda pars. Tertia sententia.)\n")
-    dv = next(d for d in vatican.DOCUMENTS if d.key == "dei-verbum")
+    athanasius = vatican.polish_translation(
+        _doc("atanazy-list-39"), "Of the books.", tmp_path, fake
+    )
+    assert (
+        athanasius.title.endswith("(przekład roboczy z angielskiego)")
+        and "XIX w." in athanasius.license
+    )
+    assert athanasius.journal.startswith("CCEL")
     with pytest.raises(ValueError, match="domeny publicznej"):
-        vatican.polish_translation(dv, raw, tmp_path, fake)
+        vatican.polish_translation(_doc("dei-verbum"), original, tmp_path, fake)
 
 
-def test_harvest_vatican_skips_translated_public_domain_by_default(tmp_path):
+def test_harvest_vatican_skips_public_domain_by_default(tmp_path):
     from library.harvest import vatican
 
-    with mock.patch.object(vatican, "fetch", return_value=_VATICAN_CONTENT):
+    with mock.patch.object(vatican, "source_text", return_value="Textus."):
         keys = {e.source_id for e in vatican.harvest(tmp_path)}
         explicit = vatican.harvest(tmp_path, ["providentissimus-deus"])
     assert "vatican-providentissimus-deus" not in keys and "vatican-dei-verbum" in keys
+    assert (
+        "vatican-kanon-muratoriego" not in keys
+        and "vatican-instrukcja-pkb-1950" in keys
+    )
     assert [e.source_id for e in explicit] == ["vatican-providentissimus-deus"]
 
 
@@ -451,24 +565,9 @@ def test_harvest_vatican_polish_pd_command(tmp_path, settings):
         ),
     ):
         call_command(
-            "harvest",
-            "vatican",
-            "--polish-pd",
-            "--keys",
-            "providentissimus-deus",
-            "--translate-model",
-            "m",
-            "--out",
-            str(out),
-        )
+            "harvest", "vatican", "--polish-pd", "--keys", "providentissimus-deus",
+            "--translate-model", "m", "--out", str(out),
+        )  # fmt: skip
     assert "/la/" in fetch.call_args.args[0]
     (e,) = manifest.read(out)
     assert e.language == "pl" and "[la] " in open(e.local_file, encoding="utf-8").read()
-
-
-def test_vatican_public_domain_documents_have_latin_original():
-    from library.harvest import vatican
-
-    pd = {d.key for d in vatican.DOCUMENTS if d.public_domain}
-    assert pd == {"providentissimus-deus", "spiritus-paraclitus"}
-    assert all("/la/" in d.latin_path for d in vatican.DOCUMENTS if d.public_domain)

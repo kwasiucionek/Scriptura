@@ -26,6 +26,11 @@ STOPWORDS: dict[str, frozenset[str]] = {
     "fr": frozenset(
         "le la les des et est que pour dans une qui pas sur au du ce sont".split()
     ),
+    # łacina (dokumenty Kościoła, Ojcowie): słowa, których nie ma w pozostałych zestawach
+    "la": frozenset(
+        "et sunt quod qui quae quam cum sed enim autem ut etiam atque nec neque eius sicut "
+        "ita nisi ergo igitur tamen quia esse hoc haec ab ex".split()
+    ),
 }
 _WORD = re.compile(r"[a-ząćęłńóśźżäöüßàâçèéêëîïôùûÿ]+")
 MIN_HITS = 5  # mniej trafień — za mało tekstu, by rozstrzygać
@@ -33,7 +38,7 @@ MIN_RATIO = 1.5  # zwycięzca musi wyraźnie wyprzedzać drugi język
 
 
 def detect(text: str) -> str:
-    """Kod języka (pl/en/de/it/fr) albo "" przy braku pewności."""
+    """Kod języka (pl/en/de/it/fr/la) albo "" przy braku pewności."""
     words = _WORD.findall(text.lower())
     scores = sorted(
         ((sum(w in s for w in words), lang) for lang, s in STOPWORDS.items()),

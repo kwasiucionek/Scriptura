@@ -1,8 +1,8 @@
 # Wdrożenie na Mikrusa (roman233) — pierwsze uruchomienie
 
 Porty: domena Cytrusa `scriptura.cytr.us` → `roman233.mikrus.xyz:20233` (nginx; port 20233 to drugi port
-współdzielonego IPv4, dzielony z portfolio — vhosty rozdziela `server_name`, front Mikrusa przekazuje `Host`)
-→ `127.0.0.1:8534` (gunicorn). Dane na `/srv/scriptura` (PDF-y, baza, cache, logi), kod w `/opt/scriptura`.
+współdzielonego IPv4, tylko dla Scriptury — wejście bez nazwy domeny przekierowuje na `https://scriptura.cytr.us`)
+→ `127.0.0.1:8534` (gunicorn). Portfolio ma osobny port 40000, Fakturownia 30233. Dane na `/srv/scriptura` (PDF-y, baza, cache, logi), kod w `/opt/scriptura`.
 `/cytrus` to wolumen współdzielony z frontem WWW (zalecane < 3 GB) — Scriptura go nie używa.
 
 ## 0. Stan roman233 (2026-10-15, przeniesienie ze steve141)

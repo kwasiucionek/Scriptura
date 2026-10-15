@@ -2,6 +2,11 @@
 
 ## 2026-10-15 — dokumenty Kościoła o Piśmie Świętym
 
+- Autor w wyszukiwaniu: `authors` ma podpole `authors.text` (pl_stem) w BM25, więc pytanie
+  o „Leona XIII” czy „Rosika” trafia w jego dokumenty (filtr po autorze dalej po keyword).
+  Istniejący indeks: `reindex_chunks --update-mapping` (dopisuje pole i przelicza w tle,
+  bez przebudowy i przerwy w wyszukiwaniu).
+- Spiritus Paraclitus (Benedykt XV, 1920; domena publiczna) — pełny przekład roboczy z łaciny.
 - Przekłady robocze dokumentów Kościoła: model dostaje polski przekład roboczy (Chunk.text_pl)
   zamiast oryginału EN/IT, z dopiskiem „przekład roboczy Scriptury”; panel źródeł pokazuje polski
   fragment (≤ 600 znaków), oryginał pod „oryginał” i odsyłacz do vatican.va

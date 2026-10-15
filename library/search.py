@@ -54,7 +54,11 @@ CHUNKS_INDEX = {
             "document_id": {"type": "integer"},
             "order": {"type": "integer"},
             "title": {"type": "text", "analyzer": "pl_stem"},
-            "authors": {"type": "keyword"},
+            # keyword do filtra po autorze; .text z odmianą („Leona XIII”, „Rosika”) do BM25
+            "authors": {
+                "type": "keyword",
+                "fields": {"text": {"type": "text", "analyzer": "pl_stem"}},
+            },
             "doc_type": {"type": "keyword"},
             "journal": {"type": "keyword"},
             "year": {"type": "short"},
@@ -130,6 +134,29 @@ class ChunkHit:
 
 
 # --- indeksowanie ---------------------------------------------------------
+
+
+def update_mapping(index: str | None = None) -> str | None:
+    """Dopisz do istniejącego indeksu nowe pola z CHUNKS_INDEX (tylko zmiany addytywne, np.
+    podpole authors.text) i przelicz je w miejscu (_update_by_query, w tle — bez przerwy w
+    wyszukiwaniu). Zwraca id zadania OpenSearch albo None, gdy indeksu nie ma."""
+    from corpus.search.client import get_client, index_name
+
+    client, name = get_client(), index or index_name("chunks")
+    if not client.indices.exists(index=name):
+        return None
+    client.indices.put_mapping(
+        index=name, body={"properties": CHUNKS_INDEX["mappings"]["properties"]}
+    )
+    task = client.update_by_query(
+        index=name,
+        params={
+            "conflicts": "proceed",
+            "wait_for_completion": "false",
+            "slices": "auto",
+        },
+    )
+    return task.get("task")
 
 
 def ensure_index(recreate: bool = False, index: str | None = None) -> str:
@@ -445,7 +472,7 @@ def bm25_body(query: str, k: int, filters: list[dict], query_en: str = "") -> di
         {
             "multi_match": {
                 "query": query,
-                "fields": ["text^2", "text_fold", "section", "title"],
+                "fields": ["text^2", "text_fold", "section", "title", "authors.text"],
                 "operator": "or",
             }
         }

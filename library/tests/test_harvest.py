@@ -454,6 +454,8 @@ def test_harvest_vatican_polish_pd_command(tmp_path, settings):
             "harvest",
             "vatican",
             "--polish-pd",
+            "--keys",
+            "providentissimus-deus",
             "--translate-model",
             "m",
             "--out",
@@ -462,3 +464,11 @@ def test_harvest_vatican_polish_pd_command(tmp_path, settings):
     assert "/la/" in fetch.call_args.args[0]
     (e,) = manifest.read(out)
     assert e.language == "pl" and "[la] " in open(e.local_file, encoding="utf-8").read()
+
+
+def test_vatican_public_domain_documents_have_latin_original():
+    from library.harvest import vatican
+
+    pd = {d.key for d in vatican.DOCUMENTS if d.public_domain}
+    assert pd == {"providentissimus-deus", "spiritus-paraclitus"}
+    assert all("/la/" in d.latin_path for d in vatican.DOCUMENTS if d.public_domain)

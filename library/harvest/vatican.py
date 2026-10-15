@@ -69,6 +69,16 @@ DOCUMENTS = (
         public_domain=True,  # Leon XIII †1903
     ),
     ChurchDocument(
+        "spiritus-paraclitus",
+        "Spiritus Paraclitus — encyklika o św. Hieronimie i Piśmie Świętym",
+        ("Benedykt XV",),
+        1920,
+        "/content/benedict-xv/en/encyclicals/documents/hf_ben-xv_enc_15091920_spiritus-paraclitus.html",
+        "en",
+        latin_path="/content/benedict-xv/la/encyclicals/documents/hf_ben-xv_enc_15091920_spiritus-paraclitus.html",
+        public_domain=True,  # Benedykt XV †1922
+    ),
+    ChurchDocument(
         "divino-afflante-spiritu",
         "Divino afflante Spiritu — encyklika o rozwoju studiów biblijnych",
         ("Pius XII",),

@@ -6,6 +6,8 @@
     python manage.py reindex_chunks --recreate --suffix arctic    # osobny indeks do A/B
     python manage.py reindex_chunks --missing                     # tylko dokumenty niepełne w indeksie
                                                                    # (np. po ingest_manifest --no-index)
+    python manage.py reindex_chunks --update-mapping              # nowe pola mappingu w istniejącym indeksie
+                                                                   # (w tle, bez przerwy w wyszukiwaniu)
 
 Po zmianie OLLAMA_EMBED_MODEL / EMBEDDING_DIM zawsze --recreate bez --reuse-vectors
 (wymiar pola knn_vector jest zamrożony w mappingu, a stare wektory są z innej przestrzeni).
@@ -47,6 +49,11 @@ class Command(BaseCommand):
         parser.add_argument(
             "--suffix", default="", help="sufiks nazwy indeksu, np. 'arctic'"
         )
+        parser.add_argument(
+            "--update-mapping",
+            action="store_true",
+            help="dopisz nowe pola mappingu (addytywnie) i przelicz je w miejscu, bez przebudowy",
+        )
 
     def handle(self, *args, **o):
         if settings.SEARCH_BACKEND != "opensearch":
@@ -55,6 +62,15 @@ class Command(BaseCommand):
         from library import search
 
         index = index_name("chunks") + (f"-{o['suffix']}" if o["suffix"] else "")
+        if o["update_mapping"]:
+            task = search.update_mapping(index)
+            if task is None:
+                raise CommandError(f"brak indeksu {index}")
+            self.stdout.write(
+                f"mapping {index} zaktualizowany; przeliczanie w tle: zadanie {task} "
+                f"(GET _tasks/{task})"
+            )
+            return
         cached = (
             search.fetch_vectors(index, o["documents"]) if o["reuse_vectors"] else {}
         )

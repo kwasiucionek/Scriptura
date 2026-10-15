@@ -24,7 +24,7 @@ def _verse(osis="Phil.2.6", vt=1, n=3):
 
 def test_parse_response_valid_with_chatter():
     v = _verse()
-    text = 'Oto JSON:\n{"Phil.2.6": [{"i": 0, "g": "który"}, {"i": 1, "g": " w "}, {"i": 2, "g": "postaci"}]}\nKoniec.'
+    text = 'Oto JSON:\n{"Phil.2.6": [{"i": 0, "g": "który"}, {"i": 1, "g": " w "}, {"i": 2, "g": "postaci,"}]}\nKoniec.'
     assert interlinear.parse_response(text, [v]) == {
         1: {0: "który", 1: "w", 2: "postaci"}
     }
@@ -53,6 +53,12 @@ def test_parse_response_valid_with_chatter():
 def test_parse_response_rejects_misaligned(items):
     v = _verse()
     assert interlinear.parse_response(json.dumps({"Phil.2.6": items}), [v]) == {}
+
+
+def test_parse_response_keeps_lone_dash():
+    v = _verse(n=1)
+    text = json.dumps({"Phil.2.6": [{"i": 0, "g": "-"}]})
+    assert interlinear.parse_response(text, [v]) == {1: {0: "-"}}
 
 
 def test_parse_response_keeps_good_verses_only():

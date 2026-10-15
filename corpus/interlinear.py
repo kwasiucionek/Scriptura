@@ -23,7 +23,8 @@ SYSTEM_PROMPT = (
     "że w polszczyźnie potrzeba zaimka. Hebrajskie przedrostki (w-, i-, ha-, le-, be-, mi-) oddaj "
     "w glosie słowa (np. „na początku”, „i ziemia”). Partykułę אֵת tłumacz jako „-”. Tetragram "
     "יהוה oddawaj jako „JHWH”, אֲדֹנָי jako „Pan”. Imiona własne w formie przyjętej w polskich "
-    "przekładach (Jezus, Dawid, Mojżesz, Izrael). Zwróć wyłącznie JSON (bez komentarza): "
+    "przekładach (Jezus, Dawid, Mojżesz, Izrael). Glosy bez znaków interpunkcyjnych. "
+    "Zwróć wyłącznie JSON (bez komentarza): "
     '{"<werset>": [{"i": <pozycja>, "g": "<glosa>"}, ...], ...} — po jednym obiekcie dla każdej '
     "pozycji i z wejścia."
 )
@@ -32,6 +33,7 @@ USER_PREFIX = (
     "gloss = znaczenie słownikowe EN):\n"
 )
 MAX_GLOSS = 120
+GLOSS_PUNCT = ",.;:·!?"  # interpunkcja przepisana z formy oryginału
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 ORIGINAL_SCRIPT = re.compile(
     "[\u0370-\u03ff\u1f00-\u1fff\u0590-\u05ff]"
@@ -85,6 +87,7 @@ def parse_response(text: str, verses: list[VerseItem]) -> dict[int, dict[int, st
                 ok = False
                 break
             g = " ".join(g.split())[:MAX_GLOSS]
+            g = g.strip(GLOSS_PUNCT) or g  # „Jezusie,” -> „Jezusie”; samo „-” zostaje
             if ORIGINAL_SCRIPT.search(
                 g
             ):  # model przepisał słowo zamiast je przetłumaczyć

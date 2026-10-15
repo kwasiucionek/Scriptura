@@ -105,15 +105,17 @@ class LexiconEntry:
         return [w["code"] for w in self.by_work]
 
 
-def occurrences(lex: Lexeme, levels: list[str]):
+def occurrences(lex: Lexeme, access: list[str] | None):
+    from corpus.services.text import work_access_q
+
     return Token.objects.filter(
-        strong=lex.strong, verse_text__work__access__in=levels
+        work_access_q(access, "verse_text__work__"), strong=lex.strong
     ).select_related("verse_text__verse__book", "verse_text__work")
 
 
 def build_entry(
     lex: Lexeme,
-    levels: list[str],
+    access: list[str] | None,
     page_number: int = 1,
     literature_access: list[str] | None = None,
     user_id: int | None = None,
@@ -126,7 +128,7 @@ def build_entry(
         translit=translit_of(lex),
         gloss_pl=[g.strip() for g in lex.gloss_pl.split(",") if g.strip()],
     )
-    qs = occurrences(lex, levels)
+    qs = occurrences(lex, access)
     entry.by_work = list(
         qs.values(code=F("verse_text__work__code"))
         .annotate(n=Count("id"))

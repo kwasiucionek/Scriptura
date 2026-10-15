@@ -167,7 +167,12 @@ def interlinear(request: HttpRequest) -> HttpResponse:
     except ValueError as exc:
         ctx["error"] = str(exc)
         return render(request, _template(request, "interlinear"), ctx, status=400)
-    data = ilsvc.build(refs, request.GET.get("tekst", ""), access=access)
+    data = ilsvc.build(
+        refs,
+        request.GET.get("tekst", ""),
+        access=access,
+        translation=request.GET.get("pl", ""),
+    )
     ctx.update(
         {
             "refs": [format_ref(r) for r in refs],
@@ -206,7 +211,7 @@ def lexicon(request: HttpRequest, strong: str) -> HttpResponse:
     access = access_for_user(request.user)
     entry = lexsvc.build_entry(
         lex,
-        svc.work_levels(access),
+        access,
         page_number,
         literature_access=access,
         user_id=request.user.id if request.user.is_authenticated else None,

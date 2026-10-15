@@ -302,7 +302,8 @@ RAG_REGISTER_MODE = env("RAG_REGISTER_MODE", "soft")
 RAG_ACCESS = env("RAG_ACCESS", "open").split(
     ","
 )  # które poziomy dostępu retrieval widzi
-RAG_VERSE_WORKS = env("RAG_VERSE_WORKS", "BG1632,SBLGNT,WLC,LXX").split(",")
+# SNPD (przekład EIB) trafia do kontekstu tylko użytkownikom z dostępem do tego dzieła
+RAG_VERSE_WORKS = env("RAG_VERSE_WORKS", "SNPD,BG1632,SBLGNT,WLC,LXX").split(",")
 RAG_TEMPERATURE = env("RAG_TEMPERATURE", 0.2, float)
 RAG_NUM_CTX = env("RAG_NUM_CTX", 16384, int)
 DEMO_TOKEN = env(

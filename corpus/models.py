@@ -124,6 +124,9 @@ class VerseText(models.Model):
     work = models.ForeignKey(Work, on_delete=models.CASCADE, related_name="texts")
     text = models.TextField()
     text_norm = models.TextField(blank=True)  # do wyszukiwania leksykalnego
+    # wersja do wyświetlania (przekłady z modułów): tytuły perykop, kursywa słów dodanych,
+    # słowa Jezusa, wersy poezji, znaczniki przypisów — HTML oczyszczony przy imporcie
+    markup = models.TextField(blank=True)
 
     class Meta:
         constraints = [
@@ -167,6 +170,33 @@ class Token(models.Model):
 
     def __str__(self) -> str:
         return self.surface
+
+
+class VerseNote(models.Model):
+    """Przypis do wersetu przekładu (np. przypisy tłumacza i odsyłacze SNPD). `html` jest
+    oczyszczony przy imporcie (em, i, b, sup, br, linki do wersetów), `text` — bez znaczników
+    (wyszukiwanie, kontekst asystenta)."""
+
+    class Kind(models.TextChoices):
+        NOTE = "note", "przypis"
+        XREF = "xref", "odsyłacze"
+
+    verse_text = models.ForeignKey(
+        VerseText, on_delete=models.CASCADE, related_name="notes"
+    )
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+    label = models.CharField(max_length=16)  # „12” (przypis), „ⓐ” (odsyłacze)
+    order = models.PositiveSmallIntegerField()
+    html = models.TextField()
+    text = models.TextField()
+
+    class Meta:
+        ordering = ["verse_text", "order"]
+        verbose_name = "przypis"
+        verbose_name_plural = "przypisy"
+
+    def __str__(self) -> str:
+        return f"{self.verse_text} [{self.label}]"
 
 
 class Lexeme(models.Model):

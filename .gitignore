@@ -46,3 +46,7 @@ data/manifests/report-*.md
 *.whl
 /*.pdf
 /prompt*.txt
+
+# teksty licencjonowane (moduły wydawców) — tylko na serwerze
+data/licensed/
+*.mybible

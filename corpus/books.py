@@ -52,10 +52,10 @@ BOOKS: list[BookSpec] = [
     BookSpec("1Macc", 20, "OT", "1 Mch", "1 Księga Machabejska", ("1Mch", "1 Mach", "1Mach", "I Mch"), deuterocanonical=True),
     BookSpec("2Macc", 21, "OT", "2 Mch", "2 Księga Machabejska", ("2Mch", "2 Mach", "2Mach", "II Mch"), deuterocanonical=True),
     # --- Księgi mądrościowe ---
-    BookSpec("Job", 22, "OT", "Hi", "Księga Hioba", ("Hiob", "Job"), oshb_file="Job", en_name="Job"),
+    BookSpec("Job", 22, "OT", "Hi", "Księga Hioba", ("Hiob", "Job", "Jb"), oshb_file="Job", en_name="Job"),
     BookSpec("Ps", 23, "OT", "Ps", "Księga Psalmów", ("Psalm", "Psalmy", "Psalmów"), oshb_file="Ps", en_name="Psalms"),
     BookSpec("Prov", 24, "OT", "Prz", "Księga Przysłów", ("Przyp", "Przysł", "Prov"), oshb_file="Prov", en_name="Proverbs"),
-    BookSpec("Eccl", 25, "OT", "Koh", "Księga Koheleta", ("Kazn", "Ekl", "Ecc", "Qoh"), oshb_file="Eccl", en_name="Ecclesiastes"),
+    BookSpec("Eccl", 25, "OT", "Koh", "Księga Koheleta", ("Kazn", "Kzn", "Ekl", "Ecc", "Qoh"), oshb_file="Eccl", en_name="Ecclesiastes"),
     BookSpec("Song", 26, "OT", "Pnp", "Pieśń nad Pieśniami", ("PnP", "Pnp.", "Cant"), oshb_file="Song", en_name="Song of Solomon"),
     BookSpec("Wis", 27, "OT", "Mdr", "Księga Mądrości", ("Mądr", "Sap"), deuterocanonical=True),
     BookSpec("Sir", 28, "OT", "Syr", "Mądrość Syracha", ("Syrach", "Ekli", "Eccli"), deuterocanonical=True),
@@ -70,7 +70,7 @@ BOOKS: list[BookSpec] = [
     BookSpec("Joel", 36, "OT", "Jl", "Księga Joela", ("Joel",), oshb_file="Joel", en_name="Joel"),
     BookSpec("Amos", 37, "OT", "Am", "Księga Amosa", ("Amos",), oshb_file="Amos", en_name="Amos"),
     BookSpec("Obad", 38, "OT", "Ab", "Księga Abdiasza", ("Abd", "Ob"), oshb_file="Obad", en_name="Obadiah"),
-    BookSpec("Jonah", 39, "OT", "Jon", "Księga Jonasza", ("Jn.",), oshb_file="Jonah", en_name="Jonah"),
+    BookSpec("Jonah", 39, "OT", "Jon", "Księga Jonasza", ("Jn.", "Jo"), oshb_file="Jonah", en_name="Jonah"),
     BookSpec("Mic", 40, "OT", "Mi", "Księga Micheasza", ("Mich", "Mic"), oshb_file="Mic", en_name="Micah"),
     BookSpec("Nah", 41, "OT", "Na", "Księga Nahuma", ("Nah", "Nahum"), oshb_file="Nah", en_name="Nahum"),
     BookSpec("Hab", 42, "OT", "Ha", "Księga Habakuka", ("Hab", "Habakuk"), oshb_file="Hab", en_name="Habakkuk"),
@@ -181,6 +181,8 @@ def all_abbrs_sorted() -> list[str]:
 # lub kolidujące ze zwykłymi słowami); pozostają dostępne w lookup().
 FREE_TEXT_EXCLUDE = frozenset(
     {
+        "Jo",  # Jonasz w konwencji EIB — w wolnym tekście zbyt dwuznaczne
+        "Jb",
         "Ja",
         "Jn.",
         "Jud.",

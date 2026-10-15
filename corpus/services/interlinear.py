@@ -1,5 +1,7 @@
 """Widok interlinearny: słowo oryginału z numerem Stronga, transliteracją, polską glosą
-w kontekście (Token.gloss_pl) i morfologią po polsku; pod wersetem przekład polski (BG 1632).
+w kontekście (Token.gloss_pl) i morfologią po polsku; pod wersetem przekład polski — SNPD
+(Przekład dosłowny EIB, z przypisami), gdy użytkownik ma do niego dostęp, inaczej BG 1632;
+parametr `pl` wybiera przekład.
 
 Tekst bazowy: SBLGNT dla NT, WLC dla protokanonicznego ST, LXX dla ksiąg deuterokanonicznych;
 parametr `tekst` pozwala wybrać inny oryginał (np. LXX dla Rdz). Słowo bez glosy kontekstowej
@@ -17,7 +19,7 @@ from corpus.sigla import ordinal_range
 from corpus.translit import greek_translit
 
 ORIGINALS = ("SBLGNT", "WLC", "LXX")
-TRANSLATION = "BG1632"
+TRANSLATIONS = ("SNPD", "BG1632")  # kolejność = pierwszeństwo
 MAX_VERSES = 200
 
 
@@ -38,6 +40,7 @@ class InterlinearVerse:
     verse: Verse
     words: list[Word] = field(default_factory=list)
     translation: str = ""
+    translation_vt: VerseText | None = None  # z markup i przypisami (render_tokens)
 
 
 @dataclass
@@ -51,6 +54,8 @@ class Interlinear:
     alternatives: list[str] = field(default_factory=list)
     # dzieła widoczne na stronie (nota o prawach)
     sources: list[Work] = field(default_factory=list)
+    translation_code: str = ""
+    translations: list[str] = field(default_factory=list)  # dostępne przekłady polskie
 
 
 def default_work(book: Book) -> str:
@@ -131,7 +136,11 @@ def neighbours(refs: list[ParsedRef]) -> tuple[str, str]:
 
 
 def build(
-    refs: list[ParsedRef], work_code: str = "", *, access: list[str] | None = None
+    refs: list[ParsedRef],
+    work_code: str = "",
+    *,
+    access: list[str] | None = None,
+    translation: str = "",
 ) -> Interlinear:
     first_book = Book.objects.get(osis=refs[0].book.osis)
     code = (
@@ -142,7 +151,7 @@ def build(
     works = {
         w.code: w
         for w in svc.visible_works(
-            list(Work.objects.filter(code__in=(*ORIGINALS, TRANSLATION))),
+            list(Work.objects.filter(code__in=(*ORIGINALS, *TRANSLATIONS))),
             access=access,
         )
     }
@@ -150,8 +159,11 @@ def build(
     prev_ref, next_ref = neighbours(refs)
     if work is None:
         return Interlinear(None, [], prev_ref=prev_ref, next_ref=next_ref)
+    translations = [c for c in TRANSLATIONS if c in works]
+    pl = translation.upper()
+    pl = pl if pl in translations else (translations[0] if translations else "")
     rows = svc.parallel(
-        refs, [w for c, w in works.items() if c in (code, TRANSLATION)], access=access
+        refs, [w for c, w in works.items() if c in (code, pl)], access=access
     )
     rows = [r for r in rows if code in r.texts]
     truncated = len(rows) > MAX_VERSES
@@ -162,8 +174,8 @@ def build(
     for r in rows:
         vt = r.texts[code]
         words = [_word(t, work.language, by_strong, by_lemma) for t in vt.tokens.all()]
-        tr = r.texts.get(TRANSLATION)
-        verses.append(InterlinearVerse(r.verse, words, tr.text if tr else ""))
+        tr = r.texts.get(pl)
+        verses.append(InterlinearVerse(r.verse, words, tr.text if tr else "", tr))
     start, end = ordinal_range(refs[0])
     alternatives = sorted(
         set(
@@ -174,10 +186,16 @@ def build(
         )
     )
     sources = [work] + (
-        [works[TRANSLATION]]
-        if TRANSLATION in works and any(v.translation for v in verses)
-        else []
+        [works[pl]] if pl and any(v.translation for v in verses) else []
     )
     return Interlinear(
-        work, verses, truncated, prev_ref, next_ref, alternatives, sources
+        work,
+        verses,
+        truncated,
+        prev_ref,
+        next_ref,
+        alternatives,
+        sources,
+        pl,
+        translations,
     )

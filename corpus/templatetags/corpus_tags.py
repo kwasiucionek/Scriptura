@@ -16,10 +16,46 @@ register = template.Library()
 RTL_LANGUAGES = {"hbo", "arc"}
 
 
+def render_notes(vt: VerseText) -> str:
+    """Przypisy i odsyłacze wersetu jako rozwijany blok (HTML przypisów oczyszczony przy imporcie)."""
+    notes = list(vt.notes.all())
+    if not notes:
+        return ""
+    n_notes = sum(1 for n in notes if n.kind == "note")
+    label = " · ".join(
+        x
+        for x in (
+            f"przypisy ({n_notes})" if n_notes else "",
+            f"odsyłacze ({len(notes) - n_notes})" if len(notes) > n_notes else "",
+        )
+        if x
+    )
+    items = format_html_join(
+        "",
+        '<li class="{}"><sup>{}</sup> {}</li>',
+        (
+            (n.kind, n.label, mark_safe(n.html))  # noqa: S308 — biała lista z importu
+            for n in notes
+        ),
+    )
+    return format_html(
+        '<details class="vnotes"><summary>{}</summary><ul>{}</ul></details>',
+        label,
+        items,
+    )
+
+
 @register.simple_tag
 def render_tokens(vt: VerseText) -> str:
-    """Tekst wersetu jako klikalne tokeny (oryginały) lub zwykły tekst (przekłady)."""
+    """Tekst wersetu: oryginał jako klikalne tokeny, przekład z modułu jako oczyszczony HTML
+    z przypisami, pozostałe przekłady jako zwykły tekst."""
     tokens = list(vt.tokens.all())
+    if not tokens and vt.markup:
+        return format_html(
+            '<span class="plain">{}</span>{}',
+            mark_safe(vt.markup),  # noqa: S308 — biała lista znaczników z importu
+            mark_safe(render_notes(vt)),  # noqa: S308
+        )
     if not tokens:
         return format_html('<span class="plain">{}</span>', vt.text)
 

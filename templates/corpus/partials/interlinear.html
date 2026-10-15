@@ -12,7 +12,8 @@
     <label><input type="checkbox" data-il="strong" checked> Strong</label>
     {% if il.work.language == "grc" %}<label><input type="checkbox" data-il="translit" checked> transliteracja</label>{% endif %}
     <label><input type="checkbox" data-il="morph" checked> morfologia</label>
-    <label><input type="checkbox" data-il="pl" checked> Biblia Gdańska</label>
+    {% if il.translation_code %}<label><input type="checkbox" data-il="pl" checked> przekład {{ il.translation_code }}</label>{% endif %}
+    {% for t in il.translations %}{% if t != il.translation_code %}<a href="{% url 'corpus:interlinear' %}?q={{ q|urlencode }}&amp;tekst={{ il.work.code }}&amp;pl={{ t }}" hx-get="{% url 'corpus:interlinear' %}?q={{ q|urlencode }}&amp;tekst={{ il.work.code }}&amp;pl={{ t }}" hx-target="#panel" hx-push-url="true">pokaż {{ t }}</a>{% endif %}{% endfor %}
   </div>
 </div>
 {% if il.work %}
@@ -31,7 +32,7 @@
       </a>
     {% endfor %}
     </div>
-    {% if v.translation %}<p class="il-pl">{{ v.translation }}</p>{% endif %}
+    {% if v.translation_vt %}<div class="il-pl">{% render_tokens v.translation_vt %}</div>{% endif %}
   </section>
 {% empty %}
   <p class="muted">Brak tekstu {{ il.work.code }} dla tego sigli{% if il.alternatives %} — spróbuj {{ il.alternatives|join:" albo " }}{% endif %}.</p>

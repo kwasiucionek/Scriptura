@@ -3,6 +3,7 @@
 Grupy Django (nadawane w adminie):
   scriptura-licensed  -> widzi także dokumenty access=licensed (zgody autorów)
   scriptura-private   -> widzi także access=private (demo prywatne dla właściciela praw)
+  scriptura-dzielo-KOD -> widzi jedno dzieło biblijne o kodzie KOD (np. przekład przed publikacją)
 Każdy zalogowany widzi `open`. Anonimowy (gdy ALLOW_ANONYMOUS): wyłącznie `open`.
 Anonimowy domyślnie może używać obu trybów; ANONYMOUS_POPULAR_ONLY=True ogranicza
 go do trybu popularnego, nie zmieniając dostępu do źródeł.
@@ -15,6 +16,10 @@ from django.db.models import Q
 
 GROUP_LICENSED = "scriptura-licensed"
 GROUP_PRIVATE = "scriptura-private"
+# dostęp do jednego dzieła biblijnego (np. przekład przed publikacją, podgląd dla wydawcy):
+# grupa „scriptura-dzielo-SNPD” -> poziom „work:SNPD” (filtr dzieł: corpus.services.text)
+GROUP_WORK_PREFIX = "scriptura-dzielo-"
+WORK_LEVEL_PREFIX = "work:"
 
 
 def access_for_user(user) -> list[str]:
@@ -28,6 +33,11 @@ def access_for_user(user) -> list[str]:
         levels.append("licensed")
     if GROUP_PRIVATE in names:
         levels.append("private")
+    levels += [
+        WORK_LEVEL_PREFIX + n[len(GROUP_WORK_PREFIX) :]
+        for n in sorted(names)
+        if n.startswith(GROUP_WORK_PREFIX)
+    ]
     return levels
 
 

@@ -361,8 +361,7 @@ def verses_for_lexeme(
     ):
         # Work objects may become stale after selection; enforce ACL at the text read.
         for vt in v.texts.filter(
-            work__in=work_objs,
-            work__access__in=[a for a in levels if a != "personal"],
+            corpus_svc.work_access_q(levels, "work__"), work__in=work_objs
         ).select_related("work"):
             if vt.work.language in ("pl", lang):
                 out.append(VerseSource(ref=str(v), work=vt.work.code, text=vt.text))

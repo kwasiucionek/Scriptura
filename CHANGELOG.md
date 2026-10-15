@@ -1,5 +1,19 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-15 — Przekład dosłowny EIB (SNPD) z przypisami
+
+- Import modułów MySword (`import_mysword`, `corpus.importers.mysword`): tekst wersetu (do
+  wyszukiwania i promptu), `VerseText.markup` do wyświetlania (tytuły perykop, słowa Jezusa,
+  kursywa słów dodanych, wersy poezji, znaczniki przypisów) i nowy model `VerseNote` (przypisy
+  tłumacza i odsyłacze; HTML przez białą listę znaczników, linki do wersetów jako polskie sigla).
+- Dostęp do pojedynczego dzieła przed publikacją: grupa `scriptura-dzielo-KOD` -> poziom
+  `work:KOD` (`corpus.services.text.work_access_q` we wszystkich filtrach dzieł; dokumenty
+  literatury bez zmian). SNPD importowany jako `private`.
+- Widok równoległy i interlinia: przekład z przypisami (rozwijane „przypisy · odsyłacze”);
+  interlinia wybiera SNPD, gdy jest dostępny (parametr `pl`, przełącznik „pokaż BG1632”).
+  SNPD w domyślnych dziełach widoku i w `RAG_VERSE_WORKS` (widoczny tylko z uprawnieniem).
+- Sigla: skróty EIB Jb, Kzn, Jo (Jo poza skanowaniem wolnego tekstu).
+
 ## 2026-10-15 — limit modelu w chmurze
 
 - Incydent: przebieg `gloss_tokens` (dwa procesy po 4 wątki) wyczerpał sesyjny limit konta Ollama

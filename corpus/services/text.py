@@ -21,7 +21,8 @@ from corpus.search.grammar import LexicalQuery, parse_query
 from corpus.search.queries import Hit, LexicalResult, lexical_body, parse_response
 from corpus.sigla import ordinal_range, parse
 
-DEFAULT_WORKS = ("WLC", "LXX", "SBLGNT", "BG1632")
+# SNPD widoczny tylko przy dostępie do dzieła (active_works filtruje po uprawnieniach)
+DEFAULT_WORKS = ("WLC", "LXX", "SBLGNT", "SNPD", "BG1632")
 
 
 class ReferenceError(ValueError):
@@ -56,7 +57,20 @@ def _work_levels(access: list[str] | None) -> list[str]:
     return [a for a in (["open"] if access is None else access) if a != "personal"]
 
 
-work_levels = _work_levels  # publicznie: poziomy dostępu do dzieł (widok słownika)
+def work_access_q(access: list[str] | None, prefix: str = "") -> Q:
+    """Warunek SQL na dzieła dostępne dla poziomów `access`: wg Work.access albo imiennie
+    (poziom „work:KOD” z grupy scriptura-dzielo-KOD). `prefix` np. "work__"."""
+    from rag.access import WORK_LEVEL_PREFIX
+
+    levels = _work_levels(access)
+    plain = [a for a in levels if not a.startswith(WORK_LEVEL_PREFIX)]
+    codes = [
+        a[len(WORK_LEVEL_PREFIX) :] for a in levels if a.startswith(WORK_LEVEL_PREFIX)
+    ]
+    q = Q(**{f"{prefix}access__in": plain})
+    if codes:
+        q |= Q(**{f"{prefix}code__in": codes})
+    return q
 
 
 def active_works(
@@ -68,7 +82,7 @@ def active_works(
     Omitted access is open-only; [] grants nothing. Selection of inaccessible or
     unknown codes returns no works, never falls back to the full corpus.
     """
-    qs = Work.objects.filter(access__in=_work_levels(access))
+    qs = Work.objects.filter(work_access_q(access))
     if codes is not None:
         qs = qs.filter(code__in=codes)
     return sorted(qs, key=lambda w: (w.kind != "original", w.code))
@@ -79,7 +93,7 @@ def visible_works(works: list[Work], *, access: list[str] | None = None) -> list
     current = {
         w.pk: w
         for w in Work.objects.filter(
-            pk__in=[w.pk for w in works], access__in=_work_levels(access)
+            work_access_q(access), pk__in=[w.pk for w in works]
         )
     }
     return [current[w.pk] for w in works if w.pk in current]
@@ -101,10 +115,10 @@ def parallel(
     tokens_qs = Token.objects.order_by("position")
     texts = (
         VerseText.objects.filter(
-            verse__in=verses, work__in=works, work__access__in=_work_levels(access)
+            work_access_q(access, "work__"), verse__in=verses, work__in=works
         )
         .select_related("work")
-        .prefetch_related(Prefetch("tokens", queryset=tokens_qs))
+        .prefetch_related(Prefetch("tokens", queryset=tokens_qs), "notes")
     )
     by_verse: dict[int, dict[str, VerseText]] = {}
     for vt in texts:
@@ -135,7 +149,7 @@ def concordance(
     access: list[str] | None = None,
 ) -> Concordance:
     qs = Token.objects.filter(
-        verse_text__work__access__in=_work_levels(access)
+        work_access_q(access, "verse_text__work__")
     ).select_related("verse_text__verse__book", "verse_text__work")
     if lemma:
         norm = normalize(lemma, language or _guess_language(lemma))
@@ -243,7 +257,7 @@ def _lexical_db(
     """Fallback bez OpenSearch: Strong/lemat po tokenach, słowa po text_norm.
     NEAR degraduje do AND; frazy = dokładne podciągi znormalizowanego tekstu."""
     base = VerseText.objects.filter(
-        work__in=works, work__access__in=_work_levels(access)
+        work_access_q(access, "work__"), work__in=works
     ).select_related("verse__book", "work")
 
     if lq.strongs or lq.lemmas:
@@ -253,7 +267,7 @@ def _lexical_db(
         for lemma in lq.lemmas:
             tok |= Q(lemma_norm=normalize(lemma, _guess_language(lemma)))
         verse_ids = Token.objects.filter(
-            tok, verse_text__work__access__in=_work_levels(access)
+            tok, work_access_q(access, "verse_text__work__")
         ).values("verse_text__verse_id")
         base = base.filter(verse_id__in=verse_ids)
 
@@ -400,9 +414,9 @@ def related_verses(
     texts = {
         (vt.verse_id, vt.work.code): vt.text
         for vt in VerseText.objects.filter(
+            work_access_q(access, "work__"),
             verse__in=verses.values(),
             work__in=work_objs,
-            work__access__in=_work_levels(access),
         ).select_related("work")
     }
     out = []

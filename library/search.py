@@ -125,6 +125,8 @@ class ChunkHit:
     access: str
     register: str = "scientific"
     owner_id: int | None = None
+    # oryginał (EN/IT…), gdy `text` to polski przekład roboczy (use_working_translations)
+    text_orig: str = ""
 
 
 # --- indeksowanie ---------------------------------------------------------
@@ -319,10 +321,40 @@ def diversify(hits: list[ChunkHit], max_per_doc: int, k: int) -> list[ChunkHit]:
     return out
 
 
+# typy dokumentów, dla których w prompcie i panelu źródeł idzie polski przekład roboczy
+# (fragmenty z odsyłaczem do oryginału); pozostałe obce teksty — przekład tylko do wyszukiwania
+WORKING_TRANSLATION_TYPES = ("church",)
+
+
+def use_working_translations(hits: list[ChunkHit]) -> list[ChunkHit]:
+    """Dokumenty Kościoła: `text` = polski przekład roboczy (Chunk.text_pl), oryginał w `text_orig`.
+    Wywołuj przed expand_with_neighbors — sąsiedzi dostaną wtedy też przekład."""
+    keys = {
+        (h.document_id, h.order)
+        for h in hits
+        if h.doc_type in WORKING_TRANSLATION_TYPES and not getattr(h, "text_orig", "")
+    }
+    if not keys:
+        return hits
+    rows = (
+        Chunk.objects.filter(document_id__in={d for d, _ in keys})
+        .exclude(text_pl="")
+        .values_list("document_id", "order", "text_pl")
+    )
+    polish = {(d, o): t for d, o, t in rows if (d, o) in keys}
+    for h in hits:
+        translated = polish.get((h.document_id, h.order))
+        if translated and h.doc_type in WORKING_TRANSLATION_TYPES and not h.text_orig:
+            h.text_orig, h.text = h.text, translated
+    return hits
+
+
 def expand_with_neighbors(hits: list[ChunkHit], radius: int) -> list[ChunkHit]:
     """Dokleja do każdego trafienia tekst chunków order±radius z tego samego dokumentu
     (z bazy), bez duplikowania fragmentów już obecnych w liście. Kolejność trafień
-    bez zmian; chunki-sąsiedzi wchodzą do tekstu, nie jako osobne pozycje [n]."""
+    bez zmian; chunki-sąsiedzi wchodzą do tekstu, nie jako osobne pozycje [n].
+    Trafienie z przekładem roboczym (text_orig) dostaje przekłady sąsiadów, a oryginały
+    trafiają do text_orig."""
     if radius <= 0 or not hits:
         return hits
     wanted: dict[int, set[int]] = {}
@@ -332,20 +364,25 @@ def expand_with_neighbors(hits: list[ChunkHit], radius: int) -> list[ChunkHit]:
                 wanted.setdefault(h.document_id, set()).add(o)
     present = {(h.document_id, h.order) for h in hits}
     rows = Chunk.objects.filter(document_id__in=wanted).values_list(
-        "document_id", "order", "text"
+        "document_id", "order", "text", "text_pl"
     )
-    texts = {(d, o): t for d, o, t in rows if o in wanted.get(d, ())}
+    texts = {(d, o): (t, tp) for d, o, t, tp in rows if o in wanted.get(d, ())}
     used: set[tuple[int, int]] = set()
     for h in hits:
-        parts = []
+        parts, originals = [], []
         for o in range(h.order - radius, h.order + radius + 1):
             key = (h.document_id, o)
             if o == h.order:
                 parts.append(h.text)
+                originals.append(h.text_orig)
             elif key in texts and key not in present and key not in used:
-                parts.append(texts[key])
+                text, text_pl = texts[key]
+                parts.append(text_pl if h.text_orig and text_pl else text)
+                originals.append(text)
                 used.add(key)
         h.text = "\n".join(parts)
+        if h.text_orig:
+            h.text_orig = "\n".join(originals)
     return hits
 
 

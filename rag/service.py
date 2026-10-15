@@ -24,7 +24,13 @@ from corpus.models import Lexeme, Verse
 from corpus.services import text as corpus_svc
 from corpus.sigla import extract, format_ref, ordinal_range
 from library import llm
-from library.search import ChunkHit, diversify, expand_with_neighbors, retrieve
+from library.search import (
+    ChunkHit,
+    diversify,
+    expand_with_neighbors,
+    retrieve,
+    use_working_translations,
+)
 from patristics.service import patristics_for_question
 from places.service import places_for_question
 from rag.quotes import check_citations, verify_quotes
@@ -423,6 +429,8 @@ SOURCE_KIND_NOTES = {
     ),
 }
 
+WORKING_TRANSLATION_NOTE = " [tekst w polskim przekładzie roboczym Scriptury; cytując, zaznacz „przekład roboczy”]"
+
 
 def build_messages(
     question: str,
@@ -437,7 +445,9 @@ def build_messages(
 ) -> list[dict]:
     src_lines = []
     for n, h in enumerate(chunks, start=1):
-        kind = SOURCE_KIND_NOTES.get(h.doc_type, "")
+        kind = SOURCE_KIND_NOTES.get(h.doc_type, "") + (
+            WORKING_TRANSLATION_NOTE if getattr(h, "text_orig", "") else ""
+        )
         head = f"[{n}] {h.citation}{kind}" + (
             f" — sekcja: {h.section}" if h.section else ""
         )
@@ -749,6 +759,7 @@ def ask(
             )
         chunks = apply_register_preference(chunks, mode, settings.RAG_TOP_K + 4)
         chunks = diversify(chunks, settings.RAG_MAX_PER_DOC, settings.RAG_TOP_K)
+        chunks = use_working_translations(chunks)
         chunks = expand_with_neighbors(chunks, settings.RAG_CONTEXT_NEIGHBORS)
         t_v = time.monotonic()
         verses = verses_for_question(question, works, access=access)
@@ -785,6 +796,9 @@ def ask(
             "url": source_url(h),
             "sigla": h.sigla,
             "snippet": h.text[:600],
+            # przekład roboczy: polski fragment + oryginał i odsyłacz (url) w panelu
+            "translated": bool(getattr(h, "text_orig", "")),
+            "snippet_orig": getattr(h, "text_orig", "")[:600],
             "access": h.access,
             "register": h.register,
             "personal": h.access == "personal",

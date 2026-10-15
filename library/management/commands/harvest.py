@@ -10,6 +10,7 @@
     python manage.py harvest bibtex --file ~/Pobrane/citations.bib --out data/manifests/majewski-scholar.jsonl
     python manage.py harvest vatican --out data/manifests/vatican.jsonl        # dokumenty Kościoła o Piśmie (vatican.va)
     python manage.py harvest vatican --keys dei-verbum verbum-domini
+    python manage.py harvest vatican --polish-pd --translate-model mistral-large-3:675b-cloud   # pełny przekład z łaciny (domena publiczna)
 
 Manifest przejrzyj ręcznie (kolumna access: open/licensed/private/skip), potem `ingest_manifest`.
 """
@@ -97,6 +98,22 @@ class Command(BaseCommand):
             help="vatican: klucze dokumentów z library.harvest.vatican.DOCUMENTS (domyślnie wszystkie)",
         )
         parser.add_argument(
+            "--polish-pd",
+            action="store_true",
+            help="vatican: pełny polski przekład roboczy z łaciny dokumentów z domeny publicznej",
+        )
+        parser.add_argument(
+            "--translate-model",
+            default=settings.TRANSLATE_MODEL,
+            help="vatican --polish-pd: model przekładu (Ollama, także tagi -cloud)",
+        )
+        parser.add_argument(
+            "--translate-workers",
+            type=int,
+            default=4,
+            help="vatican --polish-pd: równoległe żądania do modelu",
+        )
+        parser.add_argument(
             "--since",
             help="blog: tylko wpisy zmodyfikowane od daty YYYY-MM-DD (przyrost)",
         )
@@ -160,9 +177,42 @@ class Command(BaseCommand):
                 raise CommandError(
                     f"nieznane klucze: {', '.join(unknown)} (dostępne: {', '.join(sorted(known))})"
                 )
-            entries = vatican.harvest(
-                settings.DATA_DIR / "library" / "vatican", o["keys"] or None
-            )
+            out_dir = settings.DATA_DIR / "library" / "vatican"
+            if o["polish_pd"]:
+                from library.management.commands.translate_chunks import translate
+
+                model = o["translate_model"]
+
+                def to_polish(text: str) -> str:
+                    return translate(
+                        text,
+                        "la",
+                        model,
+                        settings.TRANSLATE_BASE_URL,
+                        settings.OLLAMA_API_KEY,
+                    )
+
+                docs = [
+                    d
+                    for d in vatican.DOCUMENTS
+                    if d.public_domain
+                    and d.latin_path
+                    and (not o["keys"] or d.key in o["keys"])
+                ]
+                entries = []
+                for d in docs:
+                    self.stdout.write(f"  {d.key}: przekład z łaciny modelem {model}…")
+                    entries.append(
+                        vatican.polish_translation(
+                            d,
+                            vatican.fetch(vatican.BASE + d.latin_path),
+                            out_dir,
+                            to_polish,
+                            o["translate_workers"],
+                        )
+                    )
+            else:
+                entries = vatican.harvest(out_dir, o["keys"] or None)
 
         elif source == "bibtex":
             if not o["file"]:

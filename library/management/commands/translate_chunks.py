@@ -3,9 +3,11 @@
     python manage.py translate_chunks                       # wszystkie dokumenty != pl bez text_pl
     python manage.py translate_chunks --documents 50 57 --force
 
-Przekład trafia do Chunk.text_pl i służy WYŁĄCZNIE wyszukiwaniu (BM25 + embedding); w prompcie,
+Przekład trafia do Chunk.text_pl i służy wyszukiwaniu (BM25 + embedding); w prompcie,
 panelu źródeł i weryfikacji cytatów zostaje oryginał. To istotne licencyjnie (CC BY-ND zabrania
 rozpowszechniania utworów zależnych; wewnętrzny indeks nim nie jest) i merytorycznie.
+Wyjątek: dokumenty Kościoła (doc_type=church) — przekład roboczy idzie do promptu, a panel
+pokazuje z niego fragment z oryginałem i odsyłaczem (library.search.use_working_translations).
 Potem: reindex_chunks --recreate (embeddingi liczone z tekstu polskiego).
 TranslateGemma wymaga dokładnie tego formatu promptu (dwie puste linie przed tekstem); dla modeli
 ogólnych (np. gemma4:31b-cloud) prompt dostaje dopisek o zachowaniu sigli i transliteracji.
@@ -13,6 +15,7 @@ ogólnych (np. gemma4:31b-cloud) prompt dostaje dopisek o zachowaniu sigli i tra
 """
 
 import json
+import re
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -47,6 +50,22 @@ PRESERVE_NOTE = (
 )
 
 
+# wstęp, który dopisują modele ogólne (Mistral: „Oto polskie tłumaczenie:”)
+_PREFACE_RE = re.compile(
+    r"^\s*(?:oto|poniżej)\b[^\n]{0,80}?(?:tłumaczenie|przekład)[^\n]{0,40}:\s*\n+",
+    re.IGNORECASE,
+)
+_EMPHASIS_RE = re.compile(r"\*{1,3}([^*\n]+?)\*{1,3}")
+
+
+def clean_translation(text: str, source: str) -> str:
+    """Przekład bez wstępu modelu i markdownowych gwiazdek, których nie było w oryginale."""
+    text = _PREFACE_RE.sub("", text, count=1)
+    if "*" not in source:
+        text = _EMPHASIS_RE.sub(r"\1", text)
+    return text.strip()
+
+
 def build_prompt(text: str, src: str, model: str) -> str:
     src_name = LANG_NAMES.get(src[:2], src)
     prompt = PROMPT.format(src=src[:2], src_name=src_name, text=text)
@@ -76,7 +95,7 @@ def translate(text: str, src: str, model: str, base_url: str, api_key: str = "")
         f"{base_url}/api/chat", data=json.dumps(body).encode(), headers=headers
     )
     with urllib.request.urlopen(req, timeout=settings.TRANSLATE_TIMEOUT) as resp:  # noqa: S310
-        return json.load(resp)["message"]["content"].strip()
+        return clean_translation(json.load(resp)["message"]["content"], text)
 
 
 class Command(BaseCommand):

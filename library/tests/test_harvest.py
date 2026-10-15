@@ -387,3 +387,78 @@ def test_harvest_vatican_command(tmp_path, settings):
     )
     with pytest.raises(CommandError, match="nieznane klucze"):
         call_command("harvest", "vatican", "--keys", "nie-ma-takiego")
+
+
+def test_vatican_split_for_translation_keeps_sentences():
+    from library.harvest import vatican
+
+    para = " ".join(f"Sententia numero {i} longa satis est." for i in range(40))
+    pieces = vatican.split_for_translation(para, max_chars=300)
+    assert all(len(p) <= 300 for p in pieces) and " ".join(pieces) == para
+    assert vatican.split_for_translation("Brevis.", max_chars=300) == ["Brevis."]
+
+
+def test_vatican_polish_translation_public_domain_only(tmp_path):
+    from library.harvest import vatican
+
+    pd = next(d for d in vatican.DOCUMENTS if d.key == "providentissimus-deus")
+    raw = '<div class="vaticanrichtext"><p>Prima pars.</p><p>Secunda pars. Tertia sententia.</p></div>'
+    calls = []
+
+    def fake(text):
+        calls.append(text)
+        return f"PL({text})"
+
+    e = vatican.polish_translation(pd, raw, tmp_path, fake, workers=2)
+    assert sorted(calls) == ["Prima pars.", "Secunda pars. Tertia sententia."]
+    assert (e.language, e.doc_type, e.access, e.source_id) == (
+        "pl",
+        "church",
+        "open",
+        "vatican-providentissimus-deus-pl",
+    )
+    assert e.url.endswith("_providentissimus-deus.html") and "/la/" in e.url
+    assert e.title.endswith("(przekład roboczy z łaciny)") and len(e.license) <= 128
+    text = open(e.local_file, encoding="utf-8").read()
+    assert text.endswith("PL(Prima pars.)\n\nPL(Secunda pars. Tertia sententia.)\n")
+    dv = next(d for d in vatican.DOCUMENTS if d.key == "dei-verbum")
+    with pytest.raises(ValueError, match="domeny publicznej"):
+        vatican.polish_translation(dv, raw, tmp_path, fake)
+
+
+def test_harvest_vatican_skips_translated_public_domain_by_default(tmp_path):
+    from library.harvest import vatican
+
+    with mock.patch.object(vatican, "fetch", return_value=_VATICAN_CONTENT):
+        keys = {e.source_id for e in vatican.harvest(tmp_path)}
+        explicit = vatican.harvest(tmp_path, ["providentissimus-deus"])
+    assert "vatican-providentissimus-deus" not in keys and "vatican-dei-verbum" in keys
+    assert [e.source_id for e in explicit] == ["vatican-providentissimus-deus"]
+
+
+def test_harvest_vatican_polish_pd_command(tmp_path, settings):
+    from django.core.management import call_command
+
+    from library.harvest import manifest, vatican
+    from library.management.commands import translate_chunks
+
+    settings.DATA_DIR = tmp_path
+    out = tmp_path / "pd.jsonl"
+    with (
+        mock.patch.object(vatican, "fetch", return_value=_VATICAN_CONTENT) as fetch,
+        mock.patch.object(
+            translate_chunks, "translate", side_effect=lambda t, src, *a: f"[{src}] {t}"
+        ),
+    ):
+        call_command(
+            "harvest",
+            "vatican",
+            "--polish-pd",
+            "--translate-model",
+            "m",
+            "--out",
+            str(out),
+        )
+    assert "/la/" in fetch.call_args.args[0]
+    (e,) = manifest.read(out)
+    assert e.language == "pl" and "[la] " in open(e.local_file, encoding="utf-8").read()

@@ -374,3 +374,79 @@ def test_system_prompt_limits_verbatim_quotes():
         "Nie odtwarzasz pełnych tekstów" in system and "najwyżej 2–3 zdania" in system
     )
     assert "numer punktu" in service.SOURCE_KIND_NOTES["church"]
+
+
+@pytest.fixture
+def church_doc():
+    d = Document.objects.create(
+        title="Dei Verbum", year=1965, doc_type="church", language="en", access="open",
+        url="https://www.vatican.va/dei-verbum_en.html",
+    )  # fmt: skip
+    d.authors.add(
+        Author.objects.create(name="Sobór Watykański II", slug="sobor-wat-ii")
+    )
+    for order, (en, pl) in enumerate(
+        [
+            ("PREFACE Hearing the word of God.", "PRZEDMOWA Słuchając słowa Bożego."),
+            ("Sacred tradition and Sacred Scripture form one deposit.", "Święta Tradycja i Pismo Święte stanowią jeden depozyt."),
+            ("The task of interpreting belongs to the Magisterium.", ""),
+        ]
+    ):  # fmt: skip
+        Chunk.objects.create(
+            document=d, order=order, section="II", text=en, text_pl=pl, sigla=[]
+        )
+    return d
+
+
+def test_working_translation_replaces_text_and_keeps_original(church_doc):
+    from library.search import ChunkHit, expand_with_neighbors, use_working_translations
+
+    hit = ChunkHit(chunk_id=0, document_id=church_doc.id, order=1, title="Dei Verbum", authors=[],
+                   citation="", doc_type="church", year=1965, url="", section="II",
+                   text="Sacred tradition and Sacred Scripture form one deposit.", sigla=[],
+                   score=1.0, access="open")  # fmt: skip
+    article = ChunkHit(
+        **{**hit.__dict__, "doc_type": "article", "text": "Oryginał artykułu."}
+    )
+    use_working_translations([hit, article])
+    assert hit.text == "Święta Tradycja i Pismo Święte stanowią jeden depozyt."
+    assert hit.text_orig.startswith("Sacred tradition") and article.text_orig == ""
+    (out,) = expand_with_neighbors([hit], 1)
+    # sąsiad z przekładem -> po polsku; sąsiad bez przekładu -> oryginał; oryginały w text_orig
+    assert out.text.split("\n") == [
+        "PRZEDMOWA Słuchając słowa Bożego.",
+        "Święta Tradycja i Pismo Święte stanowią jeden depozyt.",
+        "The task of interpreting belongs to the Magisterium.",
+    ]
+    assert out.text_orig.split("\n")[0] == "PREFACE Hearing the word of God."
+
+
+def test_ask_shows_working_translation_fragment_with_original(church_doc, settings):
+    settings.RAG_CONTEXT_NEIGHBORS = 0
+    c = Client(HTTP_HOST="localhost")
+    ev = _events(
+        c.post(
+            "/ask/stream",
+            data=json.dumps({"question": "Sacred tradition deposit"}),
+            content_type="application/json",
+        )
+    )
+    (src,) = [s for s in ev[0][1]["chunks"] if s["document_id"] == church_doc.id]
+    assert src["translated"] is True and src["snippet"].startswith("Święta Tradycja")
+    assert (
+        src["snippet_orig"].startswith("Sacred tradition")
+        and "vatican.va" in src["url"]
+    )
+
+
+def test_translated_church_source_marked_in_prompt():
+    from library.search import ChunkHit
+
+    hit = ChunkHit(chunk_id=1, document_id=1, order=0, title="Dei Verbum", authors=[], citation="DV",
+                   doc_type="church", year=1965, url="", section="", text="Święta Tradycja…", sigla=[],
+                   score=1.0, access="open", text_orig="Sacred tradition…")  # fmt: skip
+    user = service.build_messages("q", [hit], [])[-1]["content"]
+    assert (
+        "[1] DV [DOKUMENT KOŚCIOŁA" in user and "przekładzie roboczym Scriptury" in user
+    )
+    assert "Święta Tradycja…" in user and "Sacred tradition" not in user

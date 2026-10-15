@@ -2,6 +2,16 @@
 
 ## 2026-10-15 — dokumenty Kościoła o Piśmie Świętym
 
+- Przekłady robocze dokumentów Kościoła: model dostaje polski przekład roboczy (Chunk.text_pl)
+  zamiast oryginału EN/IT, z dopiskiem „przekład roboczy Scriptury”; panel źródeł pokazuje polski
+  fragment (≤ 600 znaków), oryginał pod „oryginał” i odsyłacz do vatican.va
+  (`library.search.use_working_translations`, także dla sąsiednich chunków). Weryfikacja cytatów
+  działa na tym samym tekście co prompt. Pozostałe obce teksty bez zmian (przekład tylko do wyszukiwania).
+- `harvest vatican --polish-pd [--translate-model …]`: pełny polski przekład roboczy z łacińskiego
+  oryginału dla dokumentów w domenie publicznej (Providentissimus Deus, Leon XIII †1903); porcje
+  ≤ 2500 znaków po zdaniach, równolegle. Bez `--keys` zwykły harvest pomija te dokumenty (ich
+  wersją jest przekład). `translate_chunks`: bez wstępu modelu („Oto polskie tłumaczenie:”)
+  i markdownowych gwiazdek.
 - Prompt, zasada 9: dosłownie tylko krótkie fragmenty (2–3 zdania, w cudzysłowie, z [n]), reszta
   streszczeniem; pełnych tekstów i dłuższych partii nie odtwarza także na prośbę — streszcza i odsyła
   do źródła; cytat z obcojęzycznego źródła jako „przekład roboczy”. Dokumenty Kościoła: numer punktu

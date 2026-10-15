@@ -715,3 +715,117 @@ def _retrieve_db(
             )
         )
     return hits
+
+
+# --- wzmianki słowa oryginału w literaturze (strona słownika) ------------------------------
+
+
+def term_mentions(
+    grc: list[str],
+    hbo: list[str],
+    translits: list[str] | None = None,
+    k: int = 8,
+    access: list[str] | None = None,
+    user_id: int | None = None,
+) -> list[ChunkHit]:
+    """Fragmenty literatury, w których pada dane słowo grecki/hebrajskie (formy znormalizowane jak
+    w polach terms_grc/terms_hbo) albo jego transliteracja; najwyżej jeden fragment na dokument.
+    Dostęp jak w retrieve: wstępny filtr w indeksie, autorytatywny w SQL."""
+    access = settings.RAG_ACCESS if access is None else access
+    grc = sorted({normalize_greek(t) for t in grc if t} - {""})
+    hbo = sorted({normalize_hebrew(t) for t in hbo if t} - {""})
+    translits = [t for t in (translits or []) if len(t) >= 5]
+    if not (grc or hbo or translits):
+        return []
+    if settings.SEARCH_BACKEND == "opensearch":
+        pairs = _mentions_opensearch(grc, hbo, translits, k, access, user_id)
+    else:
+        pairs = _mentions_db(grc, hbo, k, access, user_id)
+    doc_ids = {p["document_id"] for p, _ in pairs}
+    documents = {
+        d.id: d
+        for d in Document.objects.filter(
+            document_access_q(access, user_id), id__in=doc_ids
+        ).prefetch_related("authors")
+    }
+    hits, seen = [], set()
+    for src, score in pairs:
+        d = documents.get(src["document_id"])
+        if d is None or d.id in seen:
+            continue
+        seen.add(d.id)
+        hits.append(
+            ChunkHit(
+                chunk_id=src.get("chunk_id", 0),
+                document_id=d.id,
+                order=src["order"],
+                title=d.title,
+                authors=[a.name for a in d.authors.all()],
+                citation=d.citation,
+                doc_type=d.doc_type,
+                year=d.year,
+                url=d.url,
+                section=src.get("section", ""),
+                text=src.get("text_exact", src.get("text", "")),
+                sigla=src.get("sigla_labels", []),
+                score=score,
+                access=d.access,
+                register=d.register,
+                owner_id=d.owner_id,
+            )
+        )
+        if len(hits) >= k:
+            break
+    return hits
+
+
+def _mentions_opensearch(grc, hbo, translits, k, access, user_id):
+    from corpus.search.client import get_client, index_name
+
+    should = []
+    if grc:
+        should.append({"terms": {"terms_grc": grc}})
+    if hbo:
+        should.append({"terms": {"terms_hbo": hbo}})
+    should += [{"match_phrase": {"text_fold": t}} for t in translits]
+    body = {
+        "size": k * 5,
+        "_source": {"excludes": ["embedding"]},
+        "query": {
+            "bool": {
+                "should": should,
+                "minimum_should_match": 1,
+                "filter": _filters(access, None, None, None, user_id),
+            }
+        },
+    }
+    res = get_client().search(index=index_name("chunks"), body=body)["hits"]["hits"]
+    return [(h["_source"], float(h["_score"] or 0)) for h in res]
+
+
+def _mentions_db(grc, hbo, k, access, user_id):
+    qs = Chunk.objects.filter(
+        document_access_q(access, user_id, prefix="document__")
+    ).only("id", "document_id", "order", "section", "text", "sigla")
+    out = []
+    for ch in qs[:20000].iterator(
+        chunk_size=500
+    ):  # fallback bez indeksu: tylko dev/testy
+        c_grc, c_hbo = original_terms(ch.text)
+        if set(grc) & set(c_grc) or set(hbo) & set(c_hbo):
+            out.append(
+                (
+                    {
+                        "chunk_id": ch.id,
+                        "document_id": ch.document_id,
+                        "order": ch.order,
+                        "section": ch.section,
+                        "text": ch.text,
+                        "sigla_labels": [s["ref"] for s in ch.sigla],
+                    },
+                    1.0,
+                )
+            )
+            if len(out) >= k * 5:
+                break
+    return out

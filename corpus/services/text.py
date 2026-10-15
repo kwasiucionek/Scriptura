@@ -56,6 +56,9 @@ def _work_levels(access: list[str] | None) -> list[str]:
     return [a for a in (["open"] if access is None else access) if a != "personal"]
 
 
+work_levels = _work_levels  # publicznie: poziomy dostępu do dzieł (widok słownika)
+
+
 def active_works(
     codes: list[str] | None = None, *, access: list[str] | None = None
 ) -> list[Work]:

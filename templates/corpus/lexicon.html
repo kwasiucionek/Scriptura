@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% block title %}{{ lex.strong }} {{ lex.lemma }} — słownik — Scriptura{% endblock %}
+{% block description %}{{ lex.lemma }} ({{ lex.strong }}): {{ lex.gloss_pl|default:lex.gloss }} — definicje STEP i Stronga, formy, wystąpienia w Biblii i literaturze.{% endblock %}
+{% block panel %}{% include "corpus/partials/lexicon.html" %}{% endblock %}

@@ -129,6 +129,41 @@ for _b in BOOKS:
         _ABBR_INDEX.setdefault(_norm_key(_key), _b)
 
 
+# Skróty STEPBible (odsyłacze w leksykonach TBESG/TBESH: <ref='Php.2.6'>) -> OSIS
+STEP_ABBR: dict[str, str] = {
+    "Gen": "Gen", "Exo": "Exod", "Lev": "Lev", "Num": "Num", "Deu": "Deut", "Jos": "Josh",
+    "Jdg": "Judg", "Rut": "Ruth", "1Sa": "1Sam", "2Sa": "2Sam", "1Ki": "1Kgs", "2Ki": "2Kgs",
+    "1Ch": "1Chr", "2Ch": "2Chr", "Ezr": "Ezra", "Neh": "Neh", "Est": "Esth", "Job": "Job",
+    "Psa": "Ps", "Pro": "Prov", "Ecc": "Eccl", "Sng": "Song", "Isa": "Isa", "Jer": "Jer",
+    "Lam": "Lam", "Ezk": "Ezek", "Dan": "Dan", "Hos": "Hos", "Jol": "Joel", "Amo": "Amos",
+    "Oba": "Obad", "Jon": "Jonah", "Mic": "Mic", "Nam": "Nah", "Hab": "Hab", "Zep": "Zeph",
+    "Hag": "Hag", "Zec": "Zech", "Mal": "Mal", "Mat": "Matt", "Mrk": "Mark", "Luk": "Luke",
+    "Jhn": "John", "Act": "Acts", "Rom": "Rom", "1Co": "1Cor", "2Co": "2Cor", "Gal": "Gal",
+    "Eph": "Eph", "Php": "Phil", "Col": "Col", "1Th": "1Thess", "2Th": "2Thess",
+    "1Ti": "1Tim", "2Ti": "2Tim", "Tit": "Titus", "Phm": "Phlm", "Heb": "Heb", "Jas": "Jas",
+    "1Pe": "1Pet", "2Pe": "2Pet", "1Jn": "1John", "2Jn": "2John", "3Jn": "3John",
+    "Jud": "Jude", "Rev": "Rev", "Tob": "Tob", "Jdt": "Jdt", "1Ma": "1Macc", "2Ma": "2Macc",
+    "Wis": "Wis", "Sir": "Sir", "Bar": "Bar",
+}  # fmt: skip
+
+
+def step_ref_to_siglum(ref: str) -> str:
+    """'Php.2.6' -> 'Flp 2,6'; 'Mrk.5.36; 7.29' -> 'Mk 5,36; 7,29'; '1Co.14.9, 19' -> '1 Kor 14,9.19'.
+    Nieznana księga albo zapis -> pusty napis."""
+    import re
+
+    m = re.match(r"^\s*([1-3]?[A-Z][a-z]{1,2})\.(\d[\d.,;\s\-]*)$", ref)
+    if not m or m.group(1) not in STEP_ABBR:
+        return ""
+    book = BY_OSIS.get(STEP_ABBR[m.group(1)])
+    if book is None:
+        return ""
+    rest = m.group(2).strip().rstrip(".,;")
+    rest = re.sub(r"(\d+)\.(\d+)", r"\1,\2", rest)  # rozdział.werset -> rozdział,werset
+    rest = re.sub(r",\s+(\d)", r".\1", rest)  # kolejne wersety: ', 19' -> '.19'
+    return f"{book.abbr} {rest}"
+
+
 def lookup(abbr: str) -> BookSpec | None:
     """Rozpoznaj księgę po skrócie w dowolnej z obsługiwanych konwencji."""
     return _ABBR_INDEX.get(_norm_key(abbr))

@@ -5,6 +5,12 @@
 <a hx-get="{% url 'corpus:reference' %}?q=Iz 53" hx-target="#panel" hx-push-url="true" href="#">Iz 53</a>)
 albo szukaj słowa, Stronga (<a hx-get="{% url 'corpus:concordance' %}?strong=H430" hx-target="#panel" hx-push-url="true" href="#">H430</a>)
 lub lematu (<a hx-get="{% url 'corpus:concordance' %}?lemma=λόγος" hx-target="#panel" hx-push-url="true" href="#">λόγος</a>).
-Kliknięcie słowa w tekście oryginalnym otwiera konkordancję.</p>
+Kliknięcie słowa w tekście oryginalnym otwiera hasło słownika (definicje STEP i Stronga, formy, wystąpienia, literatura).</p>
+<p class="muted"><b>Interlinia</b> — słowo po słowie z numerem Stronga, transliteracją, polską glosą w kontekście i morfologią:
+<a hx-get="{% url 'corpus:interlinear' %}?q=Flp 2,5-11" hx-target="#panel" hx-push-url="true" href="{% url 'corpus:interlinear' %}?q=Flp 2,5-11">Flp 2,5-11</a>,
+<a hx-get="{% url 'corpus:interlinear' %}?q=Rdz 1" hx-target="#panel" hx-push-url="true" href="{% url 'corpus:interlinear' %}?q=Rdz 1">Rdz 1</a>,
+<a hx-get="{% url 'corpus:interlinear' %}?q=Ps 23" hx-target="#panel" hx-push-url="true" href="{% url 'corpus:interlinear' %}?q=Ps 23">Ps 23</a>.
+<b>Słownik</b>: <a hx-get="{% url 'corpus:lexicon' 'G725' %}" hx-target="#panel" hx-push-url="true" href="{% url 'corpus:lexicon' 'G725' %}">G725 ἁρπαγμός</a>,
+<a hx-get="{% url 'corpus:lexicon' 'H2617a' %}" hx-target="#panel" hx-push-url="true" href="{% url 'corpus:lexicon' 'H2617a' %}">H2617a חֶסֶד</a>.</p>
 <p class="muted">Dostępne dzieła: {% for w in works %}<b>{{ w.code }}</b> ({{ w.name }}; {{ w.get_access_display }}){% if not forloop.last %} · {% endif %}{% endfor %}</p>
 {% endblock %}

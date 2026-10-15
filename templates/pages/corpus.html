@@ -73,7 +73,7 @@
   <tr><td><code>{{ w.code }}</code></td><td>{% if w.source_url %}<a href="{{ w.source_url }}" rel="noopener" target="_blank">{{ w.name }}</a>{% else %}{{ w.name }}{% endif %}{% if w.year %} <span class="muted">({{ w.year }})</span>{% endif %}</td><td class="muted">{{ w.language }}</td><td>{{ w.get_kind_display }}</td><td class="muted small">{{ w.license|default:"—" }}</td></tr>
   {% endfor %}
 </table>
-<p class="small muted">Tokeny tekstów oryginalnych mają lemat, numer Stronga i kod morfologiczny (OSHM dla hebrajskiego, MorphGNT dla greckiego); to one łączą konkordancję, leksykon i pytania o słowa. Leksykon: STEPBible TBESH/TBESG (Tyndale House, CC BY). Odsyłacze: OpenBible.info (CC BY).</p>
+<p class="small muted">Tokeny tekstów oryginalnych mają lemat, numer Stronga i kod morfologiczny (OSHM dla hebrajskiego, MorphGNT dla greckiego; numery Stronga dla greki przypisane po lemacie); to one łączą interlinię, słownik, konkordancję i pytania o słowa. Leksykon: STEPBible TBESH/TBESG (Tyndale House, CC BY) z pełnymi definicjami i słowniki Stronga (domena publiczna, JSON Open Scriptures, CC BY‑SA). Polskie glosy interlinii i polskie odpowiedniki haseł to przekład roboczy Scriptury (model językowy). Odsyłacze: OpenBible.info (CC BY).</p>
 
 <h2>Ojcowie Kościoła</h2>
 <p>Wydanie <em>Ante‑Nicene Fathers</em> / <em>Nicene and Post‑Nicene Fathers</em> w cyfrowej edycji Christian Classics Ethereal Library (domena publiczna). Pasaże są indeksowane po odsyłaczach biblijnych zawartych w tekście — pytanie o werset zwraca miejsca, w których Ojcowie ten werset komentują. {% if s.pat_translated %}Polski przekład pomocniczy (maszynowy, tylko do wyszukiwania i podglądu) ma {{ s.pat_translated }} z {{ s.pat_passages }} pasaży.{% endif %}</p>

@@ -1,0 +1,14 @@
+<h2>Słownik{% if q %} <span class="muted">· {{ q }}</span>{% endif %}</h2>
+{% if q %}
+  {% if results %}
+  <ul class="hits">
+    {% for x in results %}
+    <li><span class="ref"><a href="{% url 'corpus:lexicon' x.strong %}" hx-get="{% url 'corpus:lexicon' x.strong %}" hx-target="#panel" hx-push-url="true">{{ x.strong }}</a></span>
+      <span class="lang-{{ x.language }}">{{ x.lemma }}</span> <span class="muted">{{ x.transliteration }}</span>
+      — {{ x.gloss_pl|default:x.gloss }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">Brak haseł dla „{{ q }}”.</p>{% endif %}
+{% else %}
+<p class="muted">Wpisz numer Stronga (G725, H7225), lemat grecki lub hebrajski (λόγος, חֶסֶד), transliterację (hesed, agape) albo polskie lub angielskie znaczenie (łaska, grace).</p>
+{% endif %}

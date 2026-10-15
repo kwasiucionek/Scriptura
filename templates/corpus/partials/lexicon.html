@@ -1,0 +1,87 @@
+{% load corpus_tags %}
+<article class="lex">
+<header class="lex-head">
+  <p class="lex-meta">{{ lex.strong }} · {{ entry.language_label }}{% if entry.pos_label %} · {{ entry.pos_label }}{% endif %}</p>
+  <h2><span class="lex-lemma lang-{{ lex.language }} {{ lex.language|dir_for }}">{{ lex.lemma }}</span>
+    {% if entry.translit %}<span class="lex-tr">{{ entry.translit }}</span>{% endif %}
+    {% if lex.strong_pron %}<span class="muted">wymowa wg Stronga: {{ lex.strong_pron }}</span>{% endif %}</h2>
+  {% if entry.gloss_pl %}<p class="lex-pl">{{ entry.gloss_pl|join:", " }} <span class="muted">· przekład roboczy</span></p>{% endif %}
+  {% if lex.gloss %}<p class="muted">STEP: {{ lex.gloss }}</p>{% endif %}
+</header>
+
+<div class="lex-grid">
+  <section>
+    <h3>Występowanie</h3>
+    {% if entry.total %}
+    <p><b>{{ entry.total }}</b> × {% for w in entry.by_work %}<span class="chip">{{ w.code }} {{ w.n }}</span>{% endfor %}</p>
+    <div class="bybook">{% for b in entry.by_book %}<span>{{ b.abbr }} {{ b.n }}</span>{% endfor %}</div>
+    <p><a href="{% url 'corpus:concordance' %}?strong={{ lex.strong }}" hx-get="{% url 'corpus:concordance' %}?strong={{ lex.strong }}" hx-target="#panel" hx-push-url="true">konkordancja ›</a></p>
+    {% else %}<p class="muted">Brak wystąpień w dostępnych tekstach z numerami Stronga.</p>{% endif %}
+  </section>
+  {% if entry.interlinear %}
+  <section>
+    <h3>W interlinii tłumaczone jako</h3>
+    <ul class="lex-glosses">{% for g in entry.interlinear %}<li>{{ g.gloss }} <span class="muted">({{ g.n }})</span></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+  {% if entry.forms %}
+  <section>
+    <h3>Formy w tekście</h3>
+    <table class="lex-forms">
+      {% for f in entry.forms %}<tr><td class="lang-{{ lex.language }} {{ lex.language|dir_for }}">{{ f.surface }}</td>{% if f.translit %}<td class="muted">{{ f.translit }}</td>{% endif %}<td title="{{ f.morph_full }}">{{ f.morph }}</td><td class="num">{{ f.n }}</td></tr>{% endfor %}
+    </table>
+  </section>
+  {% endif %}
+</div>
+
+{% if lex.definition %}
+<section class="lex-def">
+  <h3>Definicja <span class="muted">· STEPBible: {% if lex.language == "grc" %}Abbott-Smith, Manual Greek Lexicon of the NT{% else %}skrócony Brown–Driver–Briggs{% endif %}</span></h3>
+  <div class="lex-text">{{ lex.definition|lexicon_definition }}</div>
+</section>
+{% endif %}
+
+{% if lex.strong_def or lex.strong_kjv %}
+<section class="lex-def">
+  <h3>Strong <span class="muted">· {% if lex.language == "grc" %}Greek Dictionary of the NT (1890){% else %}Hebrew and Chaldee Dictionary (1894){% endif %}</span></h3>
+  {% if lex.strong_def %}<p><b>Znaczenie:</b> {{ lex.strong_def }}</p>{% endif %}
+  {% if lex.strong_deriv %}<p><b>Pochodzenie:</b> {{ lex.strong_deriv|strong_links }}</p>{% endif %}
+  {% if lex.strong_kjv %}<p><b>W KJV:</b> {{ lex.strong_kjv }}</p>{% endif %}
+</section>
+{% endif %}
+
+{% if entry.page.object_list %}
+<section class="lex-occ">
+  <h3>Wystąpienia <span class="muted">· {{ entry.page.start_index }}–{{ entry.page.end_index }} z {{ entry.page.paginator.count }}</span></h3>
+  <ul class="hits">
+  {% for t in entry.page %}
+    <li><span class="ref"><a href="{% url 'corpus:interlinear' %}?q={{ t.verse_text.verse|urlencode }}&amp;tekst={{ t.verse_text.work.code }}" hx-get="{% url 'corpus:interlinear' %}?q={{ t.verse_text.verse|urlencode }}&amp;tekst={{ t.verse_text.work.code }}" hx-target="#panel" hx-push-url="true">{{ t.verse_text.verse }}</a></span>
+      <span class="muted">{{ t.verse_text.work.code }}</span>
+      <span class="lang-{{ lex.language }}">{{ t.surface }}</span>{% if t.gloss_pl %} — {{ t.gloss_pl }}{% endif %}</li>
+  {% endfor %}
+  </ul>
+  {% if entry.page.has_other_pages %}
+  <nav class="pager">
+    {% if entry.page.has_previous %}<a href="?page={{ entry.page.previous_page_number }}" hx-get="?page={{ entry.page.previous_page_number }}" hx-target="#panel" hx-push-url="true">‹ wcześniejsze</a>{% endif %}
+    {% if entry.page.has_next %}<a href="?page={{ entry.page.next_page_number }}" hx-get="?page={{ entry.page.next_page_number }}" hx-target="#panel" hx-push-url="true">dalsze ›</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if entry.literature %}
+<section class="lex-lit">
+  <h3>W literaturze <span class="muted">· fragmenty, w których pada to słowo lub jego transliteracja</span></h3>
+  <ul class="hits">
+  {% for h in entry.literature %}
+    <li><b>{% if h.url %}<a href="{{ h.url }}" rel="noopener" target="_blank">{{ h.title }}</a>{% else %}{{ h.title }}{% endif %}</b>
+      <span class="muted">{{ h.authors|join:", " }}{% if h.year %} · {{ h.year }}{% endif %}{% if h.section %} · {{ h.section|truncatechars:60 }}{% endif %}</span>
+      <div class="lex-snip">{{ h.snippet }}</div></li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<p class="muted lex-src">Hasło: STEPBible TBESG/TBESH (Tyndale House Cambridge, CC BY 4.0); Strong (domena publiczna, JSON Open Scriptures, CC BY-SA).
+Polskie odpowiedniki i glosy interlinii — przekład roboczy Scriptury (model językowy), do weryfikacji z leksykonami.</p>
+</article>

@@ -1,0 +1,66 @@
+{% load corpus_tags %}
+{% if error %}<p class="error">{{ error }}</p>{% else %}
+<div class="il-head">
+  <h2>{{ refs|join:"; " }} <span class="muted">· interlinia {{ il.work.code|default:"" }}</span></h2>
+  <nav class="il-nav" aria-label="Nawigacja interlinii">
+    {% if il.prev_ref %}<a href="{% url 'corpus:interlinear' %}?q={{ il.prev_ref|urlencode }}" hx-get="{% url 'corpus:interlinear' %}?q={{ il.prev_ref|urlencode }}" hx-target="#panel" hx-push-url="true">‹ {{ il.prev_ref }}</a>{% endif %}
+    {% if il.next_ref %}<a href="{% url 'corpus:interlinear' %}?q={{ il.next_ref|urlencode }}" hx-get="{% url 'corpus:interlinear' %}?q={{ il.next_ref|urlencode }}" hx-target="#panel" hx-push-url="true">{{ il.next_ref }} ›</a>{% endif %}
+    <a href="{% url 'corpus:reference' %}?q={{ q|urlencode }}" hx-get="{% url 'corpus:reference' %}?q={{ q|urlencode }}" hx-target="#panel" hx-push-url="true">widok równoległy</a>
+    {% for alt in il.alternatives %}<a href="{% url 'corpus:interlinear' %}?q={{ q|urlencode }}&amp;tekst={{ alt }}" hx-get="{% url 'corpus:interlinear' %}?q={{ q|urlencode }}&amp;tekst={{ alt }}" hx-target="#panel" hx-push-url="true">{{ alt }}</a>{% endfor %}
+  </nav>
+  <div class="il-opts" id="il-opts">
+    <label><input type="checkbox" data-il="strong" checked> Strong</label>
+    {% if il.work.language == "grc" %}<label><input type="checkbox" data-il="translit" checked> transliteracja</label>{% endif %}
+    <label><input type="checkbox" data-il="morph" checked> morfologia</label>
+    <label><input type="checkbox" data-il="pl" checked> Biblia Gdańska</label>
+  </div>
+</div>
+{% if il.work %}
+<div class="il {{ il.work.language|dir_for }} lang-{{ il.work.language }}" id="il">
+{% for v in il.verses %}
+  <section class="il-verse">
+    <a class="il-ref" href="{% url 'corpus:reference' %}?q={{ v.verse|urlencode }}" hx-get="{% url 'corpus:reference' %}?q={{ v.verse|urlencode }}" hx-target="#panel" hx-push-url="true">{{ v.verse }}</a>
+    <div class="il-words">
+    {% for w in v.words %}
+      <a class="iw" {% if w.strong %}href="{% url 'corpus:lexicon' w.strong %}" hx-get="{% url 'corpus:lexicon' w.strong %}"{% else %}href="{% url 'corpus:concordance' %}?form={{ w.surface|urlencode }}" hx-get="{% url 'corpus:concordance' %}?form={{ w.surface|urlencode }}"{% endif %} hx-target="#panel" hx-push-url="true" title="{{ w.lemma }}{% if w.morph_full %} — {{ w.morph_full }}{% endif %}">
+        <span class="iw-strong">{{ w.strong|default:"·" }}</span>
+        <span class="iw-orig">{{ w.surface }}</span>
+        {% if w.translit %}<span class="iw-tr">{{ w.translit }}</span>{% endif %}
+        <span class="iw-pl{% if w.dictionary_gloss %} dict{% endif %}">{{ w.gloss|default:"·" }}</span>
+        <span class="iw-morph">{{ w.morph|default:"·" }}</span>
+      </a>
+    {% endfor %}
+    </div>
+    {% if v.translation %}<p class="il-pl">{{ v.translation }}</p>{% endif %}
+  </section>
+{% empty %}
+  <p class="muted">Brak tekstu {{ il.work.code }} dla tego sigli{% if il.alternatives %} — spróbuj {{ il.alternatives|join:" albo " }}{% endif %}.</p>
+{% endfor %}
+</div>
+{% if il.truncated %}<p class="muted">Pokazano pierwsze 200 wersetów — zawęź siglum.</p>{% endif %}
+<p class="muted il-note">Polskie glosy to przekład roboczy Scriptury (model {{ model }}): odpowiednik słowa w tym wersecie,
+w formie wynikającej z kontekstu; <span class="iw-pl dict">szare</span> — odpowiednik słownikowy (słowo jeszcze bez glosy kontekstowej).
+Morfologia: {% if il.work.code == "SBLGNT" %}MorphGNT (CC BY-SA){% elif il.work.code == "WLC" %}Open Scriptures Hebrew Bible (CC BY 4.0){% else %}źródło tekstu{% endif %};
+numery Stronga i hasła: STEPBible (Tyndale House, CC BY 4.0). Kliknięcie słowa otwiera hasło słownika.</p>
+{% else %}
+<p class="muted">Brak dostępnego tekstu oryginalnego dla tego sigli.</p>
+{% endif %}
+<script>
+(function(){
+  const box = document.getElementById("il"), opts = document.getElementById("il-opts");
+  if (!box || !opts) return;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem("scriptura-il") || "{}"); } catch (e) { saved = {}; }
+  opts.querySelectorAll("input[data-il]").forEach(function(cb){
+    const key = cb.dataset.il;
+    if (key in saved) cb.checked = !!saved[key];
+    box.classList.toggle("hide-" + key, !cb.checked);
+    cb.addEventListener("change", function(){
+      box.classList.toggle("hide-" + key, !cb.checked);
+      saved[key] = cb.checked;
+      try { localStorage.setItem("scriptura-il", JSON.stringify(saved)); } catch (e) {}
+    });
+  });
+})();
+</script>
+{% endif %}

@@ -33,7 +33,9 @@ USER_PREFIX = (
 )
 MAX_GLOSS = 120
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
-ORIGINAL_SCRIPT = re.compile("[\u0370-\u03ff\u1f00-\u1fff\u0590-\u05ff]")  # grecki, hebrajski
+ORIGINAL_SCRIPT = re.compile(
+    "[\u0370-\u03ff\u1f00-\u1fff\u0590-\u05ff]"
+)  # grecki, hebrajski
 
 
 @dataclass

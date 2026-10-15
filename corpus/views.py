@@ -5,8 +5,9 @@ from dataclasses import asdict
 
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
-from django.shortcuts import render
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
+from django.shortcuts import redirect, render
+from django.urls import reverse
 
 from corpus.models import Work
 from corpus.services import text as svc
@@ -42,7 +43,9 @@ def index(request: HttpRequest) -> HttpResponse:
 
 
 def reference(request: HttpRequest) -> HttpResponse:
-    """?q=Mk 1,1-8&works=WLC,SBLGNT,BG1632"""
+    """?q=Mk 1,1-8&works=WLC,SBLGNT,BG1632 (przycisk „Interlinia” dokłada widok=interlinia)"""
+    if request.GET.get("widok") == "interlinia":
+        return interlinear(request)
     q = request.GET.get("q", "").strip()
     works = _selected_works(request)
     access = access_for_user(request.user)
@@ -147,3 +150,64 @@ def search(request: HttpRequest) -> HttpResponse:
         "backend": settings.SEARCH_BACKEND,
     }
     return render(request, _template(request, "search"), ctx)
+
+
+def interlinear(request: HttpRequest) -> HttpResponse:
+    """?q=Flp 2,5-11[&tekst=LXX] — interlinia: oryginał, Strong, transliteracja, glosa, morfologia."""
+    from corpus.services import interlinear as ilsvc
+
+    q = request.GET.get("q", "").strip() or "J 1,1-18"
+    access = access_for_user(request.user)
+    ctx = {"q": q, "selected": list(svc.DEFAULT_WORKS)}
+    try:
+        refs = svc.resolve(q)
+    except ValueError as exc:
+        ctx["error"] = str(exc)
+        return render(request, _template(request, "interlinear"), ctx, status=400)
+    data = ilsvc.build(refs, request.GET.get("tekst", ""), access=access)
+    ctx.update(
+        {
+            "refs": [format_ref(r) for r in refs],
+            "il": data,
+            "model": settings.INTERLINEAR_MODEL.removesuffix(":cloud"),
+        }
+    )
+    return render(request, _template(request, "interlinear"), ctx)
+
+
+def lexicon_search(request: HttpRequest) -> HttpResponse:
+    """?q=G725 | ἁρπαγμός | harpagmos | grabież — jedno trafienie: przekierowanie na hasło."""
+    from corpus.services import lexicon as lexsvc
+
+    q = request.GET.get("q", "").strip()[:100]
+    results = lexsvc.search(q) if q else []
+    if len(results) == 1 and not request.headers.get("HX-Request"):
+        return redirect("corpus:lexicon", strong=results[0].strong)
+    ctx = {"q": q, "results": results, "selected": list(svc.DEFAULT_WORKS)}
+    return render(request, _template(request, "lexicon_search"), ctx)
+
+
+def lexicon(request: HttpRequest, strong: str) -> HttpResponse:
+    """Hasło słownika: STEP + Strong + polskie odpowiedniki + użycie w tekście i literaturze."""
+    from corpus.services import lexicon as lexsvc
+
+    lex = lexsvc.find_lexeme(strong)
+    if lex is None:
+        raise Http404("Nie ma takiego hasła")
+    if lex.strong != strong:
+        return redirect(reverse("corpus:lexicon", args=[lex.strong]))
+    try:
+        page_number = _page_number(request)
+    except ValueError as exc:
+        return HttpResponseBadRequest(str(exc))
+    access = access_for_user(request.user)
+    entry = lexsvc.build_entry(
+        lex,
+        svc.work_levels(access),
+        page_number,
+        literature_access=access,
+        user_id=request.user.id if request.user.is_authenticated else None,
+        with_literature=page_number == 1,
+    )
+    ctx = {"entry": entry, "lex": lex, "selected": list(svc.DEFAULT_WORKS)}
+    return render(request, _template(request, "lexicon"), ctx)

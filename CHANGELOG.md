@@ -1,6 +1,21 @@
 # Scriptura — dziennik sprintów (changelog)
 
-## 2026-10-15 — interlinia i słownik (warstwa danych)
+## 2026-10-15 — interlinia i słownik
+
+- Interlinia (`/text/interlinia/?q=Flp 2,5-11`, przycisk „Interlinia” obok „Otwórz”): słowo
+  oryginału z numerem Stronga, transliteracją (greka), polską glosą kontekstową i morfologią po
+  polsku; pod wersetem Biblia Gdańska. Tekst bazowy WLC / SBLGNT / LXX (deuterokanoniczne),
+  `tekst=LXX` dla pozostałych ksiąg ST; nawigacja po rozdziałach; przełączniki warstw zapamiętane
+  w przeglądarce. Słowo bez glosy kontekstowej dostaje szarą glosę słownikową.
+- Słownik (`/text/slownik/G725/`, wyszukiwarka `/text/slownik/?q=`): lemat, transliteracja,
+  polskie odpowiedniki, definicja STEP (odsyłacze -> polskie sigla i linki do tekstu), Strong
+  (znaczenie, pochodzenie z linkami do haseł, KJV), glosy z interlinii z liczbą użyć, formy
+  z morfologią, rozkład po dziełach i księgach, wystąpienia (stronicowane) i fragmenty literatury
+  ze słowem lub jego transliteracją (`library.search.term_mentions`, z kontrolą dostępu).
+  Kliknięcie słowa w widoku równoległym prowadzi do hasła (gdy jest numer Stronga).
+- Strony Jak korzystać, Korpus i O projekcie opisują interlinię i słownik.
+
+### warstwa danych
 
 - Leksykon: pełna definicja STEP (`Lexeme.definition`: Abbott-Smith dla greki, skrócony BDB dla
   hebrajskiego; podziały wierszy, pogrubienia, odsyłacze `[[Php.2.6|…]]`) obok skróconego

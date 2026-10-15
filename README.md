@@ -64,7 +64,8 @@ ollama pull snowflake-arctic-embed2 && ollama signin   # modele -cloud po zalogo
 
 python manage.py migrate
 python manage.py fetch_sources && python manage.py import_corpus oshb morphgnt lxx json
-python manage.py fetch_sources step xref && python manage.py import_lexicon && python manage.py import_xref
+python manage.py fetch_sources step strongs xref && python manage.py import_lexicon && python manage.py import_strongs && python manage.py import_xref
+python manage.py translate_lexicon && python manage.py gloss_tokens   # polskie glosy słownika i interlinii (model z Ollamy)
 python manage.py index_search --recreate            # wersety
 python manage.py runserver                          # http://127.0.0.1:8000
 ```
@@ -96,8 +97,10 @@ LLM → ingestia → audyt → przekład → reindeks → raport w `data/manifes
 
 | komenda | opis |
 |---|---|
-| `fetch_sources [oshb morphgnt bg lxx step xref]` | pobranie otwartych korpusów i leksykonów |
-| `import_corpus`, `import_lexicon`, `import_xref` | tekst biblijny, leksykon STEP (+ lematy WLC), cross-references |
+| `fetch_sources [oshb morphgnt bg lxx step strongs xref]` | pobranie otwartych korpusów i leksykonów |
+| `import_corpus`, `import_lexicon`, `import_xref` | tekst biblijny, leksykon STEP (+ lematy WLC, Strongi greki po lemacie), cross-references |
+| `import_strongs` | słowniki Stronga (definicja, pochodzenie, KJV, wymowa) do haseł leksykonu |
+| `translate_lexicon`, `gloss_tokens` | polskie odpowiedniki haseł i glosy kontekstowe interlinii (`INTERLINEAR_MODEL`), wznawialne |
 | `index_search --recreate` | indeks wersetów (BM25, greka/hebrajski przez ICU) |
 | `harvest dspace\|openalex\|scholar\|bibtex\|blog\|youtube` | manifest JSONL publikacji / wpisów / wykładów (napisy + rozdziały przez yt-dlp) |
 | `curate_manifest`, `ingest_manifest`, `audit_corpus` | kurator (reguły + LLM), pobieranie i chunkowanie, audyt po treści |

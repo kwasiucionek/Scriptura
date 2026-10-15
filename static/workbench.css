@@ -80,6 +80,7 @@
 .src blockquote { margin: 10px 0 0; padding: 10px 14px; border-left: 2px solid var(--gold); background: var(--panel); font: 400 15px/1.75 var(--serif); font-style: italic; color: var(--text); white-space: pre-wrap; border-radius: 0 6px 6px 0; }
 .verse { padding-block: 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .verse .r { color: var(--accent); font-family: var(--serif); font-weight: 700; }
+.verse a.il-link { font-size: .75rem; color: var(--accent); margin-left: .4rem; text-decoration: none; }
 .verse .w { color: var(--muted); font-size: 12px; margin-left: 6px; }
 .verse .x { font: 400 16px/1.8 var(--serif); margin-top: 6px; color: var(--text); }
 .verse .x.rtl { direction: rtl; text-align: right; font-family: 'SBL Hebrew', 'Ezra SIL', 'Noto Serif Hebrew', serif; font-size: 21px; }

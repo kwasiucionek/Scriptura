@@ -120,6 +120,8 @@
 <script>
 const EXAMPLES = {{ examples_json|safe }};
 const TEXT_URL = "{% url 'corpus:reference' %}";
+const IL_URL = "{% url 'corpus:interlinear' %}";
+const IL_WORKS = new Set(["SBLGNT", "WLC", "LXX"]);
 const $ = (id) => document.getElementById(id);
 // trzy stany opcji: "on" -> true, "off" -> false, "auto" -> null (decyduje serwer)
 const tri = (id) => ({ on: true, off: false })[document.getElementById(id)?.value] ?? null;
@@ -234,7 +236,7 @@ function renderSources(el) {
   }
   if (verses.length) {
     html += group("verses", "Wersety", "", verses.length, false, verses.map((v) => `
-      <div class="verse"><span class="r">${esc(v.ref)}</span><span class="w">${esc(v.work)}</span>
+      <div class="verse"><span class="r">${esc(v.ref)}</span><span class="w">${esc(v.work)}</span>${IL_WORKS.has(v.work) ? ` <a class="il-link" href="${IL_URL}?q=${encodeURIComponent(v.ref)}&amp;tekst=${encodeURIComponent(v.work)}" target="_blank" rel="noopener">interlinia</a>` : ""}
         <div class="x ${RTL.has(v.language || "") || /[\u0590-\u05ff]/.test(v.text) ? "rtl" : ""}">${esc(v.text)}</div></div>`).join(""));
   }
   if (patristics.length) {

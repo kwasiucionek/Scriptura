@@ -1,6 +1,6 @@
 {% load corpus_tags %}
 {% if error %}<p class="error">{{ error }}</p>{% else %}
-<h2>{{ refs|join:"; " }}</h2>
+<h2>{{ refs|join:"; " }} <a class="h2-link" href="{% url 'corpus:interlinear' %}?q={{ q|urlencode }}" hx-get="{% url 'corpus:interlinear' %}?q={{ q|urlencode }}" hx-target="#panel" hx-push-url="true">interlinia ›</a></h2>
 <div class="works">
   {% for w in all_works %}
   <label><input type="checkbox" name="works" value="{{ w.code }}" {% if w.code in selected %}checked{% endif %}

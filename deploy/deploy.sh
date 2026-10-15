@@ -2,8 +2,8 @@
 # Code: git push -> server checkout, migrate, collectstatic, restart. --eval installs MLflow.
 # Data replacement: --data --replace-db (snapshot + remote backup; services stay stopped for reindex).
 set -euo pipefail
-HOST="root@steve141.mikrus.xyz"; PORT=10141
-APP=/opt/scriptura; DATA=/cytrus/scriptura/data
+HOST="root@roman233.mikrus.xyz"; PORT=10233
+APP=/opt/scriptura; DATA=/srv/scriptura/data
 SSH="ssh -p $PORT"
 BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
 WITH_DATA=false; REPLACE_DB=false; WITH_EVAL=false; SNAPSHOT_DIR=""; SERVICES_STOPPED=false
@@ -49,10 +49,10 @@ set -euo pipefail
 for unit in scriptura-update.timer scriptura-update.service scriptura-web.service; do
   if systemctl cat "$unit" >/dev/null 2>&1; then systemctl stop "$unit"; fi
 done
-install -d -m 700 -o scriptura -g scriptura /cytrus/scriptura/backups
-if [[ -f /cytrus/scriptura/db.sqlite3 ]]; then
-  backup="/cytrus/scriptura/backups/pre-deploy-$(date -u +%Y%m%dT%H%M%S)-$$.sqlite3"
-  sudo -u scriptura python3 - /cytrus/scriptura/db.sqlite3 "$backup" <<'PY'
+install -d -m 700 -o scriptura -g scriptura /srv/scriptura/backups
+if [[ -f /srv/scriptura/db.sqlite3 ]]; then
+  backup="/srv/scriptura/backups/pre-deploy-$(date -u +%Y%m%dT%H%M%S)-$$.sqlite3"
+  sudo -u scriptura python3 - /srv/scriptura/db.sqlite3 "$backup" <<'PY'
 import os, sqlite3, sys
 from contextlib import closing
 from pathlib import Path
@@ -72,16 +72,16 @@ BACKUP
   rsync -av -e "$SSH" data/manifests/ "$HOST:$DATA/manifests/"
   rsync -av -e "$SSH" data/vectors.jsonl.gz "$HOST:$DATA/"
   if [[ -f data/authors.jsonl ]]; then rsync -av -e "$SSH" data/authors.jsonl "$HOST:$DATA/"; fi
-  rsync -av -e "$SSH" "$SNAPSHOT_DIR/db.sqlite3" "$HOST:/cytrus/scriptura/db.sqlite3.incoming"
+  rsync -av -e "$SSH" "$SNAPSHOT_DIR/db.sqlite3" "$HOST:/srv/scriptura/db.sqlite3.incoming"
   $SSH "$HOST" bash -s <<'REPLACE'
 set -euo pipefail
-chown scriptura:scriptura /cytrus/scriptura/db.sqlite3.incoming
-chmod 600 /cytrus/scriptura/db.sqlite3.incoming
+chown scriptura:scriptura /srv/scriptura/db.sqlite3.incoming
+chmod 600 /srv/scriptura/db.sqlite3.incoming
 sudo -u scriptura python3 - <<'PY'
 import os, sqlite3
 from contextlib import closing
 from pathlib import Path
-path = Path("/cytrus/scriptura/db.sqlite3")
+path = Path("/srv/scriptura/db.sqlite3")
 if path.exists():
     # Checkpoint BEFORE replacement: failure or interruption leaves the old DB intact.
     with closing(sqlite3.connect(path.as_uri() + "?mode=rw", uri=True, timeout=20)) as db:
@@ -94,7 +94,7 @@ if any(Path(str(path) + suffix).exists() for suffix in ("-wal", "-shm")):
     raise RuntimeError("SQLite sidecars remain; stop other database connections first")
 os.replace(str(path) + ".incoming", path)
 PY
-chown -R scriptura:scriptura /cytrus/scriptura/data
+chown -R scriptura:scriptura /srv/scriptura/data
 REPLACE
 fi
 

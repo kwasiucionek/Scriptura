@@ -2,7 +2,7 @@
 # Consistent SQLite backup (including WAL); retain 14 latest backups in an app-owned directory.
 # cron (root): 30 2 * * * /opt/scriptura/deploy/backup-db.sh
 set -euo pipefail
-DB=/cytrus/scriptura/db.sqlite3
+DB=/srv/scriptura/db.sqlite3
 DIR=/backup/DB/scriptura
 OUT="$DIR/scriptura-$(date -u +%Y%m%dT%H%M%S)-$$.sqlite"
 install -d -m 700 -o scriptura -g scriptura "$DIR"

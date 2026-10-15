@@ -79,7 +79,7 @@ def test_deploy_requires_explicit_database_replacement(arguments):
 
 def test_setup_does_not_delete_wal():
     setup = (ROOT / "deploy" / "setup_after_rsync.sh").read_text()
-    assert "rm -f /cytrus/scriptura/db.sqlite3-wal" not in setup
+    assert "rm -f /srv/scriptura/db.sqlite3-wal" not in setup
     assert "systemctl stop" in setup
 
 
@@ -89,7 +89,7 @@ def _replacement_script(path):
     return (
         re.search(r"<<'PY'\n(.*?)\nPY", block, re.S)
         .group(1)
-        .replace('Path("/cytrus/scriptura/db.sqlite3")', f"Path({str(path)!r})")
+        .replace('Path("/srv/scriptura/db.sqlite3")', f"Path({str(path)!r})")
     )
 
 

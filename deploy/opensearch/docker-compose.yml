@@ -1,0 +1,23 @@
+# OpenSearch tylko dla Scriptury (roman233). Port wyłącznie na 127.0.0.1 — Docker omija UFW.
+services:
+  opensearch:
+    build: .
+    image: scriptura-opensearch:3.7.0
+    container_name: scriptura-opensearch
+    restart: unless-stopped
+    environment:
+      - cluster.name=scriptura
+      - node.name=scriptura-node
+      - discovery.type=single-node
+      - bootstrap.memory_lock=false
+      - node.store.allow_mmap=false          # LXC: brak wpływu na vm.max_map_count
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true         # dostęp tylko z localhost
+      - OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - /srv/opensearch/data:/usr/share/opensearch/data

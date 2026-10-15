@@ -7,7 +7,7 @@
 #
 # Etapy 1–2 nie potrzebują laptopa. Przed etapem 3 na laptopie:
 #   ollama pull snowflake-arctic-embed2            # ten sam model co na serwerze (OLLAMA_EMBED_MODEL)
-#   ssh -p 10141 -N -R 127.0.0.1:11435:127.0.0.1:11434 root@steve141.mikrus.xyz
+#   ssh -p 10233 -N -R 127.0.0.1:11435:127.0.0.1:11434 root@roman233.mikrus.xyz
 # Przerwany etap 3 wznawia się tym samym poleceniem (reindex_chunks --missing).
 set -euo pipefail
 cd "$(dirname "$0")/.."

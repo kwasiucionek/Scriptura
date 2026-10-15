@@ -1,5 +1,17 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-15 — przeniesienie na roman233
+
+- Produkcja przeniesiona ze steve141 na roman233 (Mikrus 4.2: 16 GB RAM, 160 GB dysku): dane w
+  `/srv/scriptura` zamiast `/cytrus/scriptura` (wolumen Cytrusa jest współdzielony z frontem WWW i ma
+  zalecany limit ~3 GB), nginx na porcie 20233, OpenSearch we własnym kontenerze z `deploy/opensearch/`
+  (heap 2 GB, port tylko na 127.0.0.1). Indeksy odbudowane z wyeksportowanych wektorów, bez przeliczania.
+- `deploy.sh`, `bulk-ingest.sh` (tunel `ssh -p 10233 … root@roman233.mikrus.xyz`), `backup-db.sh`,
+  `setup_after_rsync.sh`, `env.production.example` i `deploy/README.md` — nowe ścieżki i host.
+- nginx: `X-Forwarded-For` przyjmowany tylko od frontu Mikrusa (`set_real_ip_from`), do aplikacji idzie
+  `$remote_addr`. Na steve141 konfiguracja dopisywała adres do nagłówka klienta, a aplikacja bierze
+  pierwszy element — podrobiony nagłówek omijał limit pytań anonimowych.
+
 ## 2026-10-14 — duże książki na serwerze CPU
 
 - Embeddingi: rozmiar partii i limit czasu z ustawień (`EMBEDDINGS_BATCH`, domyślnie 32;

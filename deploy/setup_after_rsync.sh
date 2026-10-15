@@ -15,7 +15,7 @@ for unit in scriptura-update.timer scriptura-update.service scriptura-web.servic
 done
 # rsync przynosi pliki z właścicielem z komputera deweloperskiego — baza musi należeć do usługi,
 # inaczej „attempt to write a readonly database” (historia rozmów, uploady, zmiany w adminie)
-chown -R scriptura:scriptura /opt/scriptura /cytrus/scriptura
+chown -R scriptura:scriptura /opt/scriptura /srv/scriptura
 # Nie usuwamy WAL istniejącej bazy: może zawierać zatwierdzone transakcje.
 [ -d .venv ] || sudo -u scriptura python3 -m venv .venv
 sudo -u scriptura .venv/bin/pip install -q --upgrade pip
@@ -23,10 +23,10 @@ sudo -u scriptura bash deploy/install_dependencies.sh "${INSTALL_ARGS[@]}"
 sudo -u scriptura .venv/bin/python manage.py migrate --noinput
 sudo -u scriptura .venv/bin/python manage.py collectstatic --noinput | tail -1
 sudo -u scriptura .venv/bin/python manage.py index_search --recreate
-if [ -f /cytrus/scriptura/data/vectors.jsonl.gz ]; then
-  sudo -u scriptura .venv/bin/python manage.py reindex_chunks --recreate --vectors-file /cytrus/scriptura/data/vectors.jsonl.gz
-  sudo -u scriptura .venv/bin/python manage.py index_ane --recreate --vectors-file /cytrus/scriptura/data/vectors.jsonl.gz
-  sudo -u scriptura .venv/bin/python manage.py index_patristics --recreate --vectors-file /cytrus/scriptura/data/vectors.jsonl.gz
+if [ -f /srv/scriptura/data/vectors.jsonl.gz ]; then
+  sudo -u scriptura .venv/bin/python manage.py reindex_chunks --recreate --vectors-file /srv/scriptura/data/vectors.jsonl.gz
+  sudo -u scriptura .venv/bin/python manage.py index_ane --recreate --vectors-file /srv/scriptura/data/vectors.jsonl.gz
+  sudo -u scriptura .venv/bin/python manage.py index_patristics --recreate --vectors-file /srv/scriptura/data/vectors.jsonl.gz
 else
   echo "brak vectors.jsonl.gz — reindex_chunks policzy embeddingi lokalnie (wolno)"
   sudo -u scriptura .venv/bin/python manage.py reindex_chunks --recreate
@@ -37,4 +37,4 @@ if systemctl is-enabled --quiet scriptura-update.timer; then
 fi
 sleep 6
 curl -sI http://127.0.0.1:8534/ | head -1
-curl -sI http://127.0.0.1:40021/ | head -1
+curl -sI -H "Host: scriptura.cytr.us" http://127.0.0.1:20233/ | head -1

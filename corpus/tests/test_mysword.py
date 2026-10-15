@@ -80,6 +80,12 @@ def _module(path):
             (50, 3, 1, "<CM>Werset pierwszy."),
             (50, 3, 3, "<CM>Werset trzeci."),
             (50, 3, None, "<CM>Werset bez numeru."),  # jedyna luka w rozdziale: 3,2
+            (
+                50,
+                3,
+                None,
+                "<CM>Werset trzeci.<RF q=[9]>x<Rf>",
+            ),  # powtórzenie 3,3 — pominięty
         ],
     )
     con.commit()
@@ -97,6 +103,7 @@ def test_import_mysword_and_private_access(tmp_path, client):
         VerseText.objects.get(work=work, verse__osis_id="Phil.3.2").text
         == "Werset bez numeru."
     )
+    assert not VerseText.objects.filter(work=work, verse__osis_id="Phil.3.4").exists()
     vt = VerseText.objects.get(work=work, verse__osis_id="Gen.1.1")
     assert vt.text == "Pierwsze słowa drugie słowa wersetu."
     assert VerseNote.objects.filter(verse_text__work=work).count() == 3

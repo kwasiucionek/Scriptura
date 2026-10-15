@@ -210,9 +210,16 @@ def details(path: Path) -> dict:
         con.close()
 
 
+def _bare(text: str | None) -> str:
+    """Tekst wersetu bez przypisów i znaczników — do wykrywania powtórzonych wierszy."""
+    t = _NOTE_RE.sub("", text or "")
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t)).strip()
+
+
 def read_rows(path: Path) -> tuple[list[tuple[int, int, int, str]], list[str]]:
-    """Wiersze modułu (księga, rozdział, werset, tekst) i lista usterek. Werset bez numeru
-    dostaje jedyny brakujący numer w swoim rozdziale (jeśli luka jest dokładnie jedna)."""
+    """Wiersze modułu (księga, rozdział, werset, tekst) i lista usterek. Werset bez numeru:
+    powtórzenie istniejącego wersetu -> pominięty; jedyna luka w numeracji rozdziału -> ten
+    numer; inaczej pominięty."""
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     try:
         raw = con.execute(
@@ -225,6 +232,11 @@ def read_rows(path: Path) -> tuple[list[tuple[int, int, int, str]], list[str]]:
     for b, c, v, _ in raw:
         if b is not None and c is not None and v is not None:
             chapters.setdefault((int(b), int(c)), set()).add(int(v))
+    texts = {
+        (int(b), int(c), int(v)): _bare(t)
+        for b, c, v, t in raw
+        if b is not None and c is not None and v is not None
+    }
     rows = []
     for b, c, v, text in raw:
         if b is None or c is None:
@@ -234,15 +246,18 @@ def read_rows(path: Path) -> tuple[list[tuple[int, int, int, str]], list[str]]:
         name = BOOK_NUMBERS[b - 1] if 1 <= b <= len(BOOK_NUMBERS) else str(b)
         if v is None:
             have = chapters.get((b, c), set())
-            gaps = sorted(set(range(1, max(have, default=0) + 2)) - have)
-            if len(gaps) == 1 or (
-                len(gaps) == 2 and gaps[-1] == max(have, default=0) + 1
-            ):
-                v = gaps[0]
-                issues.append(f"{name} {c}: werset bez numeru — przyjęto {v}")
-            else:
+            dup = [n for n in sorted(have) if texts.get((b, c, n)) == _bare(text)]
+            gaps = sorted(set(range(1, max(have, default=0) + 1)) - have)
+            if dup:
+                issues.append(
+                    f"{name} {c}: werset bez numeru powtarza w. {dup[0]} — pominięty"
+                )
+                continue
+            if len(gaps) != 1:
                 issues.append(f"{name} {c}: werset bez numeru — pominięty")
                 continue
+            v = gaps[0]
+            issues.append(f"{name} {c}: werset bez numeru — przyjęto {v} (jedyna luka)")
         rows.append((b, c, int(v), text or ""))
     rows.sort(key=lambda r: r[:3])
     return rows, issues

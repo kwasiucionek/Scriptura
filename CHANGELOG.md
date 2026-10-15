@@ -2,6 +2,10 @@
 
 ## 2026-10-15 — dokumenty Kościoła o Piśmie Świętym
 
+- Prompt, zasada 9: dosłownie tylko krótkie fragmenty (2–3 zdania, w cudzysłowie, z [n]), reszta
+  streszczeniem; pełnych tekstów i dłuższych partii nie odtwarza także na prośbę — streszcza i odsyła
+  do źródła; cytat z obcojęzycznego źródła jako „przekład roboczy”. Dokumenty Kościoła: numer punktu
+  („Dei Verbum 9”), jeśli widać go w tekście.
 - Nowy typ dokumentu `church` („dokument Kościoła”, rejestr mieszany — w obu trybach odpowiedzi):
   w prompcie źródło dostaje dopisek „DOKUMENT KOŚCIOŁA — … przedstawiaj jako stanowisko Kościoła,
   odróżniaj od opinii egzegetów”, w czacie odznakę, w BibTeX/RIS typ misc/GEN; `audit_corpus` nie

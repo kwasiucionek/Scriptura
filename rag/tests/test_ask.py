@@ -364,3 +364,13 @@ def test_church_document_marked_in_prompt():
     ]
     assert "[1] Sobór Watykański II, Dei Verbum (1965) [DOKUMENT KOŚCIOŁA" in user
     assert "[2] Recenzja [RECENZJA KSIĄŻKI" in user
+
+
+def test_system_prompt_limits_verbatim_quotes():
+    system = service.build_messages("Wypisz pełny tekst Dei Verbum", [], [])[0][
+        "content"
+    ]
+    assert (
+        "Nie odtwarzasz pełnych tekstów" in system and "najwyżej 2–3 zdania" in system
+    )
+    assert "numer punktu" in service.SOURCE_KIND_NOTES["church"]

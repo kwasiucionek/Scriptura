@@ -1,4 +1,8 @@
-"""Import przekładu z modułu MySword (SNPD) i dostęp do dzieła przed publikacją."""
+"""Import przekładu z modułu MySword i dostęp do dzieła przed publikacją.
+
+Dane testowe są syntetyczne (znaczniki jak w modułach MySword, tekst wymyślony) — repozytorium
+jest publiczne, a tekst przekładu chroniony.
+"""
 
 import sqlite3
 
@@ -12,16 +16,16 @@ from corpus.models import VerseNote, VerseText, Work
 from corpus.services.text import work_access_q
 from rag.access import access_for_user
 
-RDZ_1_1 = (
+VERSE = (
     '<TS><span class="green"><em>Tytuł perykopy</em><Ts> <CM>Pierwsze słowa'
-    '<RF q=[1]><em>stworzył</em>, בָּרָא (<span class="tl">bara’</span>), por. '
+    '<RF q=[1]><em>słowa</em>, דָּבָר (<span class="tl">dawar</span>), por. '
     "<a href='b1.1.27'>Rdz 1:27</a>.<Rf> drugie słowa wersetu."
     "<RF q=ⓐ><a href='b19.8.3'>Ps 8:3</a>; <a href='b10.15.13-b10.17.22'>2Sm 15:13-17:22</a><Rf>"
 )
 
 
 def test_parse_scripture_splits_text_markup_notes():
-    text, markup, notes = parse_scripture(RDZ_1_1)
+    text, markup, notes = parse_scripture(VERSE)
     assert text == "Pierwsze słowa drugie słowa wersetu."
     assert markup.startswith('<span class="pericope">Tytuł perykopy</span>')
     assert '<sup class="fn">1</sup>' in markup and '<sup class="xr">ⓐ</sup>' in markup
@@ -34,9 +38,9 @@ def test_parse_scripture_splits_text_markup_notes():
 def test_parse_poetry_jesus_and_added_words():
     raw = "<CM><PI0><PF1>Wers pierwszy,<PI0><PF1>wers drugi <FI>dodane<Fi> <FR>słowa Jezusa<Fr>"
     text, markup, _ = parse_scripture(raw)
-    assert text == "Wers pierwszy, nie poczytywał sobie Ja jestem"
+    assert text == "Wers pierwszy, wers drugi dodane słowa Jezusa"
     assert markup == (
-        'Wers pierwszy,<br>nie poczytywał <i>sobie</i> <span class="jesus">Ja jestem</span>'
+        'Wers pierwszy,<br>wers drugi <i>dodane</i> <span class="jesus">słowa Jezusa</span>'
     )
 
 
@@ -67,13 +71,11 @@ def _module(path):
     con.execute(
         "CREATE TABLE Details (Title TEXT, Abbreviation TEXT, Version TEXT, VersionDate TEXT)"
     )
-    con.execute(
-        "INSERT INTO Details VALUES ('Biblia', 'SNPD4.1_SJ', '1.1.2', '2026-03-28')"
-    )
+    con.execute("INSERT INTO Details VALUES ('Biblia', 'TEST', '1.1.2', '2026-03-28')")
     con.executemany(
         "INSERT INTO Bible VALUES (?, ?, ?, ?)",
         [
-            (1, 1, 1, RDZ_1_1),
+            (1, 1, 1, VERSE),
             (50, 2, 6, "<CM>Werset testowy,<RF q=[3]>uwaga<Rf>"),
         ],
     )
@@ -83,7 +85,7 @@ def _module(path):
 
 @pytest.mark.django_db
 def test_import_mysword_and_private_access(tmp_path, client):
-    path = tmp_path / "snpd.bbl.mybible"
+    path = tmp_path / "test.bbl.mybible"
     _module(path)
     call_command("import_mysword", "--file", str(path), "--code", "SNPD")
     work = Work.objects.get(code="SNPD")
@@ -96,7 +98,7 @@ def test_import_mysword_and_private_access(tmp_path, client):
     params = {"q": "Rdz 1,1", "works": "SNPD"}
     assert "Pierwsze słowa" not in client.get(url, params).content.decode()
 
-    user = User.objects.create_user("zaremba", password="x")
+    user = User.objects.create_user("tlumacz", password="x")
     user.groups.add(Group.objects.create(name="scriptura-dzielo-SNPD"))
     assert access_for_user(user) == ["open", "work:SNPD"]
     assert (

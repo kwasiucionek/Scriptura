@@ -2,9 +2,10 @@
 
 ## 2026-10-16 — przykład „Materiały własne”
 
-- Przykładowe pytanie „Czym jest chrzest w Duchu Świętym?” (tylko dla zalogowanych): pokaz
-  materiałów własnych — odpowiedź korzysta z publikacji dodanej na koncie (widocznej wyłącznie
-  dla właściciela) obok wspólnego korpusu. Filtr przykładów w `rag.views.examples_for`.
+- Przykładowe pytanie „Czym jest chrzest w Duchu Świętym?” widoczne dla wszystkich: pokaz
+  materiałów własnych — bez logowania odpowiedź opiera się na wspólnym korpusie, po zalogowaniu
+  na konto z publikacją na ten temat korzysta też z niej (widocznej wyłącznie dla właściciela);
+  różnicę widać w odpowiedzi i w źródłach. Filtr przykładów w `rag.views.examples_for`.
 
 ## 2026-10-15 — Przekład dosłowny EIB (SNPD) z przypisami
 

@@ -93,23 +93,22 @@ EXAMPLES = [
         "access": "licensed",
     },
     {
-        # pokaz materiałów własnych: odpowiedź korzysta z publikacji dodanej na koncie
-        # (widocznej tylko dla właściciela) obok wspólnego korpusu
+        # pokaz materiałów własnych, widoczny dla wszystkich: bez logowania odpowiedź opiera
+        # się na wspólnym korpusie, po zalogowaniu na konto z publikacją na ten temat —
+        # także na niej (widać różnicę w odpowiedzi i źródłach)
         "title": "Materiały własne",
         "q": "Czym jest chrzest w Duchu Świętym?",
-        "login": True,
     },
 ]
 
 
 def examples_for(user) -> list[dict]:
-    """Przykładowe pytania dostępne dla użytkownika (poziom dostępu, wymóg logowania)."""
+    """Przykładowe pytania dostępne dla użytkownika (poziom dostępu)."""
     levels = access_for_user(user)
     return [
         {k: v for k, v in e.items() if k in ("title", "q")}
         for e in EXAMPLES
-        if (not e.get("access") or e["access"] in levels)
-        and (not e.get("login") or user is not None)
+        if not e.get("access") or e["access"] in levels
     ]
 
 

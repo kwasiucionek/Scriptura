@@ -556,11 +556,12 @@ for (const reduced of [false, true]) {
 
 
 @pytest.mark.django_db
-def test_personal_materials_example_only_for_logged_in(django_user_model):
+def test_personal_materials_example_for_everyone(django_user_model):
+    # pokaz różnicy: to samo pytanie bez logowania i na koncie z materiałami własnymi
     from rag.views import examples_for
 
     anon = [e["title"] for e in examples_for(None)]
     user = django_user_model.objects.create_user("autor", password="x")
     logged = [e["title"] for e in examples_for(user)]
-    assert "Materiały własne" not in anon and "Materiały własne" in logged
+    assert "Materiały własne" in anon and "Materiały własne" in logged
     assert all(set(e) == {"title", "q"} for e in examples_for(user))

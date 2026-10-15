@@ -412,6 +412,16 @@ def book_legend(refs) -> str:
     return "; ".join(f"{a} = {n}" for a, n in names.items())
 
 
+# dopisek przy źródle w prompcie, zależny od typu dokumentu
+SOURCE_KIND_NOTES = {
+    "review": " [RECENZJA KSIĄŻKI — tezy recenzowanego autora odróżniaj od ocen recenzenta]",
+    "church": (
+        " [DOKUMENT KOŚCIOŁA — nauczanie Magisterium lub Papieskiej Komisji Biblijnej;"
+        " przedstawiaj jako stanowisko Kościoła, odróżniaj od opinii egzegetów]"
+    ),
+}
+
+
 def build_messages(
     question: str,
     chunks: list[ChunkHit],
@@ -425,11 +435,7 @@ def build_messages(
 ) -> list[dict]:
     src_lines = []
     for n, h in enumerate(chunks, start=1):
-        kind = (
-            " [RECENZJA KSIĄŻKI — tezy recenzowanego autora odróżniaj od ocen recenzenta]"
-            if h.doc_type == "review"
-            else ""
-        )
+        kind = SOURCE_KIND_NOTES.get(h.doc_type, "")
         head = f"[{n}] {h.citation}{kind}" + (
             f" — sekcja: {h.section}" if h.section else ""
         )

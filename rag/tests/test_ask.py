@@ -349,3 +349,18 @@ def test_llm_reranker_accepts_all_zero_scores(settings, monkeypatch):
     assert (
         rerank.rerank("q", hits, 2) == hits[:2]
     )  # brak ocen = awaria -> kolejność RRF
+
+
+def test_church_document_marked_in_prompt():
+    from library.search import ChunkHit
+
+    hit = ChunkHit(chunk_id=1, document_id=1, order=0, title="Dei Verbum", authors=["Sobór Watykański II"],
+                   citation="Sobór Watykański II, Dei Verbum (1965)", doc_type="church", year=1965, url="",
+                   section="", text="Sacred tradition and Sacred Scripture form one sacred deposit.", sigla=[],
+                   score=1.0, access="open", register="mixed")  # fmt: skip
+    review = ChunkHit(**{**hit.__dict__, "doc_type": "review", "citation": "Recenzja"})
+    user = service.build_messages("Czym jest Tradycja?", [hit, review], [])[-1][
+        "content"
+    ]
+    assert "[1] Sobór Watykański II, Dei Verbum (1965) [DOKUMENT KOŚCIOŁA" in user
+    assert "[2] Recenzja [RECENZJA KSIĄŻKI" in user

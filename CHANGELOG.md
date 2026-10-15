@@ -1,5 +1,19 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-15 — dokumenty Kościoła o Piśmie Świętym
+
+- Nowy typ dokumentu `church` („dokument Kościoła”, rejestr mieszany — w obu trybach odpowiedzi):
+  w prompcie źródło dostaje dopisek „DOKUMENT KOŚCIOŁA — … przedstawiaj jako stanowisko Kościoła,
+  odróżniaj od opinii egzegetów”, w czacie odznakę, w BibTeX/RIS typ misc/GEN; `audit_corpus` nie
+  przestawia go na „article”. Migracja `library/0010_doc_type_church`.
+- `harvest vatican [--keys …]`: siedem dokumentów (Providentissimus Deus, Divino afflante Spiritu,
+  Humani generis, Sancta Mater Ecclesia, Dei Verbum, PKB „Interpretacja Pisma Świętego w Kościele”,
+  Verbum Domini) prosto z vatican.va → Markdown → manifest (`access=open`, `local_file`).
+  Podstawa: ustawa watykańska o prawie autorskim (2011) — materiały ze strony Stolicy Apostolskiej
+  wolno rozpowszechniać bez celu zarobkowego i bez zmian treści. Polskie przekłady z innych serwisów
+  (np. wiara.pl) mają własne prawa, więc tylko wersje z vatican.va: angielskie lub włoskie (polskiej
+  Verbum Domini strona nie ma — HTML i PDF są puste); przekład maszynowy służy tylko wyszukiwaniu.
+
 ## 2026-10-15 — przeniesienie na roman233
 
 - Produkcja przeniesiona ze steve141 na roman233 (Mikrus 4.2: 16 GB RAM, 160 GB dysku): dane w

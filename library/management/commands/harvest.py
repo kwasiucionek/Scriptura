@@ -8,6 +8,8 @@
     python manage.py harvest openalex --journal-id S4210212345 --only-oa --from-year 2015 --out data/manifests/vv.jsonl
     python manage.py harvest scholar --scholar-id r0NgMwMAAAAJ --out data/manifests/majewski-scholar.jsonl
     python manage.py harvest bibtex --file ~/Pobrane/citations.bib --out data/manifests/majewski-scholar.jsonl
+    python manage.py harvest vatican --out data/manifests/vatican.jsonl        # dokumenty Kościoła o Piśmie (vatican.va)
+    python manage.py harvest vatican --keys dei-verbum verbum-domini
 
 Manifest przejrzyj ręcznie (kolumna access: open/licensed/private/skip), potem `ingest_manifest`.
 """
@@ -17,18 +19,33 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from library.harvest import bibtex, blog, dspace, manifest, openalex, scholar, youtube
+from library.harvest import (
+    bibtex,
+    blog,
+    dspace,
+    manifest,
+    openalex,
+    scholar,
+    vatican,
+    youtube,
+)
 
 
 class Command(BaseCommand):
-    help = (
-        "Harvest metadanych do manifestu JSONL (dspace | openalex | scholar | bibtex)"
-    )
+    help = "Harvest metadanych do manifestu JSONL (dspace | openalex | scholar | bibtex | blog | youtube | vatican)"
 
     def add_arguments(self, parser):
         parser.add_argument(
             "source",
-            choices=["dspace", "openalex", "scholar", "bibtex", "blog", "youtube"],
+            choices=[
+                "dspace",
+                "openalex",
+                "scholar",
+                "bibtex",
+                "blog",
+                "youtube",
+                "vatican",
+            ],
         )
         parser.add_argument(
             "--query",
@@ -74,6 +91,11 @@ class Command(BaseCommand):
             "--site", help="blog: adres WordPressa, np. https://majewskimarcin.pl"
         )
         parser.add_argument("--video", nargs="*", help="youtube: adresy lub id filmów")
+        parser.add_argument(
+            "--keys",
+            nargs="*",
+            help="vatican: klucze dokumentów z library.harvest.vatican.DOCUMENTS (domyślnie wszystkie)",
+        )
         parser.add_argument(
             "--since",
             help="blog: tylko wpisy zmodyfikowane od daty YYYY-MM-DD (przyrost)",
@@ -130,6 +152,17 @@ class Command(BaseCommand):
                     f"  {info.title[:60]}: {len(info.captions)} napisów, "
                     f"{len(info.chapters)} rozdziałów ({info.caption_kind})"
                 )
+
+        elif source == "vatican":
+            known = {d.key for d in vatican.DOCUMENTS}
+            unknown = sorted(set(o["keys"] or []) - known)
+            if unknown:
+                raise CommandError(
+                    f"nieznane klucze: {', '.join(unknown)} (dostępne: {', '.join(sorted(known))})"
+                )
+            entries = vatican.harvest(
+                settings.DATA_DIR / "library" / "vatican", o["keys"] or None
+            )
 
         elif source == "bibtex":
             if not o["file"]:

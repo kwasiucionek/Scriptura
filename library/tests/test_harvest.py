@@ -2,6 +2,9 @@
 
 from unittest import mock
 
+import pytest
+from django.core.management.base import CommandError
+
 from library.harvest import dspace, openalex
 from library.harvest.manifest import ManifestEntry, normalize_license, read, write
 
@@ -282,3 +285,105 @@ def test_openalex_find_sources():
     with mock.patch.object(openalex, "_get", return_value=data):
         (src,) = openalex.find_sources("Verbum Vitae")
     assert src["display_name"] == "Verbum Vitae" and src["issn"] == "1644-8561"
+
+
+# --- vatican.va -------------------------------------------------------------
+
+_VATICAN_CONTENT = (
+    "<html><head><script>x()</script></head><body><nav>menu</nav>"
+    '<div class="abstract text parbase vaticanrichtext"><div class="clearfix"></div></div>'
+    '<div class="text parbase container vaticanrichtext">'
+    '<p align="center">[AR - EN - IT]<br/><b>DEI VERBUM</b><br/>ON DIVINE<br/>REVELATION</p>'
+    "<p>1. Hearing the word\nof God&nbsp;with reverence (1 John 1:2-3).<sup>(1)</sup></p>"
+    "<h3>CHAPTER I</h3><p>2. In His goodness “God” chose to reveal Himself.</p>"
+    '<p class="copyright">Copyright © Dicastero per la Comunicazione</p>'
+    "</div><footer><div>FAQ</div></footer></body></html>"
+)
+
+
+def test_vatican_page_text_content_region():
+    from library.harvest import vatican
+
+    text = vatican.page_text(_VATICAN_CONTENT)
+    assert text.startswith(
+        "DEI VERBUM ON DIVINE REVELATION\n\n1. Hearing the word of God with"
+    )
+    assert "### CHAPTER I\n\n2. In His goodness “God”" in text
+    assert "[AR" not in text and "Copyright" not in text
+    assert "menu" not in text and "FAQ" not in text and "x()" not in text
+
+
+def test_vatican_page_text_falls_back_to_body():
+    from library.harvest import vatican
+
+    raw = (
+        '<html><body><table><tr><td><a href="/"><img alt="Index"></a></td>'
+        '<td><p align="center">PONTIFICIA COMMISSIONE BIBLICA</p>'
+        "<p>La Santa Madre Chiesa\n (1 Tm 3,15).</p></td></tr></table></body></html>"
+    )
+    assert vatican.page_text(raw) == (
+        "PONTIFICIA COMMISSIONE BIBLICA\n\nLa Santa Madre Chiesa (1 Tm 3,15)."
+    )
+
+
+def test_vatican_decode_declared_latin1_as_cp1252():
+    from library.harvest import vatican
+
+    body = (
+        '<meta content="text/html; charset=iso-8859-1"><p>\x93Verbum\x94 è</p>'.encode(
+            "latin-1"
+        )
+    )
+    assert "“Verbum” è" in vatican.decode(body)
+    assert vatican.decode("zażółć".encode(), "text/html;charset=utf-8") == "zażółć"
+
+
+def test_vatican_to_entry(tmp_path):
+    from library.harvest import vatican
+
+    doc = next(d for d in vatican.DOCUMENTS if d.key == "dei-verbum")
+    e = vatican.to_entry(doc, _VATICAN_CONTENT, tmp_path)
+    assert (e.doc_type, e.access, e.register, e.language) == (
+        "church",
+        "open",
+        "mixed",
+        "en",
+    )
+    assert e.authors == ["Sobór Watykański II"] and e.year == 1965
+    assert (
+        e.url.startswith("https://www.vatican.va/")
+        and e.source_id == "vatican-dei-verbum"
+    )
+    assert len(e.license) <= 128 and len(e.note) <= 300
+    text = open(e.local_file, encoding="utf-8").read()
+    assert text.startswith(f"# {doc.title}\n\nDEI VERBUM")
+
+
+def test_vatican_documents_are_unique_and_valid():
+    from library.harvest import vatican
+    from library.models import DocType
+
+    keys = [d.key for d in vatican.DOCUMENTS]
+    assert len(keys) == len(set(keys)) and "church" in DocType.values
+    assert all(
+        d.path.startswith("/") and d.language in ("pl", "en", "it")
+        for d in vatican.DOCUMENTS
+    )
+
+
+def test_harvest_vatican_command(tmp_path, settings):
+    from django.core.management import call_command
+
+    from library.harvest import manifest, vatican
+
+    settings.DATA_DIR = tmp_path
+    out = tmp_path / "vatican.jsonl"
+    with mock.patch.object(vatican, "fetch", return_value=_VATICAN_CONTENT) as fetch:
+        call_command("harvest", "vatican", "--keys", "dei-verbum", "--out", str(out))
+    assert fetch.call_count == 1
+    (e,) = manifest.read(out)
+    assert e.doc_type == "church" and e.local_file.startswith(
+        str(tmp_path / "library" / "vatican")
+    )
+    with pytest.raises(CommandError, match="nieznane klucze"):
+        call_command("harvest", "vatican", "--keys", "nie-ma-takiego")

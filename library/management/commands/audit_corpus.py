@@ -114,6 +114,7 @@ class Command(BaseCommand):
                     if (
                         r.get("kind") in ("article", "book", "lexicon", "review")
                         and r["kind"] != d.doc_type
+                        and d.doc_type != "church"  # typ nadany ręcznie (vatican.va)
                     ):
                         upd["doc_type"] = r["kind"]
                     if upd:

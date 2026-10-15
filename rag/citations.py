@@ -22,6 +22,7 @@ _TYPE_BIB = {
     "video": "misc",
     "lexicon": "book",
     "review": "article",
+    "church": "misc",
 }
 _TYPE_RIS = {
     "article": "JOUR",
@@ -31,6 +32,7 @@ _TYPE_RIS = {
     "video": "GEN",
     "lexicon": "BOOK",
     "review": "JOUR",
+    "church": "GEN",
 }
 _SERIES = {  # seria -> (pełna nazwa, rok pierwszego wydania, redaktor)
     "ANF": ("Ante-Nicene Fathers", 1885, "Alexander Roberts and James Donaldson"),

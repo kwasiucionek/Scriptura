@@ -226,7 +226,7 @@ function renderSources(el) {
   if (chunks.length) {
     html += group("lit", "Literatura", "", chunks.length, false, chunks.map((c) => `
       <div class="src ${!result || refSet.has(`[${c.n}]`) ? "hit" : ""}" id="src-${c.n}">
-        <span class="n">[${c.n}]</span><span class="t">${esc(c.authors.join(", ") || "—")}</span>${c.register === "popular" ? ' <span class="badge cur">popularne</span>' : ""}${c.doc_type === "review" ? ' <span class="badge cur">recenzja</span>' : ""}${c.doc_type === "video" ? ' <span class="badge cur">wykład</span>' : ""}${c.doc_type === "blog" ? ' <span class="badge cur">blog</span>' : ""}${c.personal ? ' <span class="badge ok">moje</span>' : ""}
+        <span class="n">[${c.n}]</span><span class="t">${esc(c.authors.join(", ") || "—")}</span>${c.register === "popular" ? ' <span class="badge cur">popularne</span>' : ""}${c.doc_type === "review" ? ' <span class="badge cur">recenzja</span>' : ""}${c.doc_type === "video" ? ' <span class="badge cur">wykład</span>' : ""}${c.doc_type === "blog" ? ' <span class="badge cur">blog</span>' : ""}${c.doc_type === "church" ? ' <span class="badge cur">dokument Kościoła</span>' : ""}${c.personal ? ' <span class="badge ok">moje</span>' : ""}
         <div class="s">${esc(c.title)}${c.year ? " · " + c.year : ""}${c.section ? " · " + esc(c.section) : ""}${c.url ? ` · <a href="${esc(c.url)}" target="_blank" rel="noopener">źródło</a>` : ""}</div>
         ${c.sigla?.length ? `<div class="sig">${c.sigla.slice(0, 8).map((s) => `<span>${esc(s)}</span>`).join("")}</div>` : ""}
         ${c.snippet ? `<details><summary>pokaż fragment</summary><blockquote>${esc(c.snippet)}${c.snippet.length >= 600 ? "…" : ""}</blockquote></details>` : ""}

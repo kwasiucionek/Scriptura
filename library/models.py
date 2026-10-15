@@ -21,6 +21,7 @@ class DocType(models.TextChoices):
     VIDEO = "video", "transkrypcja wykładu / wideo"
     LEXICON = "lexicon", "słownik / leksykon"
     REVIEW = "review", "recenzja książki"
+    CHURCH = "church", "dokument Kościoła"
 
 
 class Register(models.TextChoices):
@@ -37,6 +38,7 @@ DEFAULT_REGISTER = {  # domyślny rejestr wg typu dokumentu; nadpisywalny przy i
     DocType.VIDEO: Register.POPULAR,
     DocType.LEXICON: Register.SCIENTIFIC,
     DocType.REVIEW: Register.SCIENTIFIC,
+    DocType.CHURCH: Register.MIXED,  # encykliki i dokumenty PKB — w obu trybach odpowiedzi
 }
 
 

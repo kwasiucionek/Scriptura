@@ -121,6 +121,9 @@ def concordance(request: HttpRequest) -> HttpResponse:
     ctx = {
         "result": result,
         "page": page,
+        "page_works": list(
+            {t.verse_text.work.code: t.verse_text.work for t in page}.values()
+        ),
         "params": {"lemma": lemma, "strong": strong, "form": form},
         "lexeme": lexeme,
     }

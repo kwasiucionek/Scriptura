@@ -1,5 +1,16 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-15 — prawa do przekładów przy cytatach
+
+- `Work.attribution` (migracja z notami dla BG1632, WLC, SBLGNT, LXX): nota o prawach pokazywana
+  przy każdym cytacie biblijnym — widok równoległy, interlinia, wyszukiwanie, konkordancja,
+  hasło słownika (tag `works_attribution`) i panel źródeł asystenta (`work_notes` w zdarzeniu
+  `sources`). Brak noty -> nazwa + licencja.
+- Korpus: kolumna „Prawa (nota przy cytatach)” i sekcja „Przekłady i prawa autorskie” (tylko
+  wolne teksty; przekłady chronione wyłącznie z licencją wydawcy, model „tekst bezpłatnie,
+  dodatki z kodem kupionym u wydawcy”, Scriptura nie pobiera opłat; źródła NC; przekład roboczy).
+- Asystent: link „interlinia” przy wersetach oryginału; widok równoległy: link do interlinii.
+
 ## 2026-10-15 — interlinia i słownik
 
 - Interlinia (`/text/interlinia/?q=Flp 2,5-11`, przycisk „Interlinia” obok „Otwórz”): słowo

@@ -40,8 +40,8 @@
 {% if il.truncated %}<p class="muted">Pokazano pierwsze 200 wersetów — zawęź siglum.</p>{% endif %}
 <p class="muted il-note">Polskie glosy to przekład roboczy Scriptury (model {{ model }}): odpowiednik słowa w tym wersecie,
 w formie wynikającej z kontekstu; <span class="iw-pl dict">szare</span> — odpowiednik słownikowy (słowo jeszcze bez glosy kontekstowej).
-Morfologia: {% if il.work.code == "SBLGNT" %}MorphGNT (CC BY-SA){% elif il.work.code == "WLC" %}Open Scriptures Hebrew Bible (CC BY 4.0){% else %}źródło tekstu{% endif %};
-numery Stronga i hasła: STEPBible (Tyndale House, CC BY 4.0). Kliknięcie słowa otwiera hasło słownika.</p>
+Numery Stronga i hasła: STEPBible (Tyndale House, CC BY 4.0). Kliknięcie słowa otwiera hasło słownika.</p>
+{% works_attribution il.sources %}
 {% else %}
 <p class="muted">Brak dostępnego tekstu oryginalnego dla tego sigli.</p>
 {% endif %}

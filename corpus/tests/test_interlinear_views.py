@@ -166,3 +166,29 @@ def test_definition_filter_is_safe():
     assert html.endswith("</b>")
     assert 'href="/text/slownik/H430/"' in strong_links("from H430 <x>")
     assert "&lt;x&gt;" in strong_links("from H430 <x>")
+
+
+def test_attribution_next_to_texts(client, texts):
+    gnt, pl = texts
+    gnt.attribution = "SBL Greek New Testament © 2010 SBL (CC BY 4.0)"
+    gnt.save()
+    pl.license = "domena publiczna"
+    pl.save()
+    for url, params in (
+        (reverse("corpus:interlinear"), {"q": "Flp 2,6"}),
+        (reverse("corpus:reference"), {"q": "Flp 2,6", "works": "SBLGNT,BG1632"}),
+        (reverse("corpus:lexicon", args=["G725"]), {}),
+    ):
+        html = client.get(url, params).content.decode()
+        assert "© 2010 SBL (CC BY 4.0)" in html, url
+    html = client.get(reverse("corpus:interlinear"), {"q": "Flp 2,6"}).content.decode()
+    assert "BG — domena publiczna" in html  # nota zastępcza: nazwa + licencja
+
+
+def test_rag_work_notes(texts):
+    from rag.service import work_notes
+
+    texts[0].attribution = "nota SBLGNT"
+    texts[0].save()
+    assert work_notes({"SBLGNT", "XYZ"}) == {"SBLGNT": "nota SBLGNT"}
+    assert work_notes(set()) == {}

@@ -22,6 +22,8 @@ WORKS = {
         "kind": WorkKind.ORIGINAL,
         "versification": "mt",
         "license": "WLC: domena publiczna; OSHB/OSHM: CC BY 4.0",
+        "attribution": "Westminster Leningrad Codex — domena publiczna; lematy i morfologia: "
+        "Open Scriptures Hebrew Bible (CC BY 4.0)",
         "source_url": "https://github.com/openscriptures/morphhb",
         "access": Access.OPEN,
     },
@@ -32,6 +34,8 @@ WORKS = {
         "kind": WorkKind.ORIGINAL,
         "versification": "lxx",
         "license": "CC BY-NC-SA 4.0 (E. Wong); tekst bazowy CCAT/CATSS — deklaracja użytkownika",
+        "attribution": "Septuaginta, wyd. A. Rahlfs (1935); opracowanie cyfrowe i lematy: "
+        "E. Wong, OSSP (CC BY-NC-SA 4.0)",
         "source_url": "https://github.com/eliranwong/LXX-Rahlfs-1935",
         "access": Access.OPEN,
     },
@@ -42,6 +46,8 @@ WORKS = {
         "kind": WorkKind.ORIGINAL,
         "versification": "mt",
         "license": "SBLGNT: CC BY 4.0; MorphGNT: CC BY-SA 3.0",
+        "attribution": "SBL Greek New Testament © 2010 Society of Biblical Literature i Logos "
+        "Bible Software (CC BY 4.0); morfologia: MorphGNT (CC BY-SA 3.0)",
         "source_url": "https://github.com/morphgnt/sblgnt",
         "access": Access.OPEN,
     },

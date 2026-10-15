@@ -112,3 +112,28 @@ def strong_links(text: str) -> str:
             safe,
         )
     )
+
+
+@register.simple_tag
+def works_attribution(works, label: str = "Teksty") -> str:
+    """Nota o prawach dla dzieł widocznych na stronie (obiekty Work albo kody), bez powtórzeń."""
+    from corpus.models import Work
+
+    items = [w for w in (works or []) if w]
+    codes = [w for w in items if isinstance(w, str)]
+    objs = [w for w in items if not isinstance(w, str)]
+    if codes:
+        objs += list(Work.objects.filter(code__in=codes))
+    seen, rows = set(), []
+    for w in objs:
+        if w.code in seen:
+            continue
+        seen.add(w.code)
+        rows.append((w.code, w.attribution_text))
+    if not rows:
+        return ""
+    return format_html(
+        '<p class="muted attribution">{}: {}</p>',
+        label,
+        format_html_join(" · ", "<b>{}</b> — {}", rows),
+    )

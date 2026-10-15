@@ -239,6 +239,10 @@ function renderSources(el) {
       <div class="verse"><span class="r">${esc(v.ref)}</span><span class="w">${esc(v.work)}</span>${IL_WORKS.has(v.work) ? ` <a class="il-link" href="${IL_URL}?q=${encodeURIComponent(v.ref)}&amp;tekst=${encodeURIComponent(v.work)}" target="_blank" rel="noopener">interlinia</a>` : ""}
         <div class="x ${RTL.has(v.language || "") || /[\u0590-\u05ff]/.test(v.text) ? "rtl" : ""}">${esc(v.text)}</div></div>`).join(""));
   }
+  const notes = Object.entries(sources.work_notes || {});
+  if (notes.length) {
+    html += `<p class="work-notes">Teksty biblijne: ${notes.map(([code, note]) => `<b>${esc(code)}</b> — ${esc(note)}`).join(" · ")}</p>`;
+  }
   if (patristics.length) {
     html += group("pat", "Ojcowie Kościoła", "ANF/NPNF, CCEL · tradycja interpretacji", patristics.length, false, patristics.map((h, i) => `
       <div class="src ${refSet.has(`[P${i + 1}]`) ? "hit" : ""}" id="src-P${i + 1}"><span class="n">[P${i + 1}]</span><span class="t">${esc(h.author)}</span> <span class="badge cur">Ojcowie</span>${h.via_verse ? ' <span class="badge ok">o tym wersecie</span>' : ""}

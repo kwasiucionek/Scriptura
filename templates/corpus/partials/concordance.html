@@ -17,4 +17,5 @@
   <span class="muted">strona {{ page.number }} / {{ page.paginator.num_pages }}</span>
   {% if page.has_next %}<a hx-get="{% url 'corpus:concordance' %}?{% for k,v in params.items %}{% if v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page.next_page_number }}" hx-target="#panel" href="#">następne →</a>{% endif %}
 </nav>
+{% works_attribution page_works %}
 {% endif %}

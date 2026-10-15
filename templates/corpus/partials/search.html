@@ -18,3 +18,4 @@
   {% if page < pages %}<a hx-get="{% url 'corpus:search' %}?q={{ q|urlencode }}&works={{ selected|join:',' }}&page={{ page|add:1 }}" hx-target="#panel" href="#">następne →</a>{% endif %}
 </nav>
 {% endif %}
+{% works_attribution works %}

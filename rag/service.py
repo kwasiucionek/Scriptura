@@ -81,6 +81,22 @@ class VerseSource:
     text: str
 
 
+def work_notes(codes: set[str]) -> dict[str, str]:
+    """Noty o prawach dzieł biblijnych w panelu źródeł; dodatek — błąd bazy nie psuje odpowiedzi."""
+    from corpus.models import Work
+
+    if not codes:
+        return {}
+    try:
+        return {
+            w.code: w.attribution_text
+            for w in Work.objects.filter(code__in=codes).order_by("code")
+        }
+    except Exception:  # noqa: BLE001
+        log.debug("work_notes: brak not dla %s", codes)
+        return {}
+
+
 @dataclass
 class AskResult:
     """Additive SSE result contract.
@@ -812,6 +828,8 @@ def ask(
         {
             "chunks": sources,
             "verses": [asdict(v) for v in verses],
+            # nota o prawach do tekstów biblijnych widocznych w panelu (kod dzieła -> nota)
+            "work_notes": work_notes({v.work for v in verses}),
             "related": related,
             "ane": [asdict(h) for h in ane],
             "patristics": [asdict(h) for h in patristics],

@@ -63,6 +63,8 @@ class Work(TimeStampedModel):
     versification = models.CharField(max_length=16, default="mt")  # mt | lxx | vulgate
     year = models.PositiveSmallIntegerField(null=True, blank=True)
     license = models.CharField(max_length=128, blank=True)
+    # nota przy cytatach i na stronie Korpus: kto ma prawa, na jakiej licencji (wymóg CC BY i wydawców)
+    attribution = models.CharField(max_length=300, blank=True)
     source_url = models.URLField(blank=True)
     access = models.CharField(
         max_length=16, choices=Access.choices, default=Access.OPEN
@@ -76,6 +78,13 @@ class Work(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.code
+
+    @property
+    def attribution_text(self) -> str:
+        """Nota o prawach do wyświetlenia przy tekście (pole attribution albo nazwa + licencja)."""
+        if self.attribution:
+            return self.attribution
+        return f"{self.name} — {self.license}" if self.license else self.name
 
 
 class VerseQuerySet(models.QuerySet):

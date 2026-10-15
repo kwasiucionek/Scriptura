@@ -68,12 +68,21 @@
 
 <h2>Tekst biblijny</h2>
 <table class="stats">
-  <tr><th>Kod</th><th>Dzieło</th><th>Język</th><th>Rodzaj</th><th>Licencja</th></tr>
+  <tr><th>Kod</th><th>Dzieło</th><th>Język</th><th>Rodzaj</th><th>Prawa (nota przy cytatach)</th></tr>
   {% for w in s.works %}
-  <tr><td><code>{{ w.code }}</code></td><td>{% if w.source_url %}<a href="{{ w.source_url }}" rel="noopener" target="_blank">{{ w.name }}</a>{% else %}{{ w.name }}{% endif %}{% if w.year %} <span class="muted">({{ w.year }})</span>{% endif %}</td><td class="muted">{{ w.language }}</td><td>{{ w.get_kind_display }}</td><td class="muted small">{{ w.license|default:"—" }}</td></tr>
+  <tr><td><code>{{ w.code }}</code></td><td>{% if w.source_url %}<a href="{{ w.source_url }}" rel="noopener" target="_blank">{{ w.name }}</a>{% else %}{{ w.name }}{% endif %}{% if w.year %} <span class="muted">({{ w.year }})</span>{% endif %}</td><td class="muted">{{ w.language }}</td><td>{{ w.get_kind_display }}</td><td class="muted small">{{ w.attribution_text|default:"—" }}</td></tr>
   {% endfor %}
 </table>
 <p class="small muted">Tokeny tekstów oryginalnych mają lemat, numer Stronga i kod morfologiczny (OSHM dla hebrajskiego, MorphGNT dla greckiego; numery Stronga dla greki przypisane po lemacie); to one łączą interlinię, słownik, konkordancję i pytania o słowa. Leksykon: STEPBible TBESH/TBESG (Tyndale House, CC BY) z pełnymi definicjami i słowniki Stronga (domena publiczna, JSON Open Scriptures, CC BY‑SA). Polskie glosy interlinii i polskie odpowiedniki haseł to przekład roboczy Scriptury (model językowy). Odsyłacze: OpenBible.info (CC BY).</p>
+
+<h3>Przekłady i prawa autorskie</h3>
+<ul class="small">
+  <li>Scriptura pokazuje i cytuje tylko teksty w domenie publicznej albo na wolnych licencjach (tabela wyżej). Każdy cytat biblijny — w panelu źródeł asystenta, widoku równoległym, interlinii, konkordancji i słowniku — ma notę o prawach do tekstu.</li>
+  <li>Przekłady chronione prawem autorskim (współczesne przekłady polskie, komentarze) mogą się pojawić wyłącznie na podstawie licencji wydawcy. Model, który proponujemy wydawcom: tekst przekładu dostępny bezpłatnie, a dodatki (komentarze, wstępy, przypisy) w dostępie kupowanym u wydawcy — w jego księgarni kupuje się kod, który odblokowuje moduł na koncie w Scripturze. Scriptura nie pobiera opłat i nie pośredniczy w płatnościach.</li>
+  <li>Tekst licencjonowany zostaje na serwerze Scriptury: nie trafia do publicznego repozytorium kodu ani do eksportów, a widać go tylko w zakresie udzielonej licencji.</li>
+  <li>Część źródeł ma licencje niekomercyjne (Septuaginta w opracowaniu E. Wonga, teksty z vatican.va), dlatego Scriptura jest projektem niekomercyjnym.</li>
+  <li><strong>Przekład roboczy</strong> — polskie glosy interlinii, odpowiedniki haseł słownika i przekłady dokumentów bez wersji polskiej — powstaje maszynowo, jest tak oznaczony i nie zastępuje przekładów wydanych.</li>
+</ul>
 
 <h2>Ojcowie Kościoła</h2>
 <p>Wydanie <em>Ante‑Nicene Fathers</em> / <em>Nicene and Post‑Nicene Fathers</em> w cyfrowej edycji Christian Classics Ethereal Library (domena publiczna). Pasaże są indeksowane po odsyłaczach biblijnych zawartych w tekście — pytanie o werset zwraca miejsca, w których Ojcowie ten werset komentują. {% if s.pat_translated %}Polski przekład pomocniczy (maszynowy, tylko do wyszukiwania i podglądu) ma {{ s.pat_translated }} z {{ s.pat_passages }} pasaży.{% endif %}</p>

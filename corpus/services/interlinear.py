@@ -47,9 +47,10 @@ class Interlinear:
     truncated: bool = False
     prev_ref: str = ""
     next_ref: str = ""
-    alternatives: list[str] = field(
-        default_factory=list
-    )  # inne oryginały dla tych wersetów
+    # inne oryginały dla tych wersetów
+    alternatives: list[str] = field(default_factory=list)
+    # dzieła widoczne na stronie (nota o prawach)
+    sources: list[Work] = field(default_factory=list)
 
 
 def default_work(book: Book) -> str:
@@ -172,4 +173,11 @@ def build(
             ).values_list("work__code", flat=True)
         )
     )
-    return Interlinear(work, verses, truncated, prev_ref, next_ref, alternatives)
+    sources = [work] + (
+        [works[TRANSLATION]]
+        if TRANSLATION in works and any(v.translation for v in verses)
+        else []
+    )
+    return Interlinear(
+        work, verses, truncated, prev_ref, next_ref, alternatives, sources
+    )

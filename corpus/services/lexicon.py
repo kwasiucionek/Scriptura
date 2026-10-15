@@ -100,6 +100,10 @@ class LexiconEntry:
     page: Page | None = None
     literature: list = field(default_factory=list)
 
+    @property
+    def work_codes(self) -> list[str]:
+        return [w["code"] for w in self.by_work]
+
 
 def occurrences(lex: Lexeme, levels: list[str]):
     return Token.objects.filter(

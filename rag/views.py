@@ -42,6 +42,13 @@ from rag.personal import (
 # z "access": "licensed" tylko dla kont z tym dostępem (źródła licencjonowane: blog, skrypty).
 EXAMPLES = [
     {
+        # pokaz materiałów własnych, widoczny dla wszystkich: bez logowania odpowiedź opiera
+        # się na wspólnym korpusie, po zalogowaniu na konto z publikacją na ten temat —
+        # także na niej (widać różnicę w odpowiedzi i źródłach)
+        "title": "Zagadnienia biblijne",
+        "q": "Czym jest chrzest w Duchu Świętym?",
+    },
+    {
         "title": "Ugarit i początki kultu",
         "q": "Co odkrycia w Ugarit mówią o bogu El, Baalu i początkach kultu Jahwe w Izraelu?",
     },
@@ -91,13 +98,6 @@ EXAMPLES = [
         "title": "Imiona Boga",
         "q": "Jakie imiona Boga zna Biblia i co znaczy, że Elohim jest w liczbie mnogiej?",
         "access": "licensed",
-    },
-    {
-        # pokaz materiałów własnych, widoczny dla wszystkich: bez logowania odpowiedź opiera
-        # się na wspólnym korpusie, po zalogowaniu na konto z publikacją na ten temat —
-        # także na niej (widać różnicę w odpowiedzi i źródłach)
-        "title": "Materiały własne",
-        "q": "Czym jest chrzest w Duchu Świętym?",
     },
 ]
 

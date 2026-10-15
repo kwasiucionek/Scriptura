@@ -563,5 +563,5 @@ def test_personal_materials_example_for_everyone(django_user_model):
     anon = [e["title"] for e in examples_for(None)]
     user = django_user_model.objects.create_user("autor", password="x")
     logged = [e["title"] for e in examples_for(user)]
-    assert "Materiały własne" in anon and "Materiały własne" in logged
+    assert anon[0] == "Zagadnienia biblijne" and logged[0] == "Zagadnienia biblijne"
     assert all(set(e) == {"title", "q"} for e in examples_for(user))

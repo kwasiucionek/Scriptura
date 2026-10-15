@@ -16,6 +16,7 @@ from corpus.importers import step
 from corpus.models import Lexeme, Token
 
 FILES = ["TBESH.txt", "TBESG.txt"]
+BATCH = 2000
 
 
 class Command(BaseCommand):
@@ -61,14 +62,15 @@ class Command(BaseCommand):
             .distinct()
         )
         filled = 0
-        with transaction.atomic():
-            for s in strongs:
-                r = lex.get(s) or lex.get(s.rstrip("abcdefghijklmnopqrstuvwxyz"))
-                if not r:
-                    continue
-                filled += Token.objects.filter(strong=s, lemma="").update(
-                    lemma=r["lemma"], lemma_norm=r["lemma_norm"]
-                )
+        for s in (
+            strongs
+        ):  # osobne krótkie zapisy: bez długiej blokady bazy działającej strony
+            r = lex.get(s) or lex.get(s.rstrip("abcdefghijklmnopqrstuvwxyz"))
+            if not r:
+                continue
+            filled += Token.objects.filter(strong=s, lemma="").update(
+                lemma=r["lemma"], lemma_norm=r["lemma_norm"]
+            )
         self.stdout.write(
             self.style.SUCCESS(
                 f"uzupełniono lematy w {filled} tokenach ({len(strongs)} Strongów)"
@@ -84,22 +86,24 @@ class Command(BaseCommand):
                 "strong", "lemma", "lemma_norm"
             )
         )
-        pairs = list(
-            Token.objects.filter(verse_text__work__language="grc", strong="")
-            .exclude(lemma="")
-            .values_list("lemma", "lemma_norm")
-            .distinct()
-        )
-        filled, missing = 0, set()
-        with transaction.atomic():
-            for lemma, lemma_norm in pairs:
-                strong = index.lookup(lemma, lemma_norm)
-                if not strong:
-                    missing.add(lemma)
-                    continue
-                filled += Token.objects.filter(
-                    verse_text__work__language="grc", strong="", lemma=lemma
-                ).update(strong=strong)
+        rows = Token.objects.filter(
+            verse_text__work__language="grc", strong=""
+        ).exclude(lemma="")
+        cache: dict[tuple[str, str], str] = {}
+        updates, missing = [], set()
+        for tid, lemma, lemma_norm in rows.values_list("id", "lemma", "lemma_norm"):
+            key = (lemma, lemma_norm)
+            if key not in cache:
+                cache[key] = index.lookup(lemma, lemma_norm)
+            if cache[key]:
+                updates.append(Token(id=tid, strong=cache[key]))
+            else:
+                missing.add(lemma)
+        # paczki w osobnych transakcjach: strona (i migrate przy restarcie) nie czeka na blokadę
+        for i in range(0, len(updates), BATCH):
+            with transaction.atomic():
+                Token.objects.bulk_update(updates[i : i + BATCH], ["strong"])
+        filled = len(updates)
         self.stdout.write(
             self.style.SUCCESS(
                 f"grecki Strong po lemacie: {filled} tokenów, bez dopasowania {len(missing)} lematów"

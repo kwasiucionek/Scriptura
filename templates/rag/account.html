@@ -19,6 +19,21 @@
   .acct th { font-size: 11px; color: var(--muted); font-weight: 600; }
   .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 10px; }
   @media (max-width: 760px) { .acct { grid-template-columns: 1fr; } }
+  /* wskaźnik pracy przy wgrywaniu i indeksowaniu (orientacyjny, nie rzeczywisty postęp) */
+  .acct button.busy:disabled, .acct button.busy:disabled:hover { opacity: 1; background: var(--accent); color: #fff; transform: none; cursor: progress; }
+  .acct button.busy::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 7px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -1px; animation: acct-spin .8s linear infinite; }
+  .upload-status { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 13px; }
+  .upload-status[hidden] { display: none; }
+  .upload-status .bar { position: relative; height: 4px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; margin-bottom: 10px; }
+  .upload-status .bar span { position: absolute; top: 0; bottom: 0; left: -35%; width: 35%; border-radius: inherit; background: var(--accent); animation: acct-slide 1.4s ease-in-out infinite; }
+  .upload-status .head { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
+  .upload-status .elapsed { flex-shrink: 0; white-space: nowrap; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+  @keyframes acct-slide { to { left: 100%; } }
+  @keyframes acct-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .upload-status .bar span { animation: none; left: 0; width: 100%; opacity: .45; }
+    .acct button.busy::before { animation: none; }
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -47,7 +62,7 @@
   <section class="wide">
     <h2>Moje materiały <span class="muted">— widoczne tylko dla Ciebie, także w odpowiedziach RAG · limit {{ limits.docs }} plików po {{ limits.mb }} MB</span></h2>
     <p class="muted">W asystencie opcja „Literatura: tylko moje materiały” ogranicza literaturę do Twoich tekstów, bez literatury ze wspólnego korpusu. Biblia oraz teksty ANE i patrystyczne nadal mogą być kontekstem, zgodnie z wybranymi opcjami.</p>
-    <form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="upload">
+    <form method="post" enctype="multipart/form-data" data-progress="Wgrywanie i indeksowanie…">{% csrf_token %}<input type="hidden" name="action" value="upload">
       {% if upload_form.non_field_errors %}<div class="err">{{ upload_form.non_field_errors }}</div>{% endif %}
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px">
         <div><label>{{ upload_form.title.label }}</label>{{ upload_form.title }}{{ upload_form.title.errors }}</div>
@@ -59,6 +74,11 @@
         <div style="grid-column:1/-1"><label>{{ upload_form.note.label }}</label>{{ upload_form.note }}</div>
       </div>
       <button>Wgraj i zaindeksuj</button>
+      <div class="upload-status" hidden>
+        <div class="bar" aria-hidden="true"><span></span></div>
+        <div class="head"><span data-stage role="status" aria-live="polite">Wysyłanie pliku…</span><span class="elapsed" data-elapsed aria-hidden="true">0:00</span></div>
+        <div class="muted" style="margin-top:4px">Odczyt tekstu i indeksowanie trwają zwykle 1–3 minuty. Nie zamykaj tej strony — po zakończeniu zobaczysz potwierdzenie, a plik pojawi się na liście.</div>
+      </div>
       <div class="muted" style="margin-top:6px">Wgrywaj tylko materiały, do których masz prawo użytku własnego. Nie trafiają do wspólnego korpusu.</div>
     </form>
     {% if docs %}
@@ -85,7 +105,7 @@
         </td>
         <td style="white-space:nowrap">
           {% if d.index_status == "failed" or d.index_status == "pending" %}
-          <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="retry_index"><input type="hidden" name="doc_id" value="{{ d.id }}"><button class="ghost" type="submit">Ponów indeksowanie</button></form>
+          <form method="post" style="display:inline" data-progress="Indeksowanie…">{% csrf_token %}<input type="hidden" name="action" value="retry_index"><input type="hidden" name="doc_id" value="{{ d.id }}"><button class="ghost" type="submit">Ponów indeksowanie</button></form>
           {% endif %}
           {% if d.access == "personal" %}
           <details><summary style="cursor:pointer;color:var(--accent);font-size:12px">Udostępnij</summary>
@@ -109,4 +129,66 @@
     {% else %}<p class="muted" style="margin-top:12px">Nie masz jeszcze własnych materiałów.</p>{% endif %}
   </section>
 </div>
+<script>
+// Formularze z data-progress: blokada ponownego wysłania, przycisk z animacją, a przy wgrywaniu
+// pasek, orientacyjny etap i czas od rozpoczęcia (serwer odpowiada dopiero po indeksowaniu).
+(() => {
+  const STAGES = [
+    [0, "Wysyłanie pliku…"],
+    [3, "Odczyt tekstu i podział na fragmenty…"],
+    [8, "Indeksowanie fragmentów (wektory i wyszukiwarka)…"],
+  ];
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  let timer = null;
+
+  document.querySelectorAll("form[data-progress]").forEach((form) => {
+    form.addEventListener("submit", (e) => {
+      if (e.defaultPrevented) return;
+      if (form.dataset.busy) { e.preventDefault(); return; }
+      form.dataset.busy = "1";
+      form.setAttribute("aria-busy", "true");
+      const btn = form.querySelector("button");
+      // blokada po starcie wysyłki, żeby nie wpływać na dane formularza
+      setTimeout(() => {
+        if (!btn) return;
+        btn.dataset.label = btn.textContent;
+        btn.textContent = form.dataset.progress;
+        btn.classList.add("busy");
+        btn.disabled = true;
+      }, 0);
+      const box = form.querySelector(".upload-status");
+      if (!box) return;
+      box.hidden = false;
+      const stage = box.querySelector("[data-stage]");
+      const elapsed = box.querySelector("[data-elapsed]");
+      const t0 = Date.now();
+      const tick = () => {
+        const s = Math.floor((Date.now() - t0) / 1000);
+        elapsed.textContent = fmt(s);
+        const text = STAGES.filter(([from]) => s >= from).pop()[1];
+        if (stage.textContent !== text) stage.textContent = text;
+      };
+      tick();
+      timer = setInterval(tick, 1000);
+    });
+  });
+
+  // powrót „wstecz” z pamięci podręcznej przeglądarki: formularze znów aktywne
+  addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    clearInterval(timer);
+    document.querySelectorAll("form[data-progress]").forEach((form) => {
+      delete form.dataset.busy;
+      form.removeAttribute("aria-busy");
+      form.querySelectorAll("button.busy").forEach((b) => {
+        b.disabled = false;
+        b.classList.remove("busy");
+        if (b.dataset.label) b.textContent = b.dataset.label;
+      });
+      const box = form.querySelector(".upload-status");
+      if (box) box.hidden = true;
+    });
+  });
+})();
+</script>
 {% endblock %}

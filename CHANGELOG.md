@@ -1,7 +1,11 @@
 # Scriptura — dziennik sprintów (changelog)
 
-## 2026-10-16 — przykład „Materiały własne”
+## 2026-10-16 — przykład „Materiały własne”, wskaźnik wgrywania
 
+- Konto: „Wgraj i zaindeksuj” pokazuje wskaźnik pracy (serwer odpowiada dopiero po
+  indeksowaniu, zwykle 1–3 min) — przycisk z animacją i blokadą ponownego wysłania, pasek,
+  orientacyjny etap (wysyłanie → odczyt tekstu → indeksowanie) i czas od rozpoczęcia;
+  „Ponów indeksowanie” — przycisk z animacją. Bez ruchu przy `prefers-reduced-motion`.
 - Przykładowe pytanie „Czym jest chrzest w Duchu Świętym?” widoczne dla wszystkich: pokaz
   materiałów własnych — bez logowania odpowiedź opiera się na wspólnym korpusie, po zalogowaniu
   na konto z publikacją na ten temat korzysta też z niej (widocznej wyłącznie dla właściciela);

@@ -269,3 +269,12 @@ def test_retry_real_service_with_offline_index(
     notice = list(get_messages(response.wsgi_request))[0]
     assert notice.level == (WARNING if status == IndexStatus.FAILED else SUCCESS)
     assert SECRET not in str(notice)
+
+
+def test_upload_form_shows_progress_indicator(account_client):
+    # wgrywanie i indeksowanie trwa do kilku minut: formularz ma wskaźnik pracy
+    client, _ = account_client
+    page = client.get(reverse("rag:account")).content.decode()
+    assert 'data-progress="Wgrywanie i indeksowanie…"' in page
+    assert '<div class="upload-status" hidden>' in page
+    assert 'role="status"' in page and "form[data-progress]" in page

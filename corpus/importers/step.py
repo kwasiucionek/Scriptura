@@ -102,11 +102,17 @@ def parse_file(path: Path) -> Iterator[dict]:
 
 # --- Strong dla tokenów SBLGNT (MorphGNT podaje tylko lemat) ---------------------------------
 
-_MIDDLE_ENDINGS = [
+# warianty lematu MorphGNT względem STEP: strona medialna/czynna, -μι/-ω, ściągnięte przymiotniki
+_VARIANT_ENDINGS = [
     ("εομαι", "εω"), ("αομαι", "αω"), ("οομαι", "οω"), ("ομαι", "ω"),
     ("ιθεμαι", "ιθημι"), ("ισταμαι", "ιστημι"), ("ιεμαι", "ιημι"), ("οδομαι", "ιδωμι"),
     ("υμαι", "υμι"), ("αμαι", "ημι"), ("εμαι", "ημι"),
+    ("υμι", "υω"), ("υω", "υμι"), ("ημι", "αω"), ("ημι", "εω"), ("ωμι", "οω"),
+    ("ω", "ομαι"), ("ουσ", "εοσ"), ("αρχησ", "αρχοσ"),
 ]  # fmt: skip
+# pisownia SBLGNT -> hasło STEP
+_LEMMA_ALIASES = {"τεσσερακοντα": "τεσσαρακοντα", "ενεκεν": "ενεκα", "μαριαμ": "μαρια"}
+_OPTIONAL = re.compile(r"\(([^)]*)\)")  # οὕτω(ς), ἔξεστι(ν)
 STANDARD_GREEK_MAX = 5624  # numery Stronga; wyższe to rozszerzenia STEP (głównie LXX)
 
 
@@ -118,9 +124,10 @@ def _strong_rank(strong: str) -> tuple[int, int, str]:
 
 class GreekStrongIndex:
     """Lemat MorphGNT -> numer Stronga: najpierw dokładny lemat (z akcentami — rozróżnia
-    πῶς/πως), potem postać znormalizowana, potem forma czynna lematu medialnego
-    (καταποντίζομαι -> καταποντίζω). Przy kilku kandydatach wygrywa numer klasyczny (≤ 5624)
-    i najniższy."""
+    πῶς/πως), potem postać znormalizowana, potem warianty: litery opcjonalne (οὕτω(ς)),
+    strona medialna/czynna (καταποντίζομαι -> καταποντίζω), -μι/-ω (ἀπόλλυμι -> ἀπολλύω),
+    pisownia (τεσσεράκοντα). Hasła STEP z kilkoma formami („Μωϋσῆς, Μωσῆς”) indeksowane są
+    każdą formą. Przy kilku kandydatach wygrywa numer klasyczny (≤ 5624) i najniższy."""
 
     def __init__(self, rows):
         import unicodedata
@@ -129,8 +136,13 @@ class GreekStrongIndex:
         self.exact: dict[str, list[str]] = {}
         self.norm: dict[str, list[str]] = {}
         for strong, lemma, lemma_norm in rows:
-            self.exact.setdefault(self._nfc(lemma), []).append(strong)
-            self.norm.setdefault(lemma_norm, []).append(strong)
+            # STEP bywa wieloformowy: „Μωϋσῆς, Μωσῆς”, „Ἕλλην=Ἕλλην”
+            for part in re.split(r"[,=]", lemma):
+                if part.strip():
+                    self.exact.setdefault(self._nfc(part.strip()), []).append(strong)
+            for part in re.split(r"[,=]", lemma_norm):
+                if part.strip():
+                    self.norm.setdefault(part.strip(), []).append(strong)
 
     @staticmethod
     def _best(cands: list[str]) -> str:
@@ -141,9 +153,21 @@ class GreekStrongIndex:
             return self._best(cands)
         if cands := self.norm.get(lemma_norm):
             return self._best(cands)
-        for end, repl in _MIDDLE_ENDINGS:
-            if lemma_norm.endswith(end):
-                if cands := self.norm.get(lemma_norm[: -len(end)] + repl):
-                    return self._best(cands)
-                break
+        for variant in self._variants(lemma_norm):
+            if cands := self.norm.get(variant):
+                return self._best(cands)
         return ""
+
+    @staticmethod
+    def _variants(norm: str) -> list[str]:
+        bases = [norm]
+        if "(" in norm:
+            bases = [_OPTIONAL.sub(r"\1", norm), _OPTIONAL.sub("", norm)]
+        out = [b for b in bases if b != norm]
+        for base in bases:
+            if base in _LEMMA_ALIASES:
+                out.append(_LEMMA_ALIASES[base])
+            for end, repl in _VARIANT_ENDINGS:
+                if base.endswith(end):
+                    out.append(base[: -len(end)] + repl)
+        return out

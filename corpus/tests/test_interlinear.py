@@ -177,6 +177,29 @@ def test_greek_strong_index():
     assert idx.lookup("ἄγνωστον", "αγνωστον") == ""
 
 
+def test_greek_strong_index_variants():
+    idx = step.GreekStrongIndex(
+        [
+            ("G3779", "οὕτως", "ουτωσ"),
+            ("G3475", "Μωϋσῆς, Μωσῆς", "μωυσησ, μωσησ"),
+            ("G1672", "Ἕλλην=Ἕλλην", "ελλην=ελλην"),
+            ("G622", "ἀπολλύω", "απολλυω"),
+            ("G3660", "ὄμνυμι", "ομνυμι"),
+            ("G2097", "εὐαγγελίζομαι", "ευαγγελιζομαι"),
+            ("G5552", "χρύσεος", "χρυσεοσ"),
+            ("G5062", "τεσσαράκοντα", "τεσσαρακοντα"),
+        ]
+    )
+    assert idx.lookup("οὕτω(ς)", "ουτω(σ)") == "G3779"
+    assert idx.lookup("Μωϋσῆς", "μωυσησ") == "G3475"
+    assert idx.lookup("Ἕλλην", "ελλην") == "G1672"
+    assert idx.lookup("ἀπόλλυμι", "απολλυμι") == "G622"
+    assert idx.lookup("ὀμνύω", "ομνυω") == "G3660"
+    assert idx.lookup("εὐαγγελίζω", "ευαγγελιζω") == "G2097"
+    assert idx.lookup("χρυσοῦς", "χρυσουσ") == "G5552"
+    assert idx.lookup("τεσσεράκοντα", "τεσσερακοντα") == "G5062"
+
+
 def test_strongs_parse_js(tmp_path):
     path = tmp_path / "g.js"
     path.write_text(

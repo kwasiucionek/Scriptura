@@ -92,8 +92,9 @@ DOCUMENTS = (
         "Verbum Domini — adhortacja o Słowie Bożym w życiu i misji Kościoła",
         ("Benedykt XVI",),
         2010,
-        "/content/benedict-xvi/pl/apost_exhortations/documents/hf_ben-xvi_exh_20100930_verbum-domini.html",
-        "pl",
+        # polska strona na vatican.va jest pusta (PDF też), więc wersja angielska
+        "/content/benedict-xvi/en/apost_exhortations/documents/hf_ben-xvi_exh_20100930_verbum-domini.html",
+        "en",
     ),
 )
 
@@ -137,8 +138,8 @@ class _Regions(_Text):
             super().handle_endtag(tag)
 
     def handle_data(self, data):
-        if self.depth:
-            super().handle_data(data)
+        if self.depth:  # w HTML znak nowej linii w tekście to spacja (strony /archive/ łamią akapity)
+            super().handle_data(re.sub(r"\s+", " ", data))
 
     def region_texts(self) -> list[str]:
         out = []
@@ -158,6 +159,9 @@ def page_text(raw: str) -> str:
     if not texts:
         raise ValueError("brak regionu treści (div.vaticanrichtext / div#corpo)")
     text = max(texts, key=len).replace("\xa0", " ")
+    # <br> w obrębie akapitu (bloki tytułowe, adresaci) -> spacja; inaczej każda linia tytułu
+    # WIELKIMI LITERAMI stałaby się osobną sekcją z jednozdaniowym chunkiem
+    text = re.sub(r"(?<=\S)[ \t]*\n(?=[ \t]*[^\s\-#>])", " ", text)
     lines = [ln.strip() for ln in text.splitlines() if not _BOILERPLATE.match(ln)]
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 

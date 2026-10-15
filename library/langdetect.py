@@ -7,6 +7,7 @@ fix_languages ustalają język z treści: wynik tylko przy wyraźnej przewadze, 
 """
 
 import re
+from collections import Counter
 
 STOPWORDS: dict[str, frozenset[str]] = {
     "pl": frozenset(
@@ -44,6 +45,20 @@ def detect(text: str) -> str:
     return lang
 
 
-def detect_document(texts: list[str], sample: int = 4) -> str:
-    """Język dokumentu z pierwszych `sample` fragmentów."""
-    return detect(" ".join(texts[:sample]))
+def detect_document(
+    texts: list[str], max_chunks: int = 40, majority: float = 0.6
+) -> str:
+    """Język dokumentu: głosowanie fragmentów z całego tekstu (do `max_chunks`, równomiernie).
+
+    Nie pierwsze fragmenty: czasopisma zaczynają artykuł angielskim streszczeniem i słowami
+    kluczowymi, więc początek polskiego artykułu wygląda na angielski. Krótkie teksty (< 3
+    rozstrzygnięte fragmenty) — po całości."""
+    if len(texts) > max_chunks:
+        step = len(texts) / max_chunks
+        texts = [texts[int(i * step)] for i in range(max_chunks)]
+    votes = Counter(lang for lang in (detect(t) for t in texts) if lang)
+    total = sum(votes.values())
+    if total < 3:
+        return detect(" ".join(texts))
+    lang, n = votes.most_common(1)[0]
+    return lang if n / total >= majority else ""

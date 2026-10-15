@@ -33,9 +33,7 @@ class Command(BaseCommand):
             qs = qs.filter(id__in=o["documents"])
         changes: list[tuple[int, str, str]] = []
         for doc in qs.only("id", "language", "title"):
-            texts = list(
-                doc.chunks.order_by("order").values_list("text", flat=True)[:4]
-            )
+            texts = list(doc.chunks.order_by("order").values_list("text", flat=True))
             detected = detect_document(texts)
             if detected and detected != doc.language[:2]:
                 changes.append((doc.id, doc.language, detected))

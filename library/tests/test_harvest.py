@@ -396,8 +396,8 @@ def test_vatican_ccel_section_skips_notes_and_joins_following():
     from library.harvest import vatican
 
     xml = (
-        b'<ThML><ThML.body><div1 id="viii"><div4 id="viii.vii.iii.lxiv"><p>No psalms composed'
-        b"<note>Hefele says.</note> by private individuals.</p></div4>"
+        b'<ThML><ThML.body><div1 id="viii"><div4 id="viii.vii.iii.lxiv"><p id="viii.vii.iii.lxiv-p1">No psalms composed'
+        b"<note>Hefele says.</note> by private individuals.</p><p>Notes.</p><p>Epitome.</p></div4>"
         b'<div4 id="viii.vii.iii.lxv"><p>These are all the books.</p></div4>'
         b'<div4 id="viii.vii.iii.lxvi"><p>Next canon.</p></div4></div1></ThML.body></ThML>'
     )

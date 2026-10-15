@@ -156,7 +156,7 @@ DOCUMENTS = (
         _AAS_1950,
         "la",
         pages=(495, 505),
-        start="INSTRUCTIO",
+        start="COMMISSIO PONTIFICIA DE RE BIBLICA",  # tytuł „I N S T R U C T I O” rozstrzelony w OCR
         end="Consultor ab Actis.",
         source="vatican.va (AAS 42, 1950, s. 495–505)",
     ),
@@ -229,7 +229,7 @@ DOCUMENTS = (
         public_domain=True,  # Pius XI †1939
         pages=(180, 182),
         start="Bibliorum scientiam quanti",
-        end="PIUS PP. XI",
+        end="Pontificatus Nostri tertio.",  # podpis „PIUS P P . X I” w OCR ze spacjami
         source="vatican.va (AAS 16, 1924, s. 180–182)",
     ),
     ChurchDocument(
@@ -496,18 +496,32 @@ def _ccel_text(el: ET.Element) -> str:
     return inner + (el.tail or "")
 
 
+_NOTES_RE = re.compile(
+    r"\n\nNotes\.\n\n.*", re.S
+)  # komentarz wydawcy po tekście kanonu (NPNF)
+
+
 def ccel_section(xml: bytes, div_id: str, following: int = 0) -> str:
-    """Tekst sekcji tomu CCEL (np. „viii.vii.iii.lxiv”) i `following` kolejnych sekcji."""
+    """Tekst sekcji tomu CCEL (np. „viii.vii.iii.lxiv”) i `following` kolejnych sekcji tego
+    samego poziomu, bez komentarza wydawcy („Notes.” i dalej). Id akapitów („…-p2.1”) też mają
+    kropki, więc liczą się tylko elementy <divN>."""
     root = ET.fromstring(xml)
+    depth = div_id.count(".")
     sections = [
-        el for el in root.iter() if el.get("id", "").count(".") == div_id.count(".")
+        el
+        for el in root.iter()
+        if el.tag.rsplit("}", 1)[-1].lower().startswith("div")
+        and el.get("id", "").count(".") == depth
     ]
     ids = [el.get("id") for el in sections]
     if div_id not in ids:
         raise ValueError(f"brak sekcji {div_id} w tomie CCEL")
     i = ids.index(div_id)
-    text = "\n\n".join(_ccel_text(el) for el in sections[i : i + 1 + following])
-    return re.sub(r"\n\s*\n\s*", "\n\n", re.sub(r"[ \t]+", " ", text)).strip()
+    parts = []
+    for el in sections[i : i + 1 + following]:
+        text = re.sub(r"\n\s*\n\s*", "\n\n", re.sub(r"[ \t]+", " ", _ccel_text(el)))
+        parts.append(_NOTES_RE.sub("", "\n\n" + text.strip() + "\n\n").strip())
+    return "\n\n".join(parts)
 
 
 def _marker_re(marker: str) -> re.Pattern:

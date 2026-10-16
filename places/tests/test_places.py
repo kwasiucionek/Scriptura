@@ -324,3 +324,40 @@ def test_translate_places_names_and_locations(siloam, monkeypatch):
     assert siloam.locations.get().name_pl == "sadzawka Siloe"
     # współczesne nazwy własne (Beitin, Al Bira) nie idą do modelu
     assert not PlaceLocation.objects.exclude(place=siloam).exclude(name_pl="").exists()
+
+
+@pytest.mark.django_db
+def test_exact_name_beats_inflected_prefix(siloam):
+    shiloh = Place.objects.create(
+        openbible_id="a3", slug="shiloh", name="Shiloh", name_pl="Szilo", aliases=["Silo"],
+        kind="human", verse_count=33,
+    )  # fmt: skip
+    PlaceLocation.objects.create(
+        place=shiloh, order=0, name="Khirbet Seilun", lon=35.29, lat=32.05
+    )
+    siloam.name_pl = "Siloe"
+    siloam.save()
+    reset_name_cache()
+    assert [p.name_en for p in places_for_names("Gdzie była sadzawka Siloe?")] == [
+        "Siloam"
+    ]
+    assert [p.name_en for p in places_for_names("Co się działo w Silo?")] == ["Shiloh"]
+
+
+@pytest.mark.django_db
+def test_enrich_wikidata_fills_missing_polish_name(siloam, monkeypatch):
+    from django.core.management import call_command
+
+    from places.management.commands import enrich_places_wikidata as cmd
+
+    entity = {
+        "labels": {"pl": {"value": "Sadzawka Siloam"}},
+        "descriptions": {"pl": {"value": "sadzawka"}},
+    }
+    monkeypatch.setattr(cmd, "fetch", lambda ids: {"Q1345062": entity})
+    call_command("enrich_places_wikidata", "--sleep", "0")
+    siloam.refresh_from_db()
+    assert siloam.name_pl == "" and siloam.aliases_pl == ["Sadzawka Siloam"]
+    call_command("enrich_places_wikidata", "--sleep", "0", "--fill-names")
+    siloam.refresh_from_db()
+    assert siloam.name_pl == "Sadzawka Siloam" and siloam.description_pl == "sadzawka"

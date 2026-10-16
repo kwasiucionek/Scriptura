@@ -203,14 +203,19 @@ def places_for_names(question: str, limit: int = 6) -> list[PlaceOut]:
     if not words:
         return []
     folded = " ".join(_fold(question).split())
+    index = _name_index()
+    # słowo równe nazwie wygrywa z odmianą innej nazwy („Siloe” to Siloe, nie „Silo” + e)
+    exact = {w for w in words for name, _ in index if w == name}
     hits: dict[int, int] = {}
-    for name, pid in _name_index():
+    for name, pid in index:
         if " " in name:  # nazwa wielowyrazowa („sadzawka siloe”) — cała fraza w pytaniu
             if re.search(rf"\b{re.escape(name)}", folded):
                 hits[pid] = max(hits.get(pid, 0), len(name))
             continue
         for w in words:
-            if w == name or (w.startswith(name) and len(w) - len(name) <= 3):
+            if w == name or (
+                w not in exact and w.startswith(name) and len(w) - len(name) <= 3
+            ):
                 hits[pid] = max(hits.get(pid, 0), len(name))
     if not hits:
         return []

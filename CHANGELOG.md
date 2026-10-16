@@ -9,7 +9,10 @@
   współczesne nazwy arabskie i hebrajskie bez zmian) i polskie typy miejsc
   (`places.labels`). `translate_places` dopisuje warianty i uzupełnia brakujące nazwy PL
   (`--rename` nadpisuje, `--locations` tłumaczy opisy). Wyszukiwarka mapy i pytania czatu
-  szukają też po wariantach PL. Migracja `places.0002_polish_labels`.
+  szukają też po wariantach PL (słowo równe nazwie wygrywa z odmianą innej nazwy: „Siloe”
+  to nie „Silo” + końcówka). `enrich_places_wikidata --fill-names`: miejsca bez nazwy PL
+  dostają etykietę z Wikidata (Emmaus → Emaus). Warianty z modelu służą tylko
+  wyszukiwaniu — nie są wyświetlane. Migracja `places.0002_polish_labels`.
 - Panel źródeł: fragment literatury to teraz sam trafiony akapit. Wcześniej pokazywał
   początek kontekstu z doklejonymi sąsiadami (`RAG_CONTEXT_NEIGHBORS`), czyli zwykle akapit
   poprzedni — „fragment dotyczy innego akapitu niż cytowany” (uwaga prof. Majewskiego).

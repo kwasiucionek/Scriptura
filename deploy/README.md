@@ -88,7 +88,7 @@ Narzędzie odrzuca nadpisanie istniejącego pliku docelowego.
 
 (albo od zera: `fetch_sources && import_corpus oshb/morphgnt/lxx/json`, `import_lexicon`, `import_xref`, `ingest_manifest` …).
 Geografia (niezależna od bazy z komputera, ok. 2 s + tłumaczenie nazw modelem czatu):
-`fetch_sources places && import_places && translate_places`.
+`fetch_sources places && import_places && enrich_places_wikidata && translate_places && translate_places --locations`.
 Indeksy: `index_search --recreate` (wersety, bez wektorów, ~2 min) i `reindex_chunks --recreate --vectors-file /srv/scriptura/data/vectors.jsonl.gz`
 (wektory z pliku — bez liczenia; 60 tys. chunków wczytuje się ok. 7 min). ANE: `index_ane --recreate --vectors-file …`.
 

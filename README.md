@@ -108,7 +108,7 @@ LLM → ingestia → audyt → przekład → reindeks → raport w `data/manifes
 | `reindex_chunks --recreate [--reuse-vectors\|--vectors-file]` | indeks literatury; wektory z indeksu lub pliku |
 | `export_vectors` | eksport embeddingów (chunks + ane + patristics) do przeniesienia na inny host |
 | `import_patristics`, `index_patristics` | Ojcowie z CCEL |
-| `fetch_sources places`, `import_places`, `translate_places` | geografia OpenBible: pobranie, import, polskie nazwy (BT) modelem czatu |
+| `fetch_sources places`, `import_places`, `enrich_places_wikidata`, `translate_places [--locations]` | geografia OpenBible: pobranie, import, polskie warianty/opisy/linki plwiki z Wikidata, polskie nazwy (BT) z wariantami i opisy lokalizacji modelem czatu |
 | `import_ane`, `index_ane` | teksty ANE z eBL |
 | `merge_authors --apply` | scalanie dubletów autorów |
 | `eval_bootstrap`, `scripts/eval_retrieval.py` | zbiór syntetyczny i dotychczasowy benchmark retrievalu |

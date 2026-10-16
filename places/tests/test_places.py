@@ -193,3 +193,134 @@ def test_map_page_and_data(places_db, client):
     r = client.get(f"/mapa/?ids={haran_id},999999")
     assert r.status_code == 200 and '"name": "Charan"' in r.content.decode()
     assert 'aria-current="page"' in client.get("/mapa/").content.decode()
+
+
+# --- polskie nazwy, warianty i opisy (uwagi prof. Majewskiego: Siloe pod „Siloam”) -----------
+
+
+@pytest.fixture
+def siloam(places_db):
+    p = Place.objects.create(
+        openbible_id="a294859", slug="siloam", name="Siloam", aliases=["Pool of Siloam"],
+        kind="human", types=["pool"], verse_count=5, wikidata="Q1345062",
+        url="https://www.openbible.info/geo/ancient/a294859/siloam",
+    )  # fmt: skip
+    PlaceLocation.objects.create(
+        place=p, order=0, name="Pool of Siloam", lon=35.235, lat=31.7706, score=500,
+        confidence=1.0, type="pool",
+    )  # fmt: skip
+    reset_name_cache()
+    return p
+
+
+def test_type_label_and_merge_names():
+    from places.labels import type_label
+    from places.service import merge_names
+
+    assert (
+        type_label("settlement") == "miejscowość" and type_label("pool") == "sadzawka"
+    )
+    assert type_label("unknown type") == "unknown type"
+    assert merge_names(
+        ["Siloam"], ["siloam", "Sadzawka  Siloe", "", "x" * 90], "Siloe"
+    ) == [
+        "Siloam",
+        "Sadzawka Siloe",
+    ]
+
+
+def test_parse_wikidata_entity():
+    from places.wikidata import parse_entity
+
+    entity = {
+        "labels": {"pl": {"value": "Sadzawka Siloam"}},
+        "aliases": {"pl": [{"value": "Siloe"}]},
+        "descriptions": {"pl": {"value": "sadzawka w Jerozolimie"}},
+        "sitelinks": {"plwiki": {"title": "Sadzawka Siloam"}},
+    }
+    assert parse_entity(entity) == {
+        "label": "Sadzawka Siloam",
+        "aliases": ["Siloe"],
+        "description": "sadzawka w Jerozolimie",
+        "wiki": "https://pl.wikipedia.org/wiki/Sadzawka_Siloam",
+    }
+    assert parse_entity({})["label"] == ""
+
+
+@pytest.mark.django_db
+def test_polish_variants_find_place_in_question(siloam):
+    siloam.aliases_pl = ["Siloe", "sadzawka Siloe"]
+    siloam.save()
+    reset_name_cache()
+    assert [p.name_en for p in places_for_names("Co się stało przy Siloe?")] == [
+        "Siloam"
+    ]
+    assert [p.name_en for p in places_for_names("Gdzie była sadzawka Siloe?")] == [
+        "Siloam"
+    ]
+
+
+@pytest.mark.django_db
+def test_map_data_has_polish_labels(siloam, client):
+    from django.core.cache import cache
+
+    from places.service import MAP_CACHE_KEY
+
+    siloam.name_pl, siloam.aliases_pl = "Siloe", ["Siloam", "sadzawka Siloe"]
+    siloam.description_pl = "sadzawka w Jerozolimie"
+    siloam.wiki_pl = "https://pl.wikipedia.org/wiki/Sadzawka_Siloam"
+    siloam.save()
+    siloam.locations.update(name_pl="sadzawka Siloe")
+    cache.delete(MAP_CACHE_KEY)
+    place = next(
+        p
+        for p in client.get("/mapa/dane.json").json()["places"]
+        if p["name"] == "Siloe"
+    )
+    assert place["aliases_pl"] == ["Siloam", "sadzawka Siloe"]
+    assert place["description_pl"] == "sadzawka w Jerozolimie" and place["wiki_pl"]
+    assert place["locations"][0]["name"] == "sadzawka Siloe"
+    assert place["locations"][0]["type"] == "sadzawka"
+
+
+@pytest.mark.django_db
+def test_translate_places_names_and_locations(siloam, monkeypatch):
+    from django.core.management import call_command
+
+    from places.management.commands import translate_places as cmd
+
+    monkeypatch.setattr(cmd.llm, "enabled", lambda: True)
+
+    def fake_chat(prompt, num_predict=0):
+        if "Opisy:" in prompt:
+            return [{"i": 1, "pl": "sadzawka Siloe"}]
+        rows = []
+        for line in prompt.split("\n"):
+            if line[:2] in ("1.", "2.", "3.") and "Siloam" in line:
+                rows.append(
+                    {
+                        "i": int(line[0]),
+                        "pl": "Siloe",
+                        "warianty": ["Siloam", "sadzawka Siloe", "<b>zły</b>"],
+                    }
+                )
+            elif line[:2] in ("1.", "2.", "3."):
+                rows.append(
+                    {"i": int(line[0]), "pl": line.split(";")[0][3:], "warianty": []}
+                )
+        return rows
+
+    monkeypatch.setattr(cmd, "chat_json", fake_chat)
+    call_command("translate_places")
+    siloam.refresh_from_db()
+    assert siloam.name_pl == "Siloe" and siloam.aliases_pl == [
+        "Siloam",
+        "sadzawka Siloe",
+    ]
+    assert (
+        Place.objects.get(slug="bethel-1").name_pl == "Betel"
+    )  # istniejąca nazwa bez zmian
+    call_command("translate_places", "--locations")
+    assert siloam.locations.get().name_pl == "sadzawka Siloe"
+    # współczesne nazwy własne (Beitin, Al Bira) nie idą do modelu
+    assert not PlaceLocation.objects.exclude(place=siloam).exclude(name_pl="").exists()

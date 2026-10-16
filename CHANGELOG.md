@@ -2,6 +2,14 @@
 
 ## 2026-10-16 — przykład „Zagadnienia biblijne”, wskaźnik wgrywania
 
+- Mapa po polsku (uwagi prof. Majewskiego): polskie warianty nazw w `Place.aliases_pl`
+  (inne przekłady i literatura — „Siloe” znajduje Siloam, także fraza „sadzawka Siloe”),
+  krótki opis i link do polskiej Wikipedii z Wikidata (CC0; `enrich_places_wikidata`),
+  polskie opisy lokalizacji w `PlaceLocation.name_pl` („within 10 km of …” → „do 10 km od …”;
+  współczesne nazwy arabskie i hebrajskie bez zmian) i polskie typy miejsc
+  (`places.labels`). `translate_places` dopisuje warianty i uzupełnia brakujące nazwy PL
+  (`--rename` nadpisuje, `--locations` tłumaczy opisy). Wyszukiwarka mapy i pytania czatu
+  szukają też po wariantach PL. Migracja `places.0002_polish_labels`.
 - Panel źródeł: fragment literatury to teraz sam trafiony akapit. Wcześniej pokazywał
   początek kontekstu z doklejonymi sąsiadami (`RAG_CONTEXT_NEIGHBORS`), czyli zwykle akapit
   poprzedni — „fragment dotyczy innego akapitu niż cytowany” (uwaga prof. Majewskiego).

@@ -22,6 +22,11 @@ class Place(TimeStampedModel):
     aliases = models.JSONField(
         default=list, blank=True
     )  # inne pisownie z przekładów EN
+    # polskie warianty nazwy (inne przekłady, Wikidata): Siloe -> Siloam, Szelach
+    aliases_pl = models.JSONField(default=list, blank=True)
+    # krótki opis po polsku z Wikidata (CC0) i artykuł w polskiej Wikipedii
+    description_pl = models.CharField(max_length=300, blank=True)
+    wiki_pl = models.URLField(max_length=300, blank=True)
     kind = models.CharField(
         max_length=16, blank=True
     )  # human | natural | special | human,natural
@@ -52,6 +57,8 @@ class PlaceLocation(models.Model):
     order = models.PositiveSmallIntegerField(default=0)  # 0 = najbardziej prawdopodobna
     modern_id = models.CharField(max_length=16, blank=True)  # me58522
     name = models.CharField(max_length=160)  # Beitin; „near Gibeah”
+    # opis po polsku, gdy oryginał nie jest samą nazwą własną: „w pobliżu Gibea”
+    name_pl = models.CharField(max_length=200, blank=True)
     lon = models.FloatField()
     lat = models.FloatField()
     geometry = models.CharField(max_length=16, default="point")  # point | region | path
@@ -67,7 +74,11 @@ class PlaceLocation(models.Model):
         unique_together = [("place", "order")]
 
     def __str__(self) -> str:
-        return f"{self.place} -> {self.name} ({self.confidence:.0%})"
+        return f"{self.place} -> {self.label} ({self.confidence:.0%})"
+
+    @property
+    def label(self) -> str:
+        return self.name_pl or self.name
 
 
 class PlaceRef(models.Model):

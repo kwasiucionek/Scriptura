@@ -15,8 +15,9 @@
     const refs = (p.refs || []).map(esc).join(", ");
     return `<div class="pl-pop"><b>${esc(p.name)}</b>${p.name_en && p.name_en !== p.name ? ` <span class="muted">(${esc(p.name_en)})</span>` : ""}
       <div>${esc(loc.name)}${loc.type ? ` · ${esc(loc.type)}` : ""} · pewność ${pct(loc.confidence)}${best ? "" : " · inny kandydat"}</div>
+      ${p.description_pl ? `<div class="desc">${esc(p.description_pl)}</div>` : ""}
       ${refs ? `<div class="muted">${refs}${p.verse_count > (p.refs || []).length ? ` · łącznie ${verses(p.verse_count)}` : ""}</div>` : ""}
-      ${p.url ? `<div><a href="${esc(p.url)}" target="_blank" rel="noopener">OpenBible</a>${p.wikidata ? ` · <a href="https://www.wikidata.org/wiki/${esc(p.wikidata)}" target="_blank" rel="noopener">Wikidata</a>` : ""}</div>` : ""}</div>`;
+      ${p.url ? `<div>${p.wiki_pl ? `<a href="${esc(p.wiki_pl)}" target="_blank" rel="noopener">Wikipedia</a> · ` : ""}<a href="${esc(p.url)}" target="_blank" rel="noopener">OpenBible</a>${p.wikidata ? ` · <a href="https://www.wikidata.org/wiki/${esc(p.wikidata)}" target="_blank" rel="noopener">Wikidata</a>` : ""}</div>` : ""}</div>`;
   }
 
   function render(el, places, opts = {}) {

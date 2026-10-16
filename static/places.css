@@ -6,6 +6,7 @@
 .pl-label::before { display: none; }
 .pl-pop { font: 13px/1.5 var(--sans); color: var(--text); min-width: 180px; }
 .pl-pop .muted { color: var(--muted); font-size: 12px; }
+.pl-pop .desc { font-style: italic; margin: 2px 0; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--text); }
 .pl-list .place { padding: 7px 0; border-bottom: 1px solid var(--line); font: 13px/1.5 var(--sans); cursor: pointer; }
 .pl-list .place:hover { color: var(--accent); }

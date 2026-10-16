@@ -14,10 +14,12 @@ from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
 
 from corpus.books import BOOKS
 from corpus.models import Verse
+from places.labels import type_label
 from places.models import Place, PlaceLocation, PlaceRef
 
 ATTRIBUTION = "OpenBible.info Bible Geocoding Data, CC BY 4.0"
@@ -49,6 +51,8 @@ class PlaceOut:
         default_factory=list
     )  # [0] = najbardziej prawdopodobna
     via: str = "verse"  # verse | name
+    description_pl: str = ""  # krótki opis z Wikidata (CC0)
+    wiki_pl: str = ""  # artykuł w polskiej Wikipedii
 
 
 def _fold(text: str) -> str:
@@ -58,22 +62,47 @@ def _fold(text: str) -> str:
 
 @lru_cache(maxsize=1)
 def _name_index() -> list[tuple[str, int]]:
-    """(nazwa po foldzie, place_id) dla name, name_pl i aliasów; tylko miejsca z lokalizacją."""
+    """(nazwa po foldzie, place_id) dla name, name_pl, aliasów EN i wariantów PL; tylko
+    miejsca z lokalizacją."""
     out: list[tuple[str, int]] = []
     qs = (
         Place.objects.filter(locations__isnull=False)
         .distinct()
-        .values_list("id", "name", "name_pl", "aliases")
+        .values_list("id", "name", "name_pl", "aliases", "aliases_pl")
     )
-    for pid, name, name_pl, aliases in qs:
-        for n in {name, name_pl, *(aliases or [])}:
+    for pid, name, name_pl, aliases, aliases_pl in qs:
+        for n in {name, name_pl, *(aliases or []), *(aliases_pl or [])}:
             if n and len(n) >= 4:
                 out.append((_fold(n), pid))
     return out
 
 
+MAP_CACHE_KEY = "places:map-data"
+
+
 def reset_name_cache() -> None:
     _name_index.cache_clear()
+
+
+def reset_caches() -> None:
+    """Po zmianie nazw: indeks nazw (pytania) i dane dużej mapy."""
+    reset_name_cache()
+    cache.delete(MAP_CACHE_KEY)
+
+
+def merge_names(current: list[str], new: list[str], exclude: str = "") -> list[str]:
+    """Lista wariantów bez powtórzeń (wielkość liter bez znaczenia), bez nazwy głównej,
+    tylko rozsądne napisy (2–80 znaków, jedna linia)."""
+    seen = {_fold(exclude)} if exclude else set()
+    out: list[str] = []
+    for n in [*(current or []), *(new or [])]:
+        n = " ".join(str(n or "").split())
+        key = _fold(n)
+        if not 2 <= len(n) <= 80 or key in seen:
+            continue
+        seen.add(key)
+        out.append(n)
+    return out[:12]
 
 
 _BY_ORDER = {b.order: b for b in BOOKS}
@@ -119,17 +148,19 @@ def _pack(
                 wikidata=p.wikidata,
                 locations=[
                     LocationOut(
-                        name=loc.name,
+                        name=loc.label,
                         lon=loc.lon,
                         lat=loc.lat,
                         confidence=loc.confidence,
                         geometry=loc.geometry,
                         radius_m=loc.radius_m,
-                        type=loc.type,
+                        type=type_label(loc.type),
                     )  # fmt: skip
                     for loc in locs[p.id]
                 ],
                 via=via,
+                description_pl=p.description_pl,
+                wiki_pl=p.wiki_pl,
             )
         )
     return out
@@ -171,8 +202,13 @@ def places_for_names(question: str, limit: int = 6) -> list[PlaceOut]:
     words = {_fold(w) for w in _WORD_RE.findall(question)}
     if not words:
         return []
+    folded = " ".join(_fold(question).split())
     hits: dict[int, int] = {}
     for name, pid in _name_index():
+        if " " in name:  # nazwa wielowyrazowa („sadzawka siloe”) — cała fraza w pytaniu
+            if re.search(rf"\b{re.escape(name)}", folded):
+                hits[pid] = max(hits.get(pid, 0), len(name))
+            continue
         for w in words:
             if w == name or (w.startswith(name) and len(w) - len(name) <= 3):
                 hits[pid] = max(hits.get(pid, 0), len(name))

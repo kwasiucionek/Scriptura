@@ -11,14 +11,15 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 
 from corpus.sigla import extract, format_ref, ordinal_range
+from places.labels import type_label
 from places.models import Place, PlaceLocation
-from places.service import ATTRIBUTION, places_for_ranges
+from places.service import ATTRIBUTION, MAP_CACHE_KEY, places_for_ranges
 
 DATA_TTL = 3600
 
 
 def _all_places() -> list[dict]:
-    data = cache.get("places:map-data")
+    data = cache.get(MAP_CACHE_KEY)
     if data:
         return data
     locs: dict[int, list[PlaceLocation]] = {}
@@ -32,6 +33,9 @@ def _all_places() -> list[dict]:
                 "name": p.label,
                 "name_en": p.name,
                 "aliases": p.aliases,
+                "aliases_pl": p.aliases_pl,
+                "description_pl": p.description_pl,
+                "wiki_pl": p.wiki_pl,
                 "kind": p.kind,
                 "types": p.types,
                 "verse_count": p.verse_count,
@@ -39,19 +43,19 @@ def _all_places() -> list[dict]:
                 "wikidata": p.wikidata,
                 "locations": [
                     {
-                        "name": loc.name,
+                        "name": loc.label,
                         "lon": loc.lon,
                         "lat": loc.lat,
                         "confidence": loc.confidence,
                         "geometry": loc.geometry,
                         "radius_m": loc.radius_m,
-                        "type": loc.type,
+                        "type": type_label(loc.type),
                     }  # fmt: skip
                     for loc in locs[p.id]
                 ],
             }
         )
-    cache.set("places:map-data", data, DATA_TTL)
+    cache.set(MAP_CACHE_KEY, data, DATA_TTL)
     return data
 
 

@@ -131,6 +131,9 @@ class ChunkHit:
     owner_id: int | None = None
     # oryginał (EN/IT…), gdy `text` to polski przekład roboczy (use_working_translations)
     text_orig: str = ""
+    # sam trafiony chunk, zanim expand_with_neighbors dokleił sąsiadów (panel źródeł)
+    core_text: str = ""
+    core_orig: str = ""
 
 
 # --- indeksowanie ---------------------------------------------------------
@@ -381,7 +384,8 @@ def expand_with_neighbors(hits: list[ChunkHit], radius: int) -> list[ChunkHit]:
     (z bazy), bez duplikowania fragmentów już obecnych w liście. Kolejność trafień
     bez zmian; chunki-sąsiedzi wchodzą do tekstu, nie jako osobne pozycje [n].
     Trafienie z przekładem roboczym (text_orig) dostaje przekłady sąsiadów, a oryginały
-    trafiają do text_orig."""
+    trafiają do text_orig. Sam trafiony chunk zostaje w `core_text` (`core_orig`) — to on
+    jest domyślnym fragmentem w panelu źródeł."""
     if radius <= 0 or not hits:
         return hits
     wanted: dict[int, set[int]] = {}
@@ -396,6 +400,7 @@ def expand_with_neighbors(hits: list[ChunkHit], radius: int) -> list[ChunkHit]:
     texts = {(d, o): (t, tp) for d, o, t, tp in rows if o in wanted.get(d, ())}
     used: set[tuple[int, int]] = set()
     for h in hits:
+        h.core_text, h.core_orig = h.text, h.text_orig
         parts, originals = [], []
         for o in range(h.order - radius, h.order + radius + 1):
             key = (h.document_id, o)

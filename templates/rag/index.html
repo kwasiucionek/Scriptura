@@ -212,8 +212,21 @@ async function exportCitations(fmt) {
   const blob = await r.blob(); const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = fmt === "ris" ? "scriptura.ris" : "scriptura.bib"; a.click(); URL.revokeObjectURL(a.href);
 }
+// Fragment źródła literatury w panelu: miejsca cytatów z odpowiedzi (cytat wyróżniony),
+// a bez cytatu — sam wyszukany fragment (bez doklejonych akapitów sąsiednich).
+function chunkFragment(c, quotes) {
+  if (!c.snippet && !quotes.length) return "";
+  const note = c.translated ? `<div class="muted" style="margin-top:4px">przekład roboczy Scriptury — pełny tekst i wersja oficjalna: ${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">źródło</a>` : "strona źródła"}</div>` : "";
+  const found = c.snippet ? `<blockquote>${esc(c.snippet)}${c.snippet.length >= 600 ? "…" : ""}</blockquote>` : "";
+  const orig = c.translated && c.snippet_orig ? `<details><summary>oryginał</summary><blockquote>${esc(c.snippet_orig)}${c.snippet_orig.length >= 600 ? "…" : ""}</blockquote></details>` : "";
+  if (!quotes.length) return `<details><summary>pokaż fragment</summary>${found}${note}${orig}</details>`;
+  const marked = quotes.map((q) => `<blockquote class="quoted">${q.cut_start ? "… " : ""}${esc(q.before.trimStart())}<mark class="${q.status === "ok" ? "" : "altered"}" title="${q.status === "ok" ? "cytat w odpowiedzi — zgodny ze źródłem" : "cytat w odpowiedzi — zmieniony względem źródła"}">${esc(q.quote)}</mark>${esc(q.after.trimEnd())}${q.cut_end ? " …" : ""}</blockquote>`).join("");
+  return `<details><summary>pokaż cytowany fragment</summary>${marked}${note}${found ? `<details><summary>fragment z wyszukiwania</summary>${found}${orig}</details>` : ""}</details>`;
+}
 function renderSources(el) {
   const { sources, result } = answerState.get(el);
+  const quotesBy = {};
+  for (const q of result?.quote_snippets || []) (quotesBy[q.n] ||= []).push(q);
   const chunks = sources.chunks || [], verses = sources.verses || [], related = sources.related || [], ane = sources.ane || [], patristics = sources.patristics || [], places = sources.places || [];
   const referenced = Array.isArray(result?.verified_citations) ? result.verified_citations : [
     ...(result?.citations || []).map((n) => `[${n}]`),
@@ -231,7 +244,7 @@ function renderSources(el) {
         <span class="n">[${c.n}]</span><span class="t">${esc(c.authors.join(", ") || "—")}</span>${c.register === "popular" ? ' <span class="badge cur">popularne</span>' : ""}${c.doc_type === "review" ? ' <span class="badge cur">recenzja</span>' : ""}${c.doc_type === "video" ? ' <span class="badge cur">wykład</span>' : ""}${c.doc_type === "blog" ? ' <span class="badge cur">blog</span>' : ""}${c.doc_type === "church" ? ' <span class="badge cur">dokument Kościoła</span>' : ""}${c.personal ? ' <span class="badge ok">moje</span>' : ""}
         <div class="s">${esc(c.title)}${c.year ? " · " + c.year : ""}${c.section ? " · " + esc(c.section) : ""}${c.url ? ` · <a href="${esc(c.url)}" target="_blank" rel="noopener">źródło</a>` : ""}</div>
         ${c.sigla?.length ? `<div class="sig">${c.sigla.slice(0, 8).map((s) => `<span>${esc(s)}</span>`).join("")}</div>` : ""}
-        ${c.snippet ? `<details><summary>pokaż fragment</summary><blockquote>${esc(c.snippet)}${c.snippet.length >= 600 ? "…" : ""}${c.translated ? `<div class="muted" style="margin-top:4px">przekład roboczy Scriptury — pełny tekst i wersja oficjalna: ${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">źródło</a>` : "strona źródła"}</div>` : ""}</blockquote>${c.translated && c.snippet_orig ? `<details><summary>oryginał</summary><blockquote>${esc(c.snippet_orig)}${c.snippet_orig.length >= 600 ? "…" : ""}</blockquote></details>` : ""}</details>` : ""}
+        ${chunkFragment(c, quotesBy[c.n] || [])}
       </div>`).join(""));
   }
   if (verses.length) {

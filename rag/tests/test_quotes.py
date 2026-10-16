@@ -367,6 +367,8 @@ def isolated_ask(monkeypatch, settings):
     monkeypatch.setattr(service, "lexicon_lines", Mock(return_value=[]))
     monkeypatch.setattr(service, "ane_for_question", Mock(return_value=[]))
     monkeypatch.setattr(service, "patristics_for_question", Mock(return_value=[]))
+    # geografia czyta indeks nazw z bazy — test izolowany od bazy
+    monkeypatch.setattr(service, "places_for_question", Mock(return_value=[]))
     monkeypatch.setattr(service, "verify_refs", lambda answer: ([], []))
     settings.RAG_NUM_CTX = 0
     return service
@@ -570,3 +572,89 @@ def test_citations_are_verified_against_context_after_budget_trimming(
     )
     assert result["unverified_citations"] == ["[A1]", "[P1]"]
     assert result["quotes_unverified"][0]["reason"] == "invalid_citation"
+
+
+# --- fragment w panelu źródeł: trafiony chunk i miejsce cytatu ------------------------------
+
+PREV = "Poprzedni akapit pracy, o zupełnie innym zagadnieniu historycznym."
+CORE = (
+    "Właściwy akapit: chrzest w Duchu Świętym jest „zanurzeniem” w życiu Boga, "
+    "a nie jedynie zewnętrznym obrzędem wspólnoty."
+)
+NEXT = "Następny akapit, który zaczyna kolejny wątek rozważań."
+
+
+def test_locate_quote_variants():
+    from rag.quotes import locate
+
+    text = f"{PREV}\n{CORE}\n{NEXT}"
+    span = locate('Chrzest w Duchu Świętym jest "zanurzeniem" w życiu Boga', text)
+    assert span and text[span[0] : span[1]].startswith("chrzest w Duchu Świętym")
+    # skrót wielokropkiem: znaleziony najdłuższy fragment
+    span = locate(
+        "chrzest w Duchu […] a nie jedynie zewnętrznym obrzędem wspólnoty", text
+    )
+    assert span and "zewnętrznym obrzędem" in text[span[0] : span[1]]
+    # drobne różnice (brak polskich znaków) — okno najbliższe cytatowi
+    span = locate("a nie jedynie zewnetrznym obrzedem wspolnoty", text)
+    assert span and "obrzędem" in text[span[0] : span[1]]
+    assert locate("Tego zdania nie ma w żadnym akapicie tej pracy.", text) is None
+
+
+def test_quote_window_marks_quote_with_context():
+    from rag.quotes import locate, quote_window
+
+    text = f"{PREV}\n{CORE}\n{NEXT}"
+    w = quote_window(
+        text, *locate("a nie jedynie zewnętrznym obrzędem", text), width=80
+    )
+    assert w["quote"] == "a nie jedynie zewnętrznym obrzędem"
+    assert w["before"].endswith("Boga, ") and w["after"].startswith(" wspólnoty")
+    # początek przycięty, koniec sięga końca tekstu (dociągnięty do granicy słowa)
+    assert w["cut_start"] and not w["cut_end"] and w["after"].endswith("rozważań.")
+
+
+def test_expand_with_neighbors_keeps_core_text(monkeypatch):
+    from library import search
+
+    hit = search.ChunkHit(
+        chunk_id=2, document_id=7, order=1, title="T", authors=[], citation="A",
+        doc_type="article", year=None, url="", section="", text=CORE, sigla=[],
+        score=1.0, access="open",
+    )  # fmt: skip
+    rows = [(7, 0, PREV, ""), (7, 2, NEXT, "")]
+    qs = Mock()
+    qs.values_list.return_value = rows
+    monkeypatch.setattr(search.Chunk.objects, "filter", Mock(return_value=qs))
+    [out] = search.expand_with_neighbors([hit], 1)
+    assert out.text.startswith(PREV) and out.core_text == CORE
+
+
+def test_ask_snippet_is_hit_and_quote_located_in_source(isolated_ask, monkeypatch):
+    # panel źródeł: fragment = trafiony chunk (nie doklejony poprzedni akapit), a cytat
+    # z odpowiedzi wskazany w tekście źródła
+    from library.llm import Delta
+
+    hit = isolated_ask.retrieve.return_value[0]
+    hit.text, hit.core_text = f"{PREV}\n{CORE}\n{NEXT}", CORE
+    monkeypatch.setattr(
+        isolated_ask,
+        "llm_stream",
+        lambda messages: iter(
+            [
+                Delta(content="Autor pisze, że chodzi o „zanurzenie w życiu Boga”, "),
+                Delta(content="„a nie jedynie zewnętrznym obrzędem wspólnoty” [1]."),
+                Delta(done=True),
+            ]
+        ),
+    )
+    events = list(isolated_ask.ask("pytanie", access=["open"]))
+    source = events[0][1]["chunks"][0]
+    assert source["snippet"] == CORE
+    result = events[-1][1]
+    # oba cytaty z jednego zdania należą do przypisu [1]
+    assert [q["n"] for q in result["quote_snippets"]] == [1, 1]
+    snip = result["quote_snippets"][1]
+    assert snip["status"] == "ok"
+    assert snip["quote"] == "a nie jedynie zewnętrznym obrzędem wspólnoty"
+    assert "Duchu Świętym" in snip["before"]

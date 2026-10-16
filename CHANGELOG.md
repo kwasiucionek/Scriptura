@@ -2,6 +2,12 @@
 
 ## 2026-10-16 — przykład „Zagadnienia biblijne”, wskaźnik wgrywania
 
+- Panel źródeł: fragment literatury to teraz sam trafiony akapit. Wcześniej pokazywał
+  początek kontekstu z doklejonymi sąsiadami (`RAG_CONTEXT_NEIGHBORS`), czyli zwykle akapit
+  poprzedni — „fragment dotyczy innego akapitu niż cytowany” (uwaga prof. Majewskiego).
+  Cytaty z odpowiedzi są odnajdywane w tekście źródła danym modelowi (`rag.quotes.locate`,
+  także przy skrótach „[…]” i drobnych różnicach) i pokazywane w panelu z wyróżnieniem
+  („pokaż cytowany fragment”; `AskResult.quote_snippets`, do 3 na źródło).
 - Historia rozmów pokazuje czas polski (`TIME_ZONE`), a nie UTC z bazy — było o 2 godziny
   za wcześnie.
 - Konto: „Wgraj i zaindeksuj” pokazuje wskaźnik pracy (serwer odpowiada dopiero po

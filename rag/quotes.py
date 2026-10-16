@@ -98,6 +98,8 @@ class QuoteReport:
     altered: list[QuoteCheck] = field(default_factory=list)
     checked: int = 0
     unverified: list[QuoteCheck] = field(default_factory=list)
+    # cytaty ok/zmienione z pełnym tekstem i przypisami — do pokazania miejsca w źródle
+    matched: list[QuoteCheck] = field(default_factory=list)
 
 
 def _guess_lang(text: str) -> str:
@@ -252,6 +254,10 @@ def verify_quotes(
             if ratio >= ALTERED_THRESHOLD
             else "unverified"
         )
+        if status in ("ok", "altered") and markers:
+            report.matched.append(
+                QuoteCheck(quote, status, ref, round(ratio, 2), markers)
+            )
         if status == "ok":
             report.verified += 1
         else:
@@ -280,3 +286,96 @@ def _best_window(needle: str, hay: str) -> str:
         if r > best_r:
             best, best_r = w, r
     return best
+
+
+# --- miejsce cytatu w źródle (panel źródeł) -----------------------------------------------
+
+_FOLD = str.maketrans(
+    {
+        "„": '"',
+        "”": '"',
+        "“": '"',
+        "«": '"',
+        "»": '"',
+        "’": "'",
+        "‘": "'",
+        "–": "-",
+        "—": "-",
+    }
+)
+_ELLIPSIS_RE = re.compile(
+    r"\s*(?:\[\s*(?:…|\.\.\.)\s*\]|\(\s*(?:…|\.\.\.)\s*\)|…|\.\.\.)\s*"
+)
+
+
+def _fold(text: str) -> tuple[str, list[int]]:
+    """Tekst do porównań (małe litery, ujednolicone cudzysłowy i myślniki, pojedyncze
+    spacje) i mapa: pozycja w tekście złożonym -> pozycja w oryginale."""
+    out, pos = [], []
+    prev_space = True
+    for i, ch in enumerate(text):
+        if ch.isspace():
+            if prev_space:
+                continue
+            out.append(" ")
+            pos.append(i)
+            prev_space = True
+            continue
+        out.append(ch.lower().translate(_FOLD))
+        pos.append(i)
+        prev_space = False
+    return "".join(out), pos
+
+
+def locate(quote: str, text: str) -> tuple[int, int] | None:
+    """Położenie cytatu w tekście źródła (start, end) albo None. Najpierw dokładnie (bez
+    różnic w wielkości liter, cudzysłowach i spacjach), dla cytatu skróconego wielokropkiem —
+    najdłuższy fragment, na końcu najbliższe okno (SequenceMatcher)."""
+    ft, pos = _fold(text)
+    parts = [p for p in _ELLIPSIS_RE.split(quote) if p.strip()]
+    if not parts or not ft:
+        return None
+    fq, _ = _fold(" ".join(parts))
+    fq = fq.strip()
+    i = ft.find(fq)
+    if i < 0 and len(parts) > 1:
+        longest, _ = _fold(max(parts, key=len))
+        longest = longest.strip()
+        if len(longest) >= MIN_QUOTE_CHARS:
+            i = ft.find(longest)
+            fq = longest if i >= 0 else fq
+    if i < 0:
+        n = len(fq)
+        best_r, best_i = 0.0, -1
+        for j in range(0, max(len(ft) - n, 0) + 1, max(n // 4, 8)):
+            r = SequenceMatcher(None, fq, ft[j : j + n], autojunk=False).ratio()
+            if r > best_r:
+                best_r, best_i = r, j
+        if best_r < ALTERED_THRESHOLD:
+            return None
+        i = best_i
+    end = min(i + len(fq), len(pos)) - 1
+    start, stop = pos[i], pos[end] + 1
+    while start < stop and text[start].isspace():
+        start += 1
+    while stop > start and text[stop - 1].isspace():
+        stop -= 1
+    return start, stop
+
+
+def quote_window(text: str, start: int, end: int, width: int = 600) -> dict:
+    """Wycinek źródła wokół cytatu: tekst przed, cytat, po (granice słów) i znaczniki
+    przycięcia — do wyświetlenia z wyróżnionym cytatem."""
+    room = max(width - (end - start), 120) // 2
+    a, b = max(0, start - room), min(len(text), end + room)
+    while a > 0 and not text[a - 1].isspace() and start - a < room + 40:
+        a -= 1
+    while b < len(text) and not text[b].isspace() and b - end < room + 40:
+        b += 1
+    return {
+        "before": text[a:start],
+        "quote": text[start:end],
+        "after": text[end:b],
+        "cut_start": a > 0,
+        "cut_end": b < len(text),
+    }

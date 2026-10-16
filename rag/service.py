@@ -33,7 +33,7 @@ from library.search import (
 )
 from patristics.service import patristics_for_question
 from places.service import places_for_question
-from rag.quotes import check_citations, verify_quotes
+from rag.quotes import check_citations, locate, quote_window, verify_quotes
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +97,34 @@ def work_notes(codes: set[str]) -> dict[str, str]:
         return {}
 
 
+MAX_QUOTE_SNIPPETS = 3  # na jedno źródło
+
+
+def quote_snippets(matched, chunks) -> list[dict]:
+    """Wycinki źródeł literatury wokół cytatów z odpowiedzi (cytat wyróżniony w panelu).
+    Szukane w pełnym tekście danym modelowi — także w doklejonych chunkach-sąsiadach."""
+    out, per_source = [], {}
+    for check in matched:
+        for marker in check.citations:
+            if not re.fullmatch(r"\[\d+\]", marker):
+                continue  # Ojcowie [P…] / ANE [A…] mają własne panele
+            n = int(marker[1:-1])
+            if not 1 <= n <= len(chunks) or per_source.get(n, 0) >= MAX_QUOTE_SNIPPETS:
+                continue
+            span = locate(check.quote, chunks[n - 1].text)
+            if span is None:
+                continue
+            per_source[n] = per_source.get(n, 0) + 1
+            out.append(
+                {
+                    "n": n,
+                    "status": check.status,
+                    **quote_window(chunks[n - 1].text, *span),
+                }
+            )
+    return out
+
+
 @dataclass
 class AskResult:
     """Additive SSE result contract.
@@ -126,6 +154,8 @@ class AskResult:
         default_factory=dict
     )  # retrieval_ms (embedding+OpenSearch+reranker), llm_ms
     usage: dict = field(default_factory=dict)
+    # miejsca cytatów w źródłach [n]: {n, before, quote, after, cut_start, cut_end, status}
+    quote_snippets: list[dict] = field(default_factory=list)
     context_budget: dict = field(
         default_factory=dict
     )  # szacunek tokenów promptu i co odrzucono, żeby zmieścić się w num_ctx
@@ -810,10 +840,13 @@ def ask(
             "year": h.year,
             "url": source_url(h),
             "sigla": h.sigla,
-            "snippet": h.text[:600],
+            # sam trafiony chunk (bez doklejonych sąsiadów, którzy poprzedzają go w `text`)
+            "snippet": (getattr(h, "core_text", "") or h.text)[:600],
             # przekład roboczy: polski fragment + oryginał i odsyłacz (url) w panelu
             "translated": bool(getattr(h, "text_orig", "")),
-            "snippet_orig": getattr(h, "text_orig", "")[:600],
+            "snippet_orig": (
+                getattr(h, "core_orig", "") or getattr(h, "text_orig", "")
+            )[:600],
             "access": h.access,
             "register": h.register,
             "personal": h.access == "personal",
@@ -931,5 +964,6 @@ def ask(
     result.quotes_altered = [asdict(a) for a in qr.altered]
     result.quotes_unverified = [asdict(a) for a in qr.unverified]
     result.quotes_tradition = qr.tradition
+    result.quote_snippets = quote_snippets(qr.matched, chunks)
     result.latency_ms = int((time.monotonic() - t0) * 1000)
     yield "done", asdict(result)

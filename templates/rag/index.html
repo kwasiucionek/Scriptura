@@ -155,7 +155,7 @@ async function loadHistory() {
   const box = $("history"); box.innerHTML = '<div class="muted">Ładuję…</div>';
   const r = await fetch("{% url 'rag:conversations' %}"); const data = await r.json();
   if (!data.conversations.length) { box.innerHTML = '<div class="muted">Brak zapisanych rozmów.</div>'; return; }
-  box.innerHTML = data.conversations.map((c) => `<a href="#" data-id="${c.id}">${esc(c.title || "rozmowa #" + c.id)}<div class="m">${esc(c.modified.replace("T", " "))} · ${c.mode === "popular" ? "popularnonaukowy" : "naukowy"}</div></a>`).join("");
+  box.innerHTML = data.conversations.map((c) => `<a href="#" data-id="${c.id}">${esc(c.title || "rozmowa #" + c.id)}<div class="m">${esc(c.modified)} · ${c.mode === "popular" ? "popularnonaukowy" : "naukowy"}</div></a>`).join("");
   box.querySelectorAll("a").forEach((a) => a.onclick = (e) => { e.preventDefault(); $("history-box").removeAttribute("open"); openConversation(+a.dataset.id); });
 }
 

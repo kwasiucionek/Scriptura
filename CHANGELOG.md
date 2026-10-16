@@ -2,6 +2,8 @@
 
 ## 2026-10-16 — przykład „Zagadnienia biblijne”, wskaźnik wgrywania
 
+- Historia rozmów pokazuje czas polski (`TIME_ZONE`), a nie UTC z bazy — było o 2 godziny
+  za wcześnie.
 - Konto: „Wgraj i zaindeksuj” pokazuje wskaźnik pracy (serwer odpowiada dopiero po
   indeksowaniu, zwykle 1–3 min) — przycisk z animacją i blokadą ponownego wysłania, pasek,
   orientacyjny etap (wysyłanie → odczyt tekstu → indeksowanie) i czas od rozpoczęcia;

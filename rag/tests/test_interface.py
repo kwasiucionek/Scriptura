@@ -565,3 +565,22 @@ def test_personal_materials_example_for_everyone(django_user_model):
     logged = [e["title"] for e in examples_for(user)]
     assert anon[0] == "Zagadnienia biblijne" and logged[0] == "Zagadnienia biblijne"
     assert all(set(e) == {"title", "q"} for e in examples_for(user))
+
+
+@pytest.mark.django_db
+def test_history_shows_local_time(client, django_user_model):
+    # historia rozmów: czas w strefie TIME_ZONE (Europe/Warsaw), nie UTC z bazy
+    from datetime import UTC, datetime
+
+    from django.urls import reverse
+
+    from rag.models import Conversation
+
+    user = django_user_model.objects.create_user("czytelnik", password="x")
+    conv = Conversation.objects.create(user=user, title="Pytanie")
+    Conversation.objects.filter(pk=conv.pk).update(
+        modified=datetime(2026, 10, 16, 7, 37, tzinfo=UTC)
+    )
+    client.force_login(user)
+    rows = client.get(reverse("rag:conversations")).json()["conversations"]
+    assert rows[0]["modified"] == "2026-10-16 09:37"

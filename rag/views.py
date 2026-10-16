@@ -18,6 +18,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
@@ -369,7 +370,8 @@ def conversations(request: HttpRequest) -> JsonResponse:
             "id": c.id,
             "title": c.title,
             "mode": c.mode,
-            "modified": c.modified.isoformat(timespec="minutes"),
+            # czas lokalny (TIME_ZONE), nie UTC z bazy
+            "modified": timezone.localtime(c.modified).strftime("%Y-%m-%d %H:%M"),
         }
         for c in request.user.conversations.all()[:50]
     ]

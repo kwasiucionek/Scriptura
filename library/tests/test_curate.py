@@ -199,3 +199,27 @@ def test_journal_mode_uses_topic_prompt(settings, monkeypatch):
     rep = cur.curate(entries, None)
     assert [d.access for d in rep.decisions] == ["skip", "open"]
     assert "CAŁEGO czasopisma" in prompts[0] and "AUTOR:" not in prompts[0]
+
+
+def test_ingest_title_dedup_distinguishes_volumes_and_parts(db):
+    from library.management.commands.ingest_manifest import _title_exists
+    from library.models import Author, Document
+
+    a = Author.objects.create(name="Marcin Majewski", slug="mm")
+    for t in (
+        "Teksty z Ugarit. TOM 1 – Mity",
+        "BERESZIT – Język hebrajski biblijny dla początkujących, cz. 1",
+        "Zwierzęta czyste i nieczyste w Starym Testamencie. Część I: Omówienie",
+    ):
+        Document.objects.create(title=t).authors.add(a)
+    m = ["Marcin Majewski"]
+    assert not _title_exists("Teksty z Ugarit. TOM 2 – Legendy", m)
+    assert not _title_exists(
+        "SZEMOT – Język hebrajski biblijny dla początkujących, cz. 2", m
+    )
+    assert not _title_exists(
+        "Zwierzęta czyste i nieczyste w Starym Testamencie. Część II. Interpretacje", m
+    )
+    assert _title_exists(
+        "Teksty z Ugarit. Tom 1 - Mity", m
+    )  # ten sam tom w innym zapisie

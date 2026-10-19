@@ -2,6 +2,14 @@
 
 ## 2026-10-19 — materiały prof. Majewskiego publiczne
 
+- `harvest wpmedia --site … --author …`: publikacje PDF ze strony WordPress autora (biblioteka
+  mediów + tytuły, kategorie i opisy z typu „publikacja”); pliki administracyjne (umowy,
+  ubezpieczenia, programy wyjazdów, wnioski) odrzucane po nazwie i nigdy niepobierane; kopie
+  plików i części tego samego tytułu (cz. 1/2, Część I/II) rozróżniane; pozycje już w korpusie
+  pomijane. Dla majewskimarcin.pl: 63 pozycje, po przeglądzie 53 do ingestii (10 to te same
+  teksty, które już są w korpusie z czasopism lub bloga).
+- `ingest_manifest`: tytuły różniące się tylko numerem tomu lub części („TOM 2”, „cz. 2”,
+  „Część II”) nie są już brane za dublet.
 - Zgoda prof. Marcina Majewskiego (e-mail z 19.10.2026): 11 wpisów z bazy wiedzy
   majewskimarcin.pl i 2 wykłady z YouTube przechodzą z `licensed` do `open` (licencja w
   dokumencie: „© Marcin Majewski; udostępnione za zgodą autora”), indeks przebudowany bez

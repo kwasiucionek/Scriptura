@@ -40,18 +40,34 @@ def _title_key(t: str) -> str:
     return re.sub(r"[^a-z0-9 .]+", " ", t).split(".")[0].strip()
 
 
+_PART_RE = re.compile(
+    r"\b(?:czesc|cz|tom|vol|volume|part|ksiega|zeszyt)\.?\s*([ivxlc]+|\d+)\b|\b(\d+)\b"
+)
+
+
+def _part_markers(t: str) -> set[str]:
+    """Numery tomów i części z całego tytułu („TOM 2”, „cz. 1”, „Część III”) — tytuły różniące
+    się tylko nimi to różne dokumenty (kolejne tomy), nie dublety."""
+    t = unicodedata.normalize("NFKD", t.lower())
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return {a or b for a, b in _PART_RE.findall(t)}
+
+
 def _title_exists(
     title: str, authors: list[str] | None = None, threshold: float = 0.9
 ) -> bool:
     """Ten sam tytuł w innym zapisie -> nie dubluj dokumentu. Ale ten sam tytuł u RÓŻNYCH
     autorów to różne teksty (np. dwie recenzje tej samej książki) — dublet tylko przy wspólnym
-    autorze albo gdy istniejący dokument nie ma autorów."""
+    autorze albo gdy istniejący dokument nie ma autorów. Inny numer tomu/części = inny tekst."""
     k = _title_key(title)
     if not k:
         return False
+    parts = _part_markers(title)
     wanted = {a.strip().lower() for a in (authors or []) if a.strip()}
     for d in Document.objects.prefetch_related("authors"):
         if SequenceMatcher(None, k, _title_key(d.title)).ratio() < threshold:
+            continue
+        if _part_markers(d.title) != parts:
             continue
         existing = {a.name.strip().lower() for a in d.authors.all()}
         if not existing or not wanted or existing & wanted:

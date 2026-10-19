@@ -9,6 +9,12 @@
   (`data/consents/`, poza repozytorium).
 - Przykładowe pytania „Krytyka tekstu”, „Kanon” i „Imiona Boga” widoczne dla wszystkich
   (wcześniej tylko dla kont z dostępem do źródeł licencjonowanych).
+- `harvest youtube --channel <kanał albo film z kanału>`: wszystkie filmy kanału (zakładki
+  „Filmy” i „Na żywo”, bez shortsów i filmów krótszych niż `--min-minutes`, domyślnie 10),
+  `--skip-manifest` pomija już zebrane, `--access open --license "…"` dla materiałów
+  udostępnionych za zgodą autora (open bez opisu zgody jest odrzucany). YouTube blokuje adresy
+  serwerowe („Sign in to confirm you're not a bot”) — harvest uruchamiamy lokalnie, a pliki
+  przenosimy na serwer.
 
 ## 2026-10-16 — przykład „Zagadnienia biblijne”, wskaźnik wgrywania
 

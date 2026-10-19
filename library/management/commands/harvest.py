@@ -93,6 +93,36 @@ class Command(BaseCommand):
         )
         parser.add_argument("--video", nargs="*", help="youtube: adresy lub id filmów")
         parser.add_argument(
+            "--channel",
+            help="youtube: adres kanału albo dowolny film z kanału — wszystkie filmy kanału",
+        )
+        parser.add_argument(
+            "--min-minutes",
+            type=float,
+            default=10,
+            help="youtube --channel: pomiń filmy krótsze niż N minut (zapowiedzi, fragmenty)",
+        )
+        parser.add_argument(
+            "--skip-manifest",
+            nargs="*",
+            default=[],
+            help="youtube: pomiń filmy już obecne w tych manifestach (po source_id)",
+        )
+        parser.add_argument(
+            "--limit", type=int, default=0, help="youtube --channel: najwyżej N filmów"
+        )
+        parser.add_argument(
+            "--access",
+            default="",
+            help="youtube: dostęp wpisów (domyślnie licensed — wymaga zgody; open po zgodzie)",
+        )
+        parser.add_argument(
+            "--license",
+            default="",
+            dest="license_text",
+            help="youtube: opis licencji/zgody, np. „udostępnione za zgodą autora (data)”",
+        )
+        parser.add_argument(
             "--keys",
             nargs="*",
             help="vatican: klucze dokumentów z library.harvest.vatican.DOCUMENTS (domyślnie wszystkie)",
@@ -155,16 +185,52 @@ class Command(BaseCommand):
             ]
 
         elif source == "youtube":
-            if not o["video"] or not o["author"]:
-                raise CommandError("youtube wymaga --video (adresy/id) i --author")
+            if not (o["video"] or o["channel"]) or not o["author"]:
+                raise CommandError(
+                    "youtube wymaga --video (adresy/id) albo --channel oraz --author"
+                )
+            if o["access"] and o["access"] not in ("open", "licensed", "private"):
+                raise CommandError("--access: open | licensed | private")
+            if o["access"] == "open" and not o["license_text"]:
+                raise CommandError(
+                    "--access open wymaga --license z opisem zgody autora"
+                )
+            videos = list(o["video"] or [])
+            if o["channel"]:
+                listed = youtube.channel_videos(
+                    o["channel"], o["min_minutes"], o["limit"]
+                )
+                self.stdout.write(f"kanał: {len(listed)} filmów")
+                videos += [v.video_id for v in listed]
+            skip = {
+                e.source_id
+                for f in o["skip_manifest"]
+                if Path(f).exists()
+                for e in manifest.read(Path(f))
+            }
+            todo = list(dict.fromkeys(youtube.video_id(v) for v in videos))
+            todo = [v for v in todo if v not in skip]
+            if skip:
+                self.stdout.write(
+                    f"pomijam {len(videos) - len(todo)} już w manifestach"
+                )
+            extra = {}
+            if o["access"]:
+                extra["access"] = o["access"]
+            if o["license_text"]:
+                extra["license"] = o["license_text"]
             out_dir = settings.DATA_DIR / "library"
             entries = []
-            for v in o["video"]:
-                info = youtube.fetch(v)
+            for v in todo:
+                try:
+                    info = youtube.fetch(v)
+                except Exception as exc:  # noqa: BLE001 — jeden film nie zatrzymuje reszty
+                    self.stderr.write(f"  {v}: {exc}")
+                    continue
                 if not info.captions:
                     self.stderr.write(f"  {info.title[:60]}: brak napisów — pomijam")
                     continue
-                entries.append(youtube.to_entry(info, o["author"], out_dir))
+                entries.append(youtube.to_entry(info, o["author"], out_dir, **extra))
                 self.stdout.write(
                     f"  {info.title[:60]}: {len(info.captions)} napisów, "
                     f"{len(info.chapters)} rozdziałów ({info.caption_kind})"

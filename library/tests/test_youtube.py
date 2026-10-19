@@ -111,3 +111,96 @@ def test_source_url_deep_link():
         source_url(hit("article", "[02:21] x", ""))
         == "https://www.youtube.com/watch?v=C0IBaOqKaXw"
     )
+
+
+class _FakeYDL:
+    """yt_dlp.YoutubeDL bez sieci: film -> kanał, zakładki kanału -> lista filmów."""
+
+    def __init__(self, opts):
+        self.opts = opts
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def extract_info(self, url, download=False, process=True):
+        if "watch?v=" in url:
+            return {"channel_url": "https://www.youtube.com/channel/UC123"}
+        if url.endswith("/videos"):
+            return {"entries": [
+                {"id": "AAAAAAAAAAA", "title": "Wykład o Pięcioksięgu", "duration": 3600},
+                {"id": "BBBBBBBBBBB", "title": "Zapowiedź", "duration": 90},
+                {"id": "C0IBaOqKaXw", "title": "Czy Jahwe ma ojca?", "duration": 2400},
+            ]}  # fmt: skip
+        if url.endswith("/streams"):
+            return {
+                "entries": [{"id": "AAAAAAAAAAA", "title": "dubel", "duration": 3600}]
+            }
+        raise AssertionError(url)
+
+
+def test_channel_videos_from_video_link(monkeypatch):
+    import sys
+    import types
+
+    monkeypatch.setitem(
+        sys.modules, "yt_dlp", types.SimpleNamespace(YoutubeDL=_FakeYDL)
+    )
+    out = youtube.channel_videos("https://youtu.be/C0IBaOqKaXw", min_minutes=10)
+    assert [v.video_id for v in out] == [
+        "AAAAAAAAAAA",
+        "C0IBaOqKaXw",
+    ]  # bez zapowiedzi i dubli
+    assert (
+        youtube.channel_videos("UC-kanał/videos", limit=1)[0].video_id == "AAAAAAAAAAA"
+    )
+
+
+def test_harvest_channel_open_with_consent(monkeypatch, tmp_path, settings):
+    import pytest
+    from django.core.management import CommandError, call_command
+
+    from library.harvest import manifest
+
+    settings.DATA_DIR = tmp_path
+    known = tmp_path / "known.jsonl"
+    manifest.write(
+        known, [youtube.to_entry(_video([youtube.Caption(0, "x")]), "M", tmp_path)]
+    )
+    monkeypatch.setattr(
+        youtube,
+        "channel_videos",
+        lambda *a, **k: [
+            youtube.ChannelVideo("AAAAAAAAAAA", "W", 3600),
+            youtube.ChannelVideo("C0IBaOqKaXw", "J", 2400),
+        ],
+    )
+
+    def fake_fetch(vid):
+        v = _video([youtube.Caption(0, "dzień dobry")])
+        v.video_id, v.title = vid, f"Wykład {vid}"
+        return v
+
+    monkeypatch.setattr(youtube, "fetch", fake_fetch)
+    out = tmp_path / "new.jsonl"
+    with pytest.raises(CommandError):  # open bez opisu zgody
+        call_command(
+            "harvest",
+            "youtube",
+            "--channel",
+            "x",
+            "--author",
+            "Marcin Majewski",
+            "--access",
+            "open",
+        )
+    call_command(
+        "harvest", "youtube", "--channel", "https://youtu.be/C0IBaOqKaXw", "--author", "Marcin Majewski",
+        "--access", "open", "--license", "za zgodą autora (19.10.2026)",
+        "--skip-manifest", str(known), "--out", str(out),
+    )  # fmt: skip
+    [e] = manifest.read(out)
+    assert e.source_id == "AAAAAAAAAAA" and e.access == "open"
+    assert e.license == "za zgodą autora (19.10.2026)"

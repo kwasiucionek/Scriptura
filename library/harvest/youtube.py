@@ -63,6 +63,66 @@ def parse_json3(raw: str) -> list[Caption]:
     return out
 
 
+LICENSE_RESERVED = "wszelkie prawa zastrzeżone (wykład autora; wymaga zgody)"
+CHANNEL_TABS = ("videos", "streams")  # filmy i nagrane transmisje; shorts pomijamy
+
+
+@dataclass
+class ChannelVideo:
+    video_id: str
+    title: str
+    duration: float | None  # sekundy; None, gdy YouTube nie podał
+
+
+def _is_video_ref(value: str) -> bool:
+    return bool(_ID_RE.search(value)) or bool(re.fullmatch(r"[A-Za-z0-9_-]{11}", value))
+
+
+def channel_videos(
+    url_or_video: str, min_minutes: float = 0, limit: int = 0
+) -> list[ChannelVideo]:
+    """Filmy kanału (zakładki „Filmy” i „Na żywo”), bez shortsów. Zamiast adresu kanału można
+    podać dowolny film z kanału. Krótsze niż `min_minutes` (zapowiedzi, fragmenty) odpadają."""
+    import yt_dlp  # zależność opcjonalna: pip install yt-dlp
+
+    opts = {
+        "quiet": True,
+        "skip_download": True,
+        "no_warnings": True,
+        "extract_flat": "in_playlist",
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        channel = url_or_video.strip()
+        if _is_video_ref(channel):
+            info = ydl.extract_info(
+                f"https://www.youtube.com/watch?v={video_id(channel)}",
+                download=False,
+                process=False,
+            )
+            channel = info.get("channel_url") or info.get("uploader_url") or ""
+            if not channel:
+                raise ValueError("nie udało się ustalić kanału filmu")
+        channel = re.sub(
+            r"/(?:videos|streams|shorts|featured)/?$", "", channel.rstrip("/")
+        )
+        out: list[ChannelVideo] = []
+        seen: set[str] = set()
+        for tab in CHANNEL_TABS:
+            try:
+                listing = ydl.extract_info(f"{channel}/{tab}", download=False)
+            except Exception:  # noqa: BLE001 — kanał bez zakładki „Na żywo”
+                continue
+            for e in listing.get("entries") or []:
+                vid = (e or {}).get("id")
+                if not vid or vid in seen:
+                    continue
+                seen.add(vid)
+                out.append(ChannelVideo(vid, e.get("title") or vid, e.get("duration")))
+    if min_minutes:
+        out = [v for v in out if v.duration is None or v.duration >= min_minutes * 60]
+    return out[:limit] if limit else out
+
+
 def fetch(
     url_or_id: str, langs: tuple[str, ...] = ("pl", "pl-orig", "en")
 ) -> VideoInfo:
@@ -198,8 +258,15 @@ def build_text(v: VideoInfo) -> str:
 
 
 def to_entry(
-    v: VideoInfo, author: str, out_dir: Path, register: str = "popular"
+    v: VideoInfo,
+    author: str,
+    out_dir: Path,
+    register: str = "popular",
+    access: str = "licensed",
+    license: str = LICENSE_RESERVED,
 ) -> ManifestEntry:
+    """Wpis manifestu. Domyślnie `licensed` (wymaga zgody autora); po zgodzie `access=open`
+    z licencją opisującą zgodę."""
     dest = out_dir / "youtube" / f"{v.video_id}.md"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(build_text(v), encoding="utf-8")
@@ -213,8 +280,8 @@ def to_entry(
         journal=v.channel,
         year=year,
         url=f"https://www.youtube.com/watch?v={v.video_id}",
-        license="wszelkie prawa zastrzeżone (wykład autora; wymaga zgody)",
-        access="licensed",
+        license=license,
+        access=access,
         language="pl",
         note=f"{v.caption_kind or 'bez napisów'}; {len(v.chapters)} rozdziałów; nagranie {v.upload_date[:4]}-{v.upload_date[4:6]}-{v.upload_date[6:]}"
         if v.upload_date

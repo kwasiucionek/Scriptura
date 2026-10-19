@@ -40,7 +40,9 @@ from rag.personal import (
 )
 
 # Przykładowe pytania: bez "access" widoczne dla wszystkich (korpus open je udźwignie);
-# z "access": "licensed" tylko dla kont z tym dostępem (źródła licencjonowane: blog, skrypty).
+# z "access": "licensed" tylko dla kont z tym dostępem (źródła licencjonowane). Pytania o krytykę
+# tekstu, kanon i imiona Boga są publiczne od zgody prof. Majewskiego (19.10.2026) na
+# udostępnienie jego bloga i wykładów.
 EXAMPLES = [
     {
         # pokaz materiałów własnych, widoczny dla wszystkich: bez logowania odpowiedź opiera
@@ -88,17 +90,14 @@ EXAMPLES = [
     {
         "title": "Krytyka tekstu",
         "q": "Czy Pwt 32,8-9 to ślad politeizmu? Co mówią Septuaginta i Qumran o „synach Bożych” i jak zmienił to tekst masorecki?",
-        "access": "licensed",
     },
     {
         "title": "Kanon",
         "q": "Dlaczego List Barnaby i Pasterz Hermasa były w Kodeksie Synajskim, a nie ma ich w dzisiejszej Biblii?",
-        "access": "licensed",
     },
     {
         "title": "Imiona Boga",
         "q": "Jakie imiona Boga zna Biblia i co znaczy, że Elohim jest w liczbie mnogiej?",
-        "access": "licensed",
     },
 ]
 

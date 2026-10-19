@@ -1,5 +1,15 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-19 — materiały prof. Majewskiego publiczne
+
+- Zgoda prof. Marcina Majewskiego (e-mail z 19.10.2026): 11 wpisów z bazy wiedzy
+  majewskimarcin.pl i 2 wykłady z YouTube przechodzą z `licensed` do `open` (licencja w
+  dokumencie: „© Marcin Majewski; udostępnione za zgodą autora”), indeks przebudowany bez
+  liczenia wektorów od nowa (`reindex_chunks --reuse-vectors`). Zapis zgody na serwerze
+  (`data/consents/`, poza repozytorium).
+- Przykładowe pytania „Krytyka tekstu”, „Kanon” i „Imiona Boga” widoczne dla wszystkich
+  (wcześniej tylko dla kont z dostępem do źródeł licencjonowanych).
+
 ## 2026-10-16 — przykład „Zagadnienia biblijne”, wskaźnik wgrywania
 
 - Mapa po polsku (uwagi prof. Majewskiego): polskie warianty nazw w `Place.aliases_pl`

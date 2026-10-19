@@ -233,16 +233,30 @@ def test_rate_limit_for_anonymous(settings, docs, mode):
     cache.clear()
 
 
-def test_examples_depend_on_access(docs):
+def test_examples_depend_on_access(docs, monkeypatch):
     from django.contrib.auth.models import Group, User
 
+    from rag import views
     from rag.access import GROUP_LICENSED
 
+    monkeypatch.setattr(
+        views,
+        "EXAMPLES",
+        [
+            *views.EXAMPLES,
+            {
+                "title": "Tylko licencja",
+                "q": "Pytanie o źródła licencjonowane?",
+                "access": "licensed",
+            },
+        ],
+    )
     anon = Client(HTTP_HOST="localhost").get("/").content.decode()
-    assert "Ugarit i początki kultu" in anon and "Pwt 32,8-9" not in anon
+    assert "Ugarit i początki kultu" in anon and "Pwt 32,8-9" in anon
+    assert "źródła licencjonowane?" not in anon
     u = User.objects.create_user("lic", password="x")
     u.groups.add(Group.objects.create(name=GROUP_LICENSED))
     c = Client(HTTP_HOST="localhost")
     c.force_login(u)
     page = c.get("/").content.decode()
-    assert "Pwt 32,8-9" in page and "Kodeksie Synajskim" in page
+    assert "źródła licencjonowane?" in page and "Kodeksie Synajskim" in page

@@ -204,3 +204,40 @@ def test_harvest_channel_open_with_consent(monkeypatch, tmp_path, settings):
     [e] = manifest.read(out)
     assert e.source_id == "AAAAAAAAAAA" and e.access == "open"
     assert e.license == "za zgodą autora (19.10.2026)"
+
+
+def test_harvest_retries_429_and_appends_to_out(monkeypatch, tmp_path, settings):
+    from django.core.management import call_command
+
+    from library.harvest import manifest
+    from library.management.commands import harvest as cmd
+
+    settings.DATA_DIR = tmp_path
+    monkeypatch.setattr(cmd.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    class Limited(Exception):
+        code = 429
+
+    def fake_fetch(vid):
+        calls["n"] += 1
+        if vid == "AAAAAAAAAAA" and calls["n"] == 1:
+            raise Limited("HTTP Error 429: Too Many Requests")
+        if vid == "BBBBBBBBBBB" and calls["n"] < 5:
+            raise Limited("HTTP Error 429: Too Many Requests")
+        v = _video([youtube.Caption(0, "tekst")])
+        v.video_id = vid
+        return v
+
+    monkeypatch.setattr(youtube, "fetch", fake_fetch)
+    out = tmp_path / "yt.jsonl"
+    args = ["harvest", "youtube", "--video", "AAAAAAAAAAA", "BBBBBBBBBBB", "--author", "M",
+            "--retries", "1", "--out", str(out)]  # fmt: skip
+    call_command(*args)
+    assert [e.source_id for e in manifest.read(out)] == [
+        "AAAAAAAAAAA"
+    ]  # B: limit po ponowieniu
+    call_command(
+        *args
+    )  # drugie uruchomienie dobiera brakujący, nie nadpisuje zebranych
+    assert [e.source_id for e in manifest.read(out)] == ["AAAAAAAAAAA", "BBBBBBBBBBB"]

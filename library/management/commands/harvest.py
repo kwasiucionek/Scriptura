@@ -15,6 +15,7 @@
 Manifest przejrzyj ręcznie (kolumna access: open/licensed/private/skip), potem `ingest_manifest`.
 """
 
+import time
 from pathlib import Path
 
 from django.conf import settings
@@ -110,6 +111,18 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--limit", type=int, default=0, help="youtube --channel: najwyżej N filmów"
+        )
+        parser.add_argument(
+            "--delay",
+            type=float,
+            default=8.0,
+            help="youtube: przerwa (s) między filmami — YouTube ogranicza serie żądań (HTTP 429)",
+        )
+        parser.add_argument(
+            "--retries",
+            type=int,
+            default=3,
+            help="youtube: ponowienia po HTTP 429 (odczekanie 60 s, 120 s, 240 s…)",
         )
         parser.add_argument(
             "--access",
@@ -220,20 +233,50 @@ class Command(BaseCommand):
             if o["license_text"]:
                 extra["license"] = o["license_text"]
             out_dir = settings.DATA_DIR / "library"
-            entries = []
-            for v in todo:
-                try:
-                    info = youtube.fetch(v)
-                except Exception as exc:  # noqa: BLE001 — jeden film nie zatrzymuje reszty
-                    self.stderr.write(f"  {v}: {exc}")
+            out_path = (
+                Path(o["out"])
+                if o["out"]
+                else settings.MANIFESTS_DIR / f"{source}.jsonl"
+            )
+            # --out już istnieje: dopisujemy (bez duplikatów), żeby ponowne uruchomienie
+            # uzupełniało brakujące filmy zamiast nadpisywać zebrane
+            entries = manifest.read(out_path) if out_path.exists() else []
+            have = {e.source_id for e in entries}
+            todo = [v for v in todo if v not in have]
+            failed: list[str] = []
+            for i, v in enumerate(todo):
+                if i:
+                    time.sleep(o["delay"])
+                info = None
+                for attempt in range(o["retries"] + 1):
+                    try:
+                        info = youtube.fetch(v)
+                        break
+                    except Exception as exc:  # noqa: BLE001 — jeden film nie zatrzymuje reszty
+                        if youtube.is_rate_limited(exc) and attempt < o["retries"]:
+                            wait = 60 * 2**attempt
+                            self.stderr.write(f"  {v}: HTTP 429 — czekam {wait} s")
+                            time.sleep(wait)
+                            continue
+                        self.stderr.write(f"  {v}: {exc}")
+                        break
+                if info is None:
+                    failed.append(v)
                     continue
                 if not info.captions:
                     self.stderr.write(f"  {info.title[:60]}: brak napisów — pomijam")
                     continue
                 entries.append(youtube.to_entry(info, o["author"], out_dir, **extra))
+                # zapis po każdym filmie: przerwanie nie gubi postępu
+                manifest.write(out_path, entries)
                 self.stdout.write(
                     f"  {info.title[:60]}: {len(info.captions)} napisów, "
                     f"{len(info.chapters)} rozdziałów ({info.caption_kind})"
+                )
+            if failed:
+                self.stderr.write(
+                    f"nieudane ({len(failed)}): {' '.join(failed)} — to samo polecenie "
+                    "uruchomione ponownie dobierze brakujące"
                 )
 
         elif source == "vatican":

@@ -15,6 +15,10 @@
   udostępnionych za zgodą autora (open bez opisu zgody jest odrzucany). YouTube blokuje adresy
   serwerowe („Sign in to confirm you're not a bot”) — harvest uruchamiamy lokalnie, a pliki
   przenosimy na serwer.
+- `harvest youtube`: przerwa między filmami (`--delay`, domyślnie 8 s) i ponowienia po HTTP 429
+  (`--retries`, odczekanie 60/120/240 s); manifest `--out` zapisywany po każdym filmie i
+  uzupełniany przy ponownym uruchomieniu (bez nadpisywania zebranych); bez komunikatu yt-dlp
+  o braku zakładki „Na żywo”.
 
 ## 2026-10-16 — przykład „Zagadnienia biblijne”, wskaźnik wgrywania
 

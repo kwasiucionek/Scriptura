@@ -74,6 +74,27 @@ class ChannelVideo:
     duration: float | None  # sekundy; None, gdy YouTube nie podał
 
 
+class _SilentLogger:
+    """Logger dla yt-dlp bez komunikatów (np. „kanał nie ma zakładki Na żywo”)."""
+
+    def debug(self, msg):
+        pass
+
+    def info(self, msg):
+        pass
+
+    def warning(self, msg):
+        pass
+
+    def error(self, msg):
+        pass
+
+
+def is_rate_limited(exc: BaseException) -> bool:
+    """YouTube odrzucił żądanie z powodu zbyt wielu zapytań (HTTP 429)."""
+    return getattr(exc, "code", None) == 429 or "429" in str(exc)
+
+
 def _is_video_ref(value: str) -> bool:
     return bool(_ID_RE.search(value)) or bool(re.fullmatch(r"[A-Za-z0-9_-]{11}", value))
 
@@ -90,6 +111,7 @@ def channel_videos(
         "skip_download": True,
         "no_warnings": True,
         "extract_flat": "in_playlist",
+        "logger": _SilentLogger(),
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
         channel = url_or_video.strip()

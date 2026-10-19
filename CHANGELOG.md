@@ -2,6 +2,10 @@
 
 ## 2026-10-19 — materiały prof. Majewskiego publiczne
 
+- Strona „Dla autorów”: sekcja „Materiały płatne i zamknięte” — pliku nie da się pobrać ani
+  przeczytać w całości, widać tylko fragmenty (panel do ok. 600 znaków, cytat do 2–3 zdań
+  z przypisem), każdy fragment prowadzi do strony autora; zgoda dotyczy włączenia do bazy,
+  a sposób korzystania odpowiada cytatowi (art. 29 pr. aut.); zakres zgody można zawęzić.
 - `harvest wpmedia --site … --author …`: publikacje PDF ze strony WordPress autora (biblioteka
   mediów + tytuły, kategorie i opisy z typu „publikacja”); pliki administracyjne (umowy,
   ubezpieczenia, programy wyjazdów, wnioski) odrzucane po nazwie i nigdy niepobierane; kopie

@@ -174,3 +174,13 @@ def test_corpus_separates_church_documents_from_literature(client):
     )
     html = r.content.decode()
     assert "<summary>Autorzy (1)</summary>" in html and "Lista dokumentów (2)" in html
+
+
+def test_for_authors_explains_closed_materials(client, db):
+    # dla autorów materiałów płatnych: brak pobierania, tylko fragmenty z odesłaniem
+    from django.urls import reverse
+
+    body = client.get(reverse("pages:for_authors")).content.decode()
+    assert "Materiały płatne i zamknięte" in body
+    assert "nie da się ich pobrać ani przeczytać w całości" in body
+    assert "art. 29 ustawy o prawie autorskim" in body

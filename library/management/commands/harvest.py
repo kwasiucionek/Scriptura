@@ -34,7 +34,7 @@ from library.harvest import (
 
 
 class Command(BaseCommand):
-    help = "Harvest metadanych do manifestu JSONL (dspace | openalex | scholar | bibtex | blog | youtube | vatican)"
+    help = "Harvest metadanych do manifestu JSONL (dspace | openalex | scholar | bibtex | blog | youtube | vatican | wpmedia)"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -47,6 +47,7 @@ class Command(BaseCommand):
                 "blog",
                 "youtube",
                 "vatican",
+                "wpmedia",
             ],
         )
         parser.add_argument(
@@ -90,7 +91,18 @@ class Command(BaseCommand):
             "--file", help="bibtex: plik .bib (eksport z profilu Google Scholar)"
         )
         parser.add_argument(
-            "--site", help="blog: adres WordPressa, np. https://majewskimarcin.pl"
+            "--site",
+            help="blog | wpmedia: adres WordPressa, np. https://majewskimarcin.pl",
+        )
+        parser.add_argument(
+            "--exclude",
+            default="",
+            help="wpmedia: dodatkowy regex nazw plików do pominięcia (oprócz administracyjnych)",
+        )
+        parser.add_argument(
+            "--post-type",
+            default="publikacja",
+            help="wpmedia: typ wpisu z tytułami i kategoriami publikacji (pusty = brak)",
         )
         parser.add_argument("--video", nargs="*", help="youtube: adresy lub id filmów")
         parser.add_argument(
@@ -321,6 +333,29 @@ class Command(BaseCommand):
                     )
             else:
                 entries = vatican.harvest(out_dir, o["keys"] or None)
+
+        elif source == "wpmedia":
+            if not o["site"] or not o["author"]:
+                raise CommandError("wpmedia wymaga --site i --author")
+            if o["access"] == "open" and not o["license_text"]:
+                raise CommandError(
+                    "--access open wymaga --license z opisem zgody autora"
+                )
+            from library.harvest import wp_media
+            from library.models import Document
+
+            entries, skipped = wp_media.entries(
+                o["site"],
+                o["author"],
+                access=o["access"] or "licensed",
+                license=o["license_text"]
+                or "wszelkie prawa zastrzeżone (strona autora; wymaga zgody)",
+                exclude=o["exclude"],
+                known_titles=set(Document.objects.values_list("title", flat=True)),
+                post_type=o["post_type"],
+            )
+            for line in skipped:
+                self.stdout.write(f"  pomijam — {line}")
 
         elif source == "bibtex":
             if not o["file"]:

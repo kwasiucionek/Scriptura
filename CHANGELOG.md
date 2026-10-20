@@ -1,5 +1,19 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-20 — polityka prywatności, regulamin, informacja o AI
+
+- Strony `/prywatnosc/` (RODO art. 13: administrator, dane i podstawy, model w chmurze Ollama,
+  odbiorcy: Mikrus, Cloudflare, Ollama, OpenStreetMap; okresy przechowywania, prawa, cookies —
+  tylko niezbędne: `sessionid`, `csrftoken`, `localStorage`; Umami bez cookies) i `/regulamin/`
+  (usługi, wymagania, limity pytań, charakter odpowiedzi AI, konto, materiały własne, prawa
+  autorskie, reklamacje). Linki w stopce, na stronie logowania i w panelu czatu.
+- Informacja o AI (art. 50 AI Act): w panelu czatu „Odpowiedzi generuje model językowy (AI)…”,
+  w polu statusu „Odpowiedzi tworzy AI, wyłącznie ze źródeł w korpusie”.
+- htmx serwowany lokalnie (`static/vendor/htmx`, 2.0.4) zamiast z cdnjs — o jednego odbiorcę
+  adresów IP mniej.
+- Nowe zmienne `.env`: `SITE_OPERATOR_NAME`, `SITE_OPERATOR_ADDRESS` (dane administratora tylko
+  na serwerze, nie w repozytorium).
+
 ## 2026-10-19 — materiały prof. Majewskiego publiczne
 
 - Strona „Dla autorów”: sekcja „Materiały płatne i zamknięte” — pliku nie da się pobrać ani

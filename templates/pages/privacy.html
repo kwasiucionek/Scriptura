@@ -1,0 +1,60 @@
+{% extends "site.html" %}
+{% block title %}Polityka prywatności — Scriptura{% endblock %}
+{% block description %}Jakie dane przetwarza Scriptura, po co, komu je przekazuje i jakie masz prawa. Informacja o plikach cookies.{% endblock %}
+{% block content %}
+<div class="eyebrow">PRYWATNOŚĆ I COOKIES</div>
+<h1>Polityka <span>prywatności</span></h1>
+<p class="lead">Scriptura zbiera tak mało danych, jak to możliwe: bez konta nie zapisuje Twoich pytań, nie używa ciasteczek reklamowych ani śledzących, a statystyki odwiedzin nie identyfikują osób. Poniżej szczegóły wymagane przez RODO (art. 13).</p>
+<p class="small muted">Obowiązuje od {{ legal_version }}.</p>
+
+<h2>1. Administrator danych</h2>
+<p>Administratorem danych osobowych jest {% if site_operator_name %}<strong>{{ site_operator_name }}</strong>{% if site_operator_address %}, {{ site_operator_address }}{% endif %}{% else %}autor serwisu (dane na stronie <a href="{% url 'pages:author' %}">Autor i kontakt</a>){% endif %}{% if site_contact_email %}, e‑mail: <a href="mailto:{{ site_contact_email }}">{{ site_contact_email }}</a>{% endif %}. Scriptura jest prywatnym, niekomercyjnym projektem jednej osoby; nie wyznaczono inspektora ochrony danych.</p>
+
+<h2>2. Jakie dane, w jakim celu i na jakiej podstawie</h2>
+<table class="stats">
+  <tr><th>Sytuacja</th><th>Dane</th><th>Cel</th><th>Podstawa (RODO)</th></tr>
+  <tr><td>Korzystanie bez konta</td><td>adres IP</td><td>limit pytań na godzinę ({{ rate_anon }}), ochrona przed nadużyciami, logi serwera</td><td>art. 6 ust. 1 lit. f — prawnie uzasadniony interes (bezpieczeństwo usługi)</td></tr>
+  <tr><td>Konto</td><td>login, imię i nazwisko, e‑mail (jeśli podany), hasło w postaci skrótu</td><td>logowanie i prowadzenie konta</td><td>art. 6 ust. 1 lit. b — świadczenie usługi wg <a href="{% url 'pages:terms' %}">regulaminu</a></td></tr>
+  <tr><td>Historia rozmów</td><td>Twoje pytania, odpowiedzi i listy źródeł</td><td>dostęp do wcześniejszych rozmów — tylko dla Ciebie</td><td>art. 6 ust. 1 lit. b</td></tr>
+  <tr><td>Moje materiały</td><td>wgrane pliki i ich opis</td><td>wyszukiwanie w Twoich materiałach — tylko dla Ciebie</td><td>art. 6 ust. 1 lit. b</td></tr>
+  <tr><td>Udostępnienie materiału autora</td><td>treść oświadczenia, data, licencja, data wycofania; korespondencja ze zgodą</td><td>dowód zgody autora na włączenie tekstu do wspólnego korpusu</td><td>art. 6 ust. 1 lit. f — wykazanie podstawy korzystania z utworu</td></tr>
+  <tr><td>Statystyki odwiedzin</td><td>odsłony stron, kraj i typ przeglądarki — bez ciasteczek i bez identyfikacji osoby; przy pytaniu tylko informacja „zadano pytanie” (tryb, czy było siglum), nigdy treść</td><td>wiedza, jak serwis jest używany</td><td>art. 6 ust. 1 lit. f</td></tr>
+  <tr><td>Kontakt e‑mail</td><td>adres i treść wiadomości</td><td>odpowiedź i prowadzenie sprawy</td><td>art. 6 ust. 1 lit. f</td></tr>
+</table>
+<p>Treści pytań zadanych bez logowania nie są zapisywane w Scripturze. Nie profilujemy użytkowników i nie podejmujemy wobec nich zautomatyzowanych decyzji (art. 22 RODO). Podanie danych jest dobrowolne; bez konta można korzystać z serwisu w podstawowym zakresie.</p>
+
+<h2>3. Jak powstaje odpowiedź — model językowy w chmurze</h2>
+<p>Wyszukiwanie fragmentów i wektory tekstu są liczone na serwerze Scriptury. Samą odpowiedź pisze model językowy uruchamiany w usłudze <strong>Ollama Cloud</strong> (Ollama Inc., USA): trafia do niego treść pytania i wybrane fragmenty źródeł — także fragmenty Twoich materiałów własnych, jeśli dotyczą pytania. Według polityki prywatności Ollama treść zapytań nie jest przechowywana dłużej, niż wymaga obsługa żądania, i nie służy do trenowania modeli; dane mogą być przetwarzane w Stanach Zjednoczonych. <strong>Nie wpisuj w pytaniach danych osobowych</strong> — swoich ani cudzych.</p>
+
+<h2>4. Komu przekazujemy dane</h2>
+<ul>
+  <li><strong>Mikrus</strong> (mikr.us) — serwer w Polsce, na którym działa Scriptura, oraz instancja statystyk Umami.</li>
+  <li><strong>Cloudflare, Inc.</strong> — pośrednik ruchu i ochrona przed atakami; widzi adres IP i żądania do serwisu.</li>
+  <li><strong>Ollama Inc.</strong> — model językowy (pkt 3).</li>
+  <li><strong>OpenStreetMap Foundation</strong> — kafelki mapy: wyświetlenie mapy pobiera je z serwerów OpenStreetMap, które widzą Twój adres IP.</li>
+</ul>
+<p>Cloudflare i Ollama mogą przetwarzać dane w USA; przekazanie odbywa się na warunkach i z zabezpieczeniami przewidzianymi przez tych dostawców. Danych nie sprzedajemy ani nie udostępniamy w celach marketingowych.</p>
+
+<h2>5. Jak długo</h2>
+<ul>
+  <li>adres IP w limicie pytań — do godziny; w logach serwera — 14 dni;</li>
+  <li>konto, historia rozmów i materiały własne — do ich usunięcia przez Ciebie albo do usunięcia konta (rozmowy usuwasz sam w historii, konto — na prośbę e‑mailem);</li>
+  <li>zapis zgody autora — przez czas udostępnienia tekstu i okres przedawnienia ewentualnych roszczeń;</li>
+  <li>korespondencja — do zakończenia sprawy, a jeśli dotyczy zgody autora — jak zapis zgody.</li>
+</ul>
+
+<h2>6. Twoje prawa</h2>
+<p>Masz prawo do dostępu do danych, ich sprostowania, usunięcia, ograniczenia przetwarzania, przeniesienia oraz sprzeciwu wobec przetwarzania opartego na prawnie uzasadnionym interesie. Wystarczy wiadomość{% if site_contact_email %} na <a href="mailto:{{ site_contact_email }}">{{ site_contact_email }}</a>{% endif %}. Przysługuje Ci też skarga do Prezesa Urzędu Ochrony Danych Osobowych (ul. Stawki 2, 00‑193 Warszawa).</p>
+
+<h2>7. Pliki cookies i pamięć przeglądarki</h2>
+<p>Scriptura używa wyłącznie mechanizmów niezbędnych do działania serwisu — dlatego nie pyta o zgodę (wyjątek dla mechanizmów niezbędnych, art. 399 Prawa komunikacji elektronicznej):</p>
+<ul>
+  <li><code>sessionid</code> — utrzymanie zalogowania (tylko po zalogowaniu);</li>
+  <li><code>csrftoken</code> — ochrona formularzy przed podszyciem się pod Ciebie;</li>
+  <li>pamięć przeglądarki (<code>localStorage</code>) — Twoje ustawienia, np. widoku interlinii; nie opuszcza Twojego urządzenia.</li>
+</ul>
+<p>Statystyki Umami działają bez ciasteczek. Serwis nie używa ciasteczek reklamowych ani narzędzi śledzących firm trzecich. Ciasteczka możesz usunąć lub zablokować w przeglądarce; bez <code>sessionid</code> i <code>csrftoken</code> nie zadziała logowanie i formularze.</p>
+
+<h2>8. Zmiany</h2>
+<p>O istotnych zmianach tej polityki informujemy na tej stronie, z nową datą obowiązywania. Zasady korzystania z serwisu: <a href="{% url 'pages:terms' %}">Regulamin</a>.</p>
+{% endblock %}

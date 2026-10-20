@@ -10,6 +10,8 @@ PAGES = [
     "pages:corpus",
     "pages:for_authors",
     "pages:author",
+    "pages:privacy",
+    "pages:terms",
 ]
 
 
@@ -184,3 +186,32 @@ def test_for_authors_explains_closed_materials(client, db):
     assert "Materiały płatne i zamknięte" in body
     assert "nie da się ich pobrać ani przeczytać w całości" in body
     assert "art. 29 ustawy o prawie autorskim" in body
+
+
+@pytest.mark.django_db
+def test_legal_pages_name_operator_and_processors(client, settings):
+    # dane administratora tylko z ustawień (.env serwera), nie z repozytorium
+    settings.SITE_OPERATOR_NAME = "Jan Testowy"
+    settings.SITE_OPERATOR_ADDRESS = "ul. Próbna 1, 00-001 Miasto"
+    settings.SITE_CONTACT_EMAIL = "kontakt@example.org"
+    privacy = client.get(reverse("pages:privacy")).content.decode()
+    assert "Jan Testowy" in privacy and "ul. Próbna 1" in privacy
+    assert "kontakt@example.org" in privacy
+    for processor in ("Ollama", "Cloudflare", "Mikrus", "OpenStreetMap"):
+        assert processor in privacy
+    assert "sessionid" in privacy and "csrftoken" in privacy
+    terms = client.get(reverse("pages:terms")).content.decode()
+    assert "Jan Testowy" in terms and "sztuczna inteligencja" in terms
+    footer = client.get(reverse("pages:about")).content.decode()
+    assert reverse("pages:terms") in footer and reverse("pages:privacy") in footer
+
+
+@pytest.mark.django_db
+def test_chat_page_has_ai_notice_and_legal_links(client):
+    body = client.get(reverse("rag:index")).content.decode()
+    assert "Odpowiedzi generuje model językowy (AI)" in body
+    assert reverse("pages:privacy") in body and reverse("pages:terms") in body
+    assert (
+        "cdnjs.cloudflare.com"
+        not in client.get(reverse("corpus:index")).content.decode()
+    )

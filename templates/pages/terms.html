@@ -1,0 +1,71 @@
+{% extends "site.html" %}
+{% block title %}Regulamin — Scriptura{% endblock %}
+{% block description %}Zasady korzystania ze Scriptury: usługi, konto, materiały własne, charakter odpowiedzi generowanych przez AI, prawa autorskie, reklamacje.{% endblock %}
+{% block content %}
+<div class="eyebrow">REGULAMIN</div>
+<h1>Regulamin <span>serwisu</span></h1>
+<p class="lead">Zasady korzystania ze Scriptury — bezpłatnego, niekomercyjnego asystenta do studium Biblii (regulamin świadczenia usług drogą elektroniczną w rozumieniu ustawy z 18 lipca 2002 r.).</p>
+<p class="small muted">Obowiązuje od {{ legal_version }}.</p>
+
+<h2>§ 1. Usługodawca i pojęcia</h2>
+<ol>
+  <li>Usługodawcą jest {% if site_operator_name %}<strong>{{ site_operator_name }}</strong>{% if site_operator_address %}, {{ site_operator_address }}{% endif %}{% else %}autor serwisu (dane na stronie <a href="{% url 'pages:author' %}">Autor i kontakt</a>){% endif %}{% if site_contact_email %}, e‑mail: <a href="mailto:{{ site_contact_email }}">{{ site_contact_email }}</a>{% endif %}.</li>
+  <li><strong>Serwis</strong> — Scriptura pod adresem {{ site_host }}; <strong>Użytkownik</strong> — każda osoba korzystająca z Serwisu; <strong>Konto</strong> — indywidualny dostęp po zalogowaniu; <strong>Materiały własne</strong> — pliki wgrane przez Użytkownika na swoje Konto.</li>
+</ol>
+
+<h2>§ 2. Usługi</h2>
+<ol>
+  <li>Serwis udostępnia bezpłatnie: asystenta odpowiadającego na pytania na podstawie źródeł z korpusu, przeglądanie tekstu Biblii (widok równoległy, interlinia, słownik, konkordancja), mapę miejsc biblijnych, a po zalogowaniu — historię rozmów i Materiały własne.</li>
+  <li>Serwis jest prototypem badawczym rozwijanym przez jedną osobę. Usługodawca dokłada starań, by działał poprawnie, ale nie gwarantuje ciągłej dostępności ani kompletności korpusu i może zmieniać zakres funkcji.</li>
+  <li>Umowa o korzystanie z Serwisu bez Konta zawierana jest z chwilą rozpoczęcia korzystania i kończy się z jego zakończeniem; umowa o prowadzenie Konta — z chwilą założenia Konta, na czas nieokreślony.</li>
+</ol>
+
+<h2>§ 3. Wymagania techniczne i zasady korzystania</h2>
+<ol>
+  <li>Do korzystania potrzebne są: dostęp do internetu, aktualna przeglądarka z włączonym JavaScriptem oraz — do logowania — obsługa niezbędnych plików cookies (opis w <a href="{% url 'pages:privacy' %}">Polityce prywatności</a>).</li>
+  <li>Obowiązują limity pytań: {{ rate_anon }} na godzinę bez logowania i {{ rate_user }} na godzinę z Konta.</li>
+  <li>Zabronione jest: dostarczanie treści bezprawnych, obchodzenie limitów i zabezpieczeń, masowe lub automatyczne pobieranie treści Serwisu oraz próby odtworzenia pełnych tekstów źródeł z odpowiedzi asystenta.</li>
+  <li>Zgodnie z zasadą ograniczania danych nie należy wpisywać w pytaniach danych osobowych — swoich ani cudzych.</li>
+</ol>
+
+<h2>§ 4. Odpowiedzi generowane przez AI</h2>
+<ol>
+  <li>Odpowiedzi asystenta tworzy <strong>model językowy (sztuczna inteligencja)</strong> na podstawie fragmentów źródeł z korpusu Serwisu; źródła są wskazane przy odpowiedzi.</li>
+  <li>Odpowiedzi mogą zawierać błędy, nieścisłości lub uproszczenia. Mają charakter pomocniczy: nie zastępują lektury źródeł, studium ani porady duszpasterskiej, prawnej czy innej specjalistycznej. Cytaty i odwołania należy sprawdzać w źródłach, do których prowadzą przypisy.</li>
+  <li>Polskie glosy interlinii, polskie odpowiedniki haseł słownika i nazwy na mapie są przekładem roboczym Serwisu i są tak oznaczone.</li>
+</ol>
+
+<h2>§ 5. Konto</h2>
+<ol>
+  <li>Konto zakłada Usługodawca na prośbę zainteresowanej osoby. Użytkownik chroni swoje hasło i nie udostępnia Konta innym.</li>
+  <li>Użytkownik może w każdej chwili usuwać rozmowy z historii oraz zażądać usunięcia Konta wiadomością e‑mail; Konto zostaje usunięte razem z historią i Materiałami własnymi.</li>
+  <li>Usługodawca może zablokować lub usunąć Konto w razie rażącego naruszenia Regulaminu, po wcześniejszej informacji, chyba że naruszenie wymaga natychmiastowej reakcji.</li>
+</ol>
+
+<h2>§ 6. Materiały własne</h2>
+<ol>
+  <li>Użytkownik może wgrać do {{ limits.docs }} plików (PDF, TXT, Markdown) po {{ limits.mb }} MB. Wgrywając plik, oświadcza, że ma prawo korzystać z niego w ten sposób, i ponosi za to odpowiedzialność.</li>
+  <li>Materiały własne są widoczne i wykorzystywane w odpowiedziach <strong>tylko dla ich właściciela</strong>. Przy odpowiedzi ich fragmenty trafiają do modelu językowego w chmurze (zob. Polityka prywatności, pkt 3).</li>
+  <li>Nie należy wgrywać materiałów zawierających cudze dane osobowe bez podstawy prawnej ani danych szczególnych kategorii.</li>
+  <li>Włączenie materiału do wspólnego korpusu wymaga osobnego oświadczenia (przycisk „Udostępnij”) i jest odwołalne w każdej chwili (przycisk „Wycofaj zgodę”). Zasady: <a href="{% url 'pages:for_authors' %}">Dla autorów</a>.</li>
+</ol>
+
+<h2>§ 7. Prawa autorskie</h2>
+<ol>
+  <li>Teksty w korpusie są włączone na podstawie wolnych licencji, domeny publicznej albo zgody autorów lub wydawców; licencja jest podana przy każdej pozycji na stronie <a href="{% url 'pages:corpus' %}">Korpus</a>.</li>
+  <li>Serwis nie udostępnia plików ani pełnych tekstów źródeł — pokazuje krótkie fragmenty z podaniem autora i odnośnikiem do źródła. Korzystanie z treści poza Serwisem podlega licencjom i prawom ich autorów.</li>
+</ol>
+
+<h2>§ 8. Reklamacje</h2>
+<ol>
+  <li>Reklamacje i zgłoszenia (np. błędna odpowiedź, tekst włączony bez zgody, problem z Kontem) przyjmujemy{% if site_contact_email %} na adres <a href="mailto:{{ site_contact_email }}">{{ site_contact_email }}</a>{% else %} drogą e‑mailową{% endif %}. Warto opisać problem i podać treść pytania.</li>
+  <li>Odpowiedź wysyłamy w ciągu 14 dni. Zgłoszenie tekstu włączonego bez zgody skutkuje natychmiastowym wyłączeniem pozycji.</li>
+</ol>
+
+<h2>§ 9. Postanowienia końcowe</h2>
+<ol>
+  <li>Zasady przetwarzania danych osobowych i informację o plikach cookies zawiera <a href="{% url 'pages:privacy' %}">Polityka prywatności</a>.</li>
+  <li>Usługodawca może zmienić Regulamin z ważnych przyczyn (np. zmiana przepisów lub zakresu usług); zmiana obowiązuje od daty podanej na tej stronie, a Użytkownicy z Kontem zostaną o niej poinformowani. Kto nie akceptuje zmian, może usunąć Konto.</li>
+  <li>W sprawach nieuregulowanych stosuje się prawo polskie; Regulamin nie ogranicza uprawnień konsumenta wynikających z przepisów bezwzględnie obowiązujących.</li>
+</ol>
+{% endblock %}

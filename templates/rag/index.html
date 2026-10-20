@@ -66,6 +66,7 @@
       <p class="aside-sub">Źródła wybranej odpowiedzi. Kliknij przypis lub „Źródła tej odpowiedzi” przy wiadomości.</p>
       <div id="sources"><div class="empty"><h3>Każda lektura ma swój margines</h3><p>Zadaj pytanie. Tutaj zbierzesz fragmenty literatury, teksty źródłowe i wersety towarzyszące odpowiedzi.</p></div></div>
       <div class="source-note"><strong>Podaj siglum w pytaniu</strong><p>np. „Mk 16,9-20” — wersety trafią do kontekstu, a literatura zostanie zawężona do tego miejsca.</p></div>
+      <p class="legal-note">Odpowiedzi generuje model językowy (AI) i mogą zawierać błędy. Nie wpisuj w pytaniach danych osobowych. <a href="{% url 'pages:terms' %}">Regulamin</a> · <a href="{% url 'pages:privacy' %}">Prywatność i cookies</a></p>
       {% if not user.is_authenticated and not demo_token_required %}<p class="guest-note">{% if "scientific" in allowed_modes %}Dwa sposoby odpowiedzi, także bez konta.{% else %}Zacznij lekturę bez konta.{% endif %} Goście korzystają wyłącznie z publicznych źródeł.</p>{% endif %}
     </aside>
 
@@ -112,7 +113,7 @@
           </details>
         </div>
       </div>
-      <div class="composer-footer"><span id="status" role="status">Odpowiedzi wyłącznie ze źródeł w korpusie.</span><span class="shortcut">Ctrl / ⌘ + Enter <span aria-hidden="true">↵</span></span></div>
+      <div class="composer-footer"><span id="status" role="status">Odpowiedzi tworzy AI, wyłącznie ze źródeł w korpusie — sprawdzaj przypisy.</span><span class="shortcut">Ctrl / ⌘ + Enter <span aria-hidden="true">↵</span></span></div>
     </form>
   </main>
 </div>
@@ -419,7 +420,7 @@ async function submit() {
   } finally {
     busy = false; $("ask").disabled = false; $("clear").disabled = false;
     $("ask-label").textContent = "Zapytaj";
-    $("status").textContent = "Odpowiedzi wyłącznie ze źródeł w korpusie.";
+    $("status").textContent = "Odpowiedzi tworzy AI, wyłącznie ze źródeł w korpusie — sprawdzaj przypisy.";
     $("q").focus();
   }
 }

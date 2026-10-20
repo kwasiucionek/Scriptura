@@ -10,4 +10,6 @@ urlpatterns = [
     path("korpus/", views.corpus, name="corpus"),
     path("dla-autorow/", views.for_authors, name="for_authors"),
     path("autor/", views.author, name="author"),
+    path("prywatnosc/", views.privacy, name="privacy"),
+    path("regulamin/", views.terms, name="terms"),
 ]

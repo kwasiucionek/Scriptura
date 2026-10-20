@@ -18,6 +18,9 @@ from patristics.models import PatPassage, PatRef, PatWork
 from places.models import Place, PlaceLocation, PlaceRef
 from rag.access import access_for_user, document_access_q
 
+# data wejścia w życie polityki prywatności i regulaminu (zmiana treści = nowa data)
+LEGAL_VERSION = "20 października 2026"
+
 
 def _church_form(d: Document) -> str:
     """Postać dokumentu Kościoła w korpusie — do kolumny „Tekst” na stronie Korpus."""
@@ -176,3 +179,24 @@ def for_authors(request: HttpRequest) -> HttpResponse:
 
 def author(request: HttpRequest) -> HttpResponse:
     return render(request, "pages/author.html", {"active": "author"})
+
+
+def _legal_context() -> dict:
+    """Wspólne dane polityki prywatności i regulaminu: wersja, limity pytań, model."""
+    return {
+        "legal_version": LEGAL_VERSION,
+        "rate_anon": settings.RATE_LIMIT_ANON,
+        "rate_user": settings.RATE_LIMIT_USER,
+        "chat_model": settings.OLLAMA_CHAT_MODEL,
+        "limits": {"docs": settings.PERSONAL_MAX_DOCS, "mb": settings.PERSONAL_MAX_MB},
+    }
+
+
+def privacy(request: HttpRequest) -> HttpResponse:
+    return render(
+        request, "pages/privacy.html", {"active": "privacy", **_legal_context()}
+    )
+
+
+def terms(request: HttpRequest) -> HttpResponse:
+    return render(request, "pages/terms.html", {"active": "terms", **_legal_context()})

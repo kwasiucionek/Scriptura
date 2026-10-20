@@ -11,6 +11,6 @@
   <input type="hidden" name="next" value="{{ next|default:'/' }}">
   {% if form.errors %}<div class="err">Nieprawidłowy login lub hasło.</div>{% endif %}
   <button>Zaloguj</button>
-  <p class="muted small" style="margin:14px 0 0">Konta zakłada autor projektu — <a href="{% url 'pages:author' %}">kontakt</a>.{% if allow_anonymous %} <a href="{% url 'rag:index' %}">Wróć bez logowania</a>.{% endif %}</p>
+  <p class="muted small" style="margin:14px 0 0">Konta zakłada autor projektu — <a href="{% url 'pages:author' %}">kontakt</a>. Korzystanie z konta oznacza akceptację <a href="{% url 'pages:terms' %}">regulaminu</a>; dane: <a href="{% url 'pages:privacy' %}">polityka prywatności</a>.{% if allow_anonymous %} <a href="{% url 'rag:index' %}">Wróć bez logowania</a>.{% endif %}</p>
 </form>
 {% endblock %}

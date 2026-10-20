@@ -37,6 +37,8 @@ def site(request) -> dict:
         "site_commit": git_commit(),
         "site_github_url": settings.SITE_GITHUB_URL,
         "site_contact_email": settings.SITE_CONTACT_EMAIL,
+        "site_operator_name": settings.SITE_OPERATOR_NAME,
+        "site_operator_address": settings.SITE_OPERATOR_ADDRESS,
         "site_host": request.get_host(),
         "access_levels": access_for_user(user),
         "allow_anonymous": settings.ALLOW_ANONYMOUS,

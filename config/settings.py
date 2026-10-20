@@ -332,6 +332,9 @@ SITE_GITHUB_URL = env("SITE_GITHUB_URL", "https://github.com/kwasiucionek/Script
 SITE_CONTACT_EMAIL = env(
     "SITE_CONTACT_EMAIL", ""
 )  # pusty = bez adresu na stronie „Autor”
+# Administrator danych i usługodawca (polityka prywatności, regulamin) — tylko w .env serwera
+SITE_OPERATOR_NAME = env("SITE_OPERATOR_NAME", "")
+SITE_OPERATOR_ADDRESS = env("SITE_OPERATOR_ADDRESS", "")
 # Umami — statystyki odwiedzin bez ciasteczek; pusty UMAMI_WEBSITE_ID = skrypt niewstawiany (lokalnie, testy)
 UMAMI_SCRIPT_URL = env("UMAMI_SCRIPT_URL", "https://cloud.umami.is/script.js")
 UMAMI_WEBSITE_ID = env("UMAMI_WEBSITE_ID", "")

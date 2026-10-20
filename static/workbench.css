@@ -90,6 +90,8 @@
 .source-note { margin-top: auto; padding-top: 24px; color: var(--muted); font-size: 13px; }
 .source-note strong { color: var(--text); font-family: var(--serif); font-weight: 700; }
 .source-note p { margin: 8px 0 0; line-height: 1.75; }
+.legal-note { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.legal-note a { color: var(--accent); }
 .guest-note { margin: 24px 0 0; padding: 16px; border-radius: 8px; background: var(--gold-soft); border: 1px solid var(--gold); color: var(--accent); font-size: 13px; line-height: 1.75; font-family: var(--serif); }
 details.grp { margin: 12px 0 4px; }
 details.grp > summary { cursor: pointer; list-style: none; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 44px; padding-block: 10px; border-bottom: 1px solid var(--line); font: 700 14px/1.5 var(--serif); color: var(--text); }

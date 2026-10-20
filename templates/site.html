@@ -24,6 +24,8 @@
     <span>Scriptura · prototyp badawczy · <a href="{% url 'pages:about' %}">o projekcie</a></span>
     <a href="{% url 'pages:for_authors' %}">zasady źródeł i zgody autorów</a>
     <a href="{% url 'pages:author' %}">kontakt</a>
+    <a href="{% url 'pages:terms' %}">regulamin</a>
+    <a href="{% url 'pages:privacy' %}">prywatność i cookies</a>
     {% if site_github_url %}<a href="{{ site_github_url }}" rel="noopener" target="_blank">kod na GitHubie</a>{% endif %}
     <span class="fill"></span>
     <span title="wersja wdrożenia">{% if site_commit %}<code>{{ site_commit }}</code>{% endif %} {% now "Y" %}</span>

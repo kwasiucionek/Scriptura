@@ -125,6 +125,31 @@ def test_select_works_splits_treatise_and_keeps_other_works():
     assert PatWork.objects.filter(ccel_id="npnf206").count() == 1
 
 
+def test_select_works_deeper_level_and_author_from_parent():
+    # list Cypriana leży dwa poziomy niżej: „Cyprian.” / „The Epistles of Cyprian.” / list
+    from patristics.thml import PassageDraft, WorkDraft
+
+    cyprian = WorkDraft(
+        title="Cyprian.",
+        author="",
+        passages=[
+            PassageDraft(section="The Epistles of Cyprian. / To Donatus.", page="275", text="a"),
+            PassageDraft(section="The Epistles of Cyprian. / To Cornelius, Concerning Fortunatus. / 14", page="344", text="b"),
+            PassageDraft(section="The Treatises of Cyprian. / On the Unity of the Church. / 4", page="422", text="c"),
+        ],
+    )  # fmt: skip
+    works = importers.select_works(
+        [cyprian],
+        r"^On the Unity of the Church\.$|^To Cornelius, Concerning Fortunatus",
+    )
+    assert [(w.title, [p.section for p in w.passages]) for w in works] == [
+        ("To Cornelius, Concerning Fortunatus", ["14"]),
+        ("On the Unity of the Church", ["4"]),
+    ]
+    importers.save_volume("anf05", works, replace_volume=False)
+    assert set(PatWork.objects.values_list("author", flat=True)) == {"Cyprian"}
+
+
 def test_doctrinal_questions_trigger_patristics():
     assert wants_patristics("Czy Jezus miał rodzeństwo? Kim byli bracia Pańscy?")
     assert wants_patristics("Na czym opiera się prymat Piotra?")

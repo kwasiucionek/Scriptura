@@ -89,24 +89,35 @@ def _fold(text: str) -> str:
 
 def select_works(works: list[WorkDraft], pattern: str) -> list[WorkDraft]:
     """Wybrane dzieła tomu (regex, bez względu na wielkość liter): całe dzieło, gdy pasuje jego
-    tytuł; inaczej pasaże, których pierwszy poziom sekcji pasuje — jako osobne dzieło o tytule tej
-    sekcji (np. traktat „The Perpetual Virginity of Blessed Mary.” z działu „Treatises.” w NPNF2 6)."""
+    tytuł; inaczej pasaże, w których ścieżce sekcji pasuje któryś poziom — jako osobne dzieło
+    o tytule tego poziomu (np. traktat „The Perpetual Virginity of Blessed Mary.” z działu
+    „Treatises.” w NPNF2 6, list Cypriana z „The Epistles of Cyprian.”). Autor nowego dzieła
+    zgadywany jest z tytułu dzieła nadrzędnego („Cyprian.”, „The Letters and Sermons of Leo…”)."""
     rx = re.compile(pattern, re.IGNORECASE)
     out: list[WorkDraft] = []
     for w in works:
         if rx.search(w.title):
             out.append(w)
             continue
-        groups: dict[str, list[PassageDraft]] = {}
+        groups: dict[tuple[str, ...], list[PassageDraft]] = {}
         for p in w.passages:
-            top, _, rest = p.section.partition(" / ")
-            if rx.search(top):
-                groups.setdefault(top, []).append(
-                    PassageDraft(section=rest, page=p.page, text=p.text, refs=p.refs)
+            levels = p.section.split(" / ")
+            i = next((i for i, lv in enumerate(levels) if rx.search(lv)), None)
+            if i is None:
+                continue
+            groups.setdefault(tuple(levels[: i + 1]), []).append(
+                PassageDraft(
+                    section=" / ".join(levels[i + 1 :]),
+                    page=p.page,
+                    text=p.text,
+                    refs=p.refs,
                 )
+            )
         out += [
-            WorkDraft(title=top.rstrip(". "), author=w.author, passages=ps)
-            for top, ps in groups.items()
+            WorkDraft(
+                title=key[-1].rstrip(". "), author=w.author or w.title, passages=ps
+            )
+            for key, ps in groups.items()
         ]
     return out
 

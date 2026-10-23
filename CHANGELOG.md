@@ -26,7 +26,13 @@
   Hieronim, „O wieczystym dziewictwie Maryi. Przeciw Helwidiuszowi”, NPNF2 6) bez usuwania
   pozostałych dzieł; `index_patristics --missing` — przyrost bez przeliczania całego indeksu.
   Wyzwalacze bazy Ojców obejmują też kwestie sporne: bracia Pańscy / rodzeństwo Jezusa,
-  dziewictwo, prymat, następca Piotra, biskup Rzymu, Helwidiusz.
+  dziewictwo, prymat, następca Piotra, biskup Rzymu, Helwidiusz. `--only` wybiera dzieło na
+  dowolnym poziomie tomu (list, kazanie, traktat), autor z dzieła nadrzędnego.
+- Ojcowie o braciach Pańskich i prymacie (ANF/NPNF): Orygenes, Komentarz do Mt; Protoewangelia
+  Jakuba; Augustyn, Traktaty o J 10 i 28 oraz kazanie o Mt 14,25 (Piotr i skała); Tertulian,
+  „O ciele Chrystusa” i „O wstydliwości”; Cyprian, „O jedności Kościoła” i list do Korneliusza
+  (katedra Piotra); Hieronim, listy do Damazego; Leon Wielki, kazania na rocznicę wyboru i na
+  uroczystość Piotra i Pawła; Sobór Chalcedoński (akta, Tomus Leona, definicja, kanony z 28.).
 
 ## 2026-10-20 — polityka prywatności, regulamin, informacja o AI
 

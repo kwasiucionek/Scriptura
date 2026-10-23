@@ -2,6 +2,14 @@
 
 ## 2026-10-23 — ujęcie źródła i zasada przy kwestiach doktrynalnych
 
+- Kanał materiałów własnych: gdy żaden materiał zalogowanego nie trafił do kontekstu (przegrał
+  z dziesiątkami tekstów korpusu na ten sam temat), osobne wyszukiwanie tylko w nich
+  (`personal_only`, z rerankerem) dokłada najtrafniejszy fragment na miejsce ostatniego.
+  Nowa zmienna `.env` (opcjonalna): `RAG_OWN_PASSAGES=1` (0 = wyłączone). Wspólne
+  `_search_channel` / `_replace_last` dla kanałów (własne, dokumenty Kościoła).
+- BM25: „Maryja” rozszerzane o „Maria/Marii” (`expand_name_variants`; tylko w tę stronę —
+  „Maria” bywa Magdaleną).
+
 - Moje materiały obcojęzyczne: opcja „przekład roboczy na polski do wyszukiwania” przy wgraniu
   (domyślnie zaznaczona; `Document.translate_pl`, migracja 0012). Przekład w tle przed indeksem
   (`translate_personal`, 2 równoległe żądania), potem wektory i BM25 z polskiego tekstu — pytanie

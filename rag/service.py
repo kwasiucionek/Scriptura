@@ -24,7 +24,7 @@ from corpus.models import Lexeme, Verse
 from corpus.services import text as corpus_svc
 from corpus.sigla import extract, format_ref, ordinal_range
 from library import llm
-from library.models import Perspective
+from library.models import Document, Perspective
 from library.search import (
     ChunkHit,
     attach_perspectives,
@@ -105,6 +105,68 @@ def wants_church(question: str) -> bool:
     return any(t in q for t in DOCTRINAL_TRIGGERS)
 
 
+def _search_channel(question: str, **kwargs) -> list[ChunkHit]:
+    """Dodatkowe wyszukiwanie kanału (dokumenty Kościoła, materiały własne): błąd nie zatrzymuje
+    odpowiedzi, a czasy głównego wyszukiwania (LAST_TIMINGS) zostają nienadpisane."""
+    from library.search import LAST_TIMINGS
+
+    saved, t0 = dict(LAST_TIMINGS), time.monotonic()
+    try:
+        return retrieve(question, **kwargs)
+    except Exception:  # noqa: BLE001 — kanał pomocniczy
+        log.exception(
+            "Kanał wyszukiwania %s nie zadziałał", kwargs.get("doc_types") or "own"
+        )
+        return []
+    finally:
+        LAST_TIMINGS.clear()
+        LAST_TIMINGS.update(saved)
+        key = "church_ms" if kwargs.get("doc_types") else "own_ms"
+        LAST_TIMINGS[key] = int((time.monotonic() - t0) * 1000)
+
+
+def _replace_last(
+    chunks: list[ChunkHit], found: list[ChunkHit], n: int
+) -> list[ChunkHit]:
+    """Dokłada `found` (bez fragmentów już obecnych) na miejsce ostatnich; limit RAG_TOP_K."""
+    # tożsamość fragmentu = (dokument, kolejność); chunk_id z indeksu bywa pusty (0)
+    have = {(h.document_id, h.order) for h in chunks}
+    extra = [h for h in found if (h.document_id, h.order) not in have][:n]
+    if not extra:
+        return chunks
+    keep = max(0, settings.RAG_TOP_K - len(extra))
+    return chunks[:keep] + extra
+
+
+def own_for_question(
+    question: str,
+    chunks: list[ChunkHit],
+    *,
+    registers: list[str] | None,
+    user_id: int | None,
+    authors: list[str] | None = None,
+    personal_only: bool = False,
+) -> list[ChunkHit]:
+    """Materiały własne zalogowanego: gdy żaden nie trafił do kontekstu (przegrały z korpusem),
+    najtrafniejszy ich fragment zastępuje ostatni. Reranker odrzuca materiały nie na temat."""
+    n = settings.RAG_OWN_PASSAGES
+    if n <= 0 or not user_id or personal_only or authors:
+        return chunks
+    if any(h.access == "personal" for h in chunks):
+        return chunks
+    if not Document.objects.filter(owner_id=user_id, access="personal").exists():
+        return chunks
+    found = _search_channel(
+        question,
+        k=n,
+        access=[],
+        registers=registers,
+        user_id=user_id,
+        personal_only=True,
+    )
+    return _replace_last(chunks, [h for h in found if h.access == "personal"], n)
+
+
 def church_for_question(
     question: str,
     chunks: list[ChunkHit],
@@ -123,37 +185,15 @@ def church_for_question(
         return chunks
     if any(h.doc_type == "church" for h in chunks):
         return chunks
-    from library.search import LAST_TIMINGS
-
-    saved, t0 = dict(LAST_TIMINGS), time.monotonic()
-    try:
-        found = retrieve(
-            question,
-            k=n,
-            access=access,
-            registers=registers,
-            user_id=user_id,
-            doc_types=["church"],
-        )
-    except Exception:  # noqa: BLE001 — kanał pomocniczy nie zatrzymuje odpowiedzi
-        log.exception("Kanał dokumentów Kościoła nie zadziałał")
-        found = []
-    finally:
-        # drugie wyszukiwanie nie nadpisuje czasów głównego
-        LAST_TIMINGS.clear()
-        LAST_TIMINGS.update(saved)
-        LAST_TIMINGS["church_ms"] = int((time.monotonic() - t0) * 1000)
-    # tożsamość fragmentu = (dokument, kolejność); chunk_id z indeksu bywa pusty (0)
-    have = {(h.document_id, h.order) for h in chunks}
-    extra = [
-        h
-        for h in found
-        if h.doc_type == "church" and (h.document_id, h.order) not in have
-    ][:n]
-    if not extra:
-        return chunks
-    keep = max(0, settings.RAG_TOP_K - len(extra))
-    return chunks[:keep] + extra
+    found = _search_channel(
+        question,
+        k=n,
+        access=access,
+        registers=registers,
+        user_id=user_id,
+        doc_types=["church"],
+    )
+    return _replace_last(chunks, [h for h in found if h.doc_type == "church"], n)
 
 
 @dataclass
@@ -894,6 +934,14 @@ def ask(
             )
         chunks = apply_register_preference(chunks, mode, settings.RAG_TOP_K + 4)
         chunks = diversify(chunks, settings.RAG_MAX_PER_DOC, settings.RAG_TOP_K)
+        chunks = own_for_question(
+            question,
+            chunks,
+            registers=registers,
+            user_id=user_id,
+            authors=authors,
+            personal_only=personal_only,
+        )
         chunks = church_for_question(
             question,
             chunks,

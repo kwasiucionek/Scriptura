@@ -617,3 +617,61 @@ def test_retrieve_filters_doc_types_in_db_backend(settings):
     assert {"terms": {"doc_type": ["church"]}} in _filters(
         ["open"], None, None, doc_types=["church"]
     )
+
+
+def test_own_channel_adds_personal_material(settings, monkeypatch):
+    # własny materiał przegrał z korpusem — najtrafniejszy jego fragment wchodzi na ostatnie miejsce
+    from django.contrib.auth.models import User
+
+    settings.RAG_TOP_K, settings.RAG_OWN_PASSAGES = 3, 1
+    user = User.objects.create_user("wlasciciel")
+    doc = Document.objects.create(title="Maria", access="personal", owner=user)
+    own = _hit(0, doc_id=doc.id)
+    own.access = "personal"
+    calls = []
+    monkeypatch.setattr(service, "retrieve", lambda q, **kw: calls.append(kw) or [own])
+    chunks = [_hit(101), _hit(102), _hit(103)]
+    kw = {"registers": None, "user_id": user.id}
+    out = service.own_for_question("Kim jest Maryja?", chunks, **kw)
+    assert [h.document_id for h in out] == [101, 102, doc.id]
+    assert calls[0]["personal_only"] is True and calls[0]["user_id"] == user.id
+    # bez zalogowania, przy „tylko moje materiały”, gdy własny już jest — bez zmian
+    assert (
+        service.own_for_question(
+            "Kim jest Maryja?", chunks, registers=None, user_id=None
+        )
+        == chunks
+    )
+    assert (
+        service.own_for_question("Kim jest Maryja?", chunks, personal_only=True, **kw)
+        == chunks
+    )
+    assert (
+        service.own_for_question("Kim jest Maryja?", chunks[:2] + [own], **kw)[-1]
+        is own
+    )
+    other = User.objects.create_user("bez-materialow")
+    assert (
+        service.own_for_question(
+            "Kim jest Maryja?", chunks, registers=None, user_id=other.id
+        )
+        == chunks
+    )
+
+
+def test_bm25_expands_maryja_to_maria_only_one_way():
+    from library.search import bm25_body, expand_name_variants
+
+    assert (
+        expand_name_variants("Kim jest Maryja matka Jezusa")
+        == "Kim jest Maryja matka Jezusa Maria Marii"
+    )
+    assert (
+        expand_name_variants("Maria Magdalena przy grobie")
+        == "Maria Magdalena przy grobie"
+    )
+    body = bm25_body("Kim była Maryja?", 10, [])
+    assert (
+        "Maria"
+        in body["query"]["bool"]["must"][0]["bool"]["should"][0]["multi_match"]["query"]
+    )

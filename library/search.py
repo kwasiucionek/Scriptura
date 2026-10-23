@@ -518,6 +518,17 @@ def _filters(
     return f
 
 
+# Maryja (polszczyzna kościelna) i Maria (przekłady, literatura naukowa) to ta sama osoba, ale
+# BM25 ich nie łączy — przekład roboczy hasła „Maria” nie odpowiadał na „Kim jest Maryja”.
+# Tylko w tę stronę: „Maria” bywa Magdaleną albo siostrą Marty, „Maryja” — nie.
+NAME_VARIANTS = ((re.compile(r"\bmaryj\w*", re.IGNORECASE), "Maria Marii"),)
+
+
+def expand_name_variants(query: str) -> str:
+    extras = [v for rx, v in NAME_VARIANTS if rx.search(query)]
+    return " ".join([query, *extras])
+
+
 def bm25_body(query: str, k: int, filters: list[dict], query_en: str = "") -> dict:
     """BM25 po tekście polskim (+ boost za terminy oryginalne z pytania — term na keyword,
     niezależny od tego, jak analizator potraktuje politoniczną grekę czy nikud) i, gdy podano
@@ -528,7 +539,7 @@ def bm25_body(query: str, k: int, filters: list[dict], query_en: str = "") -> di
     text_clauses = [
         {
             "multi_match": {
-                "query": query,
+                "query": expand_name_variants(query),
                 "fields": ["text^2", "text_fold", "section", "title", "authors.text"],
                 "operator": "or",
             }

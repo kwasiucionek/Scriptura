@@ -13,7 +13,7 @@ from pathlib import Path
 from django.db import transaction
 
 from patristics.models import PatPassage, PatRef, PatWork
-from patristics.thml import WorkDraft
+from patristics.thml import PassageDraft, WorkDraft
 
 CCEL_XML = "https://www.ccel.org/ccel/schaff/{ccel_id}.xml"
 
@@ -87,12 +87,40 @@ def _fold(text: str) -> str:
     return "".join(c for c in t if not unicodedata.combining(c))
 
 
+def select_works(works: list[WorkDraft], pattern: str) -> list[WorkDraft]:
+    """Wybrane dzieła tomu (regex, bez względu na wielkość liter): całe dzieło, gdy pasuje jego
+    tytuł; inaczej pasaże, których pierwszy poziom sekcji pasuje — jako osobne dzieło o tytule tej
+    sekcji (np. traktat „The Perpetual Virginity of Blessed Mary.” z działu „Treatises.” w NPNF2 6)."""
+    rx = re.compile(pattern, re.IGNORECASE)
+    out: list[WorkDraft] = []
+    for w in works:
+        if rx.search(w.title):
+            out.append(w)
+            continue
+        groups: dict[str, list[PassageDraft]] = {}
+        for p in w.passages:
+            top, _, rest = p.section.partition(" / ")
+            if rx.search(top):
+                groups.setdefault(top, []).append(
+                    PassageDraft(section=rest, page=p.page, text=p.text, refs=p.refs)
+                )
+        out += [
+            WorkDraft(title=top.rstrip(". "), author=w.author, passages=ps)
+            for top, ps in groups.items()
+        ]
+    return out
+
+
 @transaction.atomic
-def save_volume(ccel_id: str, works: list[WorkDraft]) -> tuple[int, int]:
+def save_volume(
+    ccel_id: str, works: list[WorkDraft], replace_volume: bool = True
+) -> tuple[int, int]:
+    """Zapis dzieł tomu. replace_volume=False (import wybranych dzieł) zostawia pozostałe
+    dzieła tomu; zapisywane dzieła i tak są zastępowane w całości."""
     series, volume, candidates = VOLUMES.get(ccel_id, ("CCEL", 0, []))
-    PatWork.objects.filter(
-        ccel_id=ccel_id
-    ).delete()  # reimport tomu = od zera (stare podziały znikają)
+    if replace_volume:
+        # reimport tomu = od zera (stare podziały znikają)
+        PatWork.objects.filter(ccel_id=ccel_id).delete()
     author = ""
     n_works = n_pass = 0
     for w in works:

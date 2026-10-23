@@ -22,6 +22,11 @@
   wybrane artykuły OA (m.in. Grzybek „Czy Chrystus miał braci?”, Slawik o Mt 1,25a, Jankowski
   o Łk 2,7, Kędziora o Mt 13,53–58, Hieronim i Orygenes o Józefie, Luter o Maryi, prymat
   u Pawła, w Mt 16,18–19 i w aktach soborów; dwa artykuły prawosławne z „Elpis”).
+- Ojcowie: `import_patristics <tom> --only REGEX` — wybrane dzieło albo traktat z tomu (np.
+  Hieronim, „O wieczystym dziewictwie Maryi. Przeciw Helwidiuszowi”, NPNF2 6) bez usuwania
+  pozostałych dzieł; `index_patristics --missing` — przyrost bez przeliczania całego indeksu.
+  Wyzwalacze bazy Ojców obejmują też kwestie sporne: bracia Pańscy / rodzeństwo Jezusa,
+  dziewictwo, prymat, następca Piotra, biskup Rzymu, Helwidiusz.
 
 ## 2026-10-20 — polityka prywatności, regulamin, informacja o AI
 

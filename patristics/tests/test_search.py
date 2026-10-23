@@ -47,3 +47,26 @@ def test_english_bm25_survives_empty_translation_and_embedding_failure(
     assert english == {"query": translation or "resurrection", "boost": 1.5}
     assert embedding.call_args.kwargs == {"is_query": True}
     assert embedding.call_args.args[0] == [translation or "resurrection"]
+
+
+@pytest.mark.django_db
+def test_index_all_skips_passages_already_indexed(monkeypatch):
+    # przyrost (--missing): pasaże obecne w indeksie nie są liczone ani wysyłane ponownie
+    work = PatWork.objects.create(
+        series="NPNF2", volume=6, ccel_id="npnf206", author="Jerome", title="T"
+    )
+    old, new = (
+        PatPassage.objects.create(work=work, order=i, text_en=t)
+        for i, t in enumerate(["old", "new"])
+    )
+    client = Mock()
+    client.indices.exists.return_value = True
+    monkeypatch.setattr("corpus.search.client.get_client", lambda: client)
+    bulk = Mock()
+    monkeypatch.setattr("opensearchpy.helpers.bulk", bulk)
+    embed = Mock(return_value=[[0.1]])
+    monkeypatch.setattr(search, "embed", embed)
+    assert search.index_all(skip={old.os_id}) == 1
+    (docs,) = [c.args[1] for c in bulk.call_args_list]
+    assert [d["_id"] for d in docs] == [new.os_id]
+    assert embed.call_args.args[0] == ["Jerome: new"]

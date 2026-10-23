@@ -75,17 +75,35 @@ def ensure_index(recreate: bool = False) -> str:
     return name
 
 
+def indexed_ids() -> set[str]:
+    """Id dokumentów (os_id) obecnych w indeksie Ojców."""
+    from opensearchpy import helpers
+
+    from corpus.search.client import get_client
+
+    name = ensure_index()
+    return {
+        hit["_id"]
+        for hit in helpers.scan(
+            get_client(), index=name, query={"_source": False}, size=1000
+        )
+    }
+
+
 def index_all(
     with_vectors: bool = True,
     cached: dict[str, list[float]] | None = None,
     batch: int = 256,
+    skip: set[str] | None = None,
 ) -> int:
+    """Indeksuje pasaże; `skip` — os_id już obecne w indeksie (przyrost bez liczenia embeddingów)."""
     from opensearchpy import helpers
 
     from corpus.search.client import get_client
 
     name = ensure_index()
     cached = cached or {}
+    skip = skip or set()
     qs = PatPassage.objects.select_related("work").order_by("work_id", "order")
     total = 0
     buf: list[PatPassage] = []
@@ -125,6 +143,8 @@ def index_all(
         buf.clear()
 
     for p in qs.iterator(chunk_size=batch):
+        if p.os_id in skip:
+            continue
         buf.append(p)
         if len(buf) >= batch:
             flush()

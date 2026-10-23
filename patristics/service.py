@@ -15,6 +15,11 @@ PAT_TRIGGERS = [
     "leon wielki", "hipolit", "cyprian", "laktancjusz", "egzegeza alegoryczna",
     "szkoła aleksandryjska", "szkoła antiocheńska", "list barnaby", "pasterz hermasa",
     "didache", "ojcowie apostolscy", "papiasz", "list do diogneta",
+    # kwestie sporne, w których świadectwo Ojców jest częścią odpowiedzi
+    "helwidiusz", "bracia pańscy", "braci pańskich", "bracia jezusa", "braci jezusa",
+    "rodzeństwo jezusa", "rodzeństwa jezusa", "dziewictw", "zawsze dziewic", "prymat",
+    "następca piotra", "następcy piotra", "następców piotra", "stolica piotrowa",
+    "biskup rzymu", "biskupa rzymu",
 ]  # fmt: skip
 
 

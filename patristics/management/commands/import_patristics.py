@@ -3,6 +3,7 @@
     python manage.py import_patristics anf01 anf02          # wybrane tomy
     python manage.py import_patristics --all                 # 37 tomów (~150 MB XML, kilkadziesiąt tys. pasaży)
     python manage.py import_patristics anf01 --from-file data/patristics/anf01.xml
+    python manage.py import_patristics npnf206 --only "Perpetual Virginity"   # wybrane dzieło tomu
 Cache XML w data/patristics/. Po imporcie: index_patristics --recreate (embeddingi!).
 """
 
@@ -27,6 +28,10 @@ class Command(BaseCommand):
             "--from-file", help="lokalny plik XML zamiast pobierania (jeden tom)"
         )
         parser.add_argument("--max-chars", type=int, default=1500)
+        parser.add_argument(
+            "--only",
+            help="regex tytułu dzieła albo traktatu w tomie; pozostałe dzieła tomu zostają bez zmian",
+        )
 
     def handle(self, *args, **o):
         cache = settings.DATA_DIR / "patristics"
@@ -42,11 +47,23 @@ class Command(BaseCommand):
                     else importers.fetch_volume(cid, cache)
                 )
                 works = parse_volume(data, max_chars=o["max_chars"])
-                nw, np_ = importers.save_volume(cid, works)
+                if o["only"]:
+                    works = importers.select_works(works, o["only"])
+                    if not works:
+                        self.stderr.write(
+                            f"{cid}: brak dzieł pasujących do {o['only']!r}"
+                        )
+                        continue
+                nw, np_ = importers.save_volume(
+                    cid, works, replace_volume=not o["only"]
+                )
             except Exception as exc:
                 self.stderr.write(f"{cid}: błąd — {exc}")
                 continue
             self.stdout.write(f"{cid}: {nw} dzieł, {np_} pasaży")
         self.stdout.write(
-            self.style.SUCCESS("gotowe — teraz: index_patristics --recreate")
+            self.style.SUCCESS(
+                "gotowe — teraz: translate_patristics, potem index_patristics --missing "
+                "(po imporcie całych tomów: --recreate)"
+            )
         )

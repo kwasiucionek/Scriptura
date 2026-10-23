@@ -82,3 +82,50 @@ def test_guess_author():
     )
     assert importers.guess_author("Fragments", cands, "Papias") == "Papias"
     assert importers.guess_author("Anything", ["Augustine"], "") == "Augustine"
+
+
+def test_select_works_splits_treatise_and_keeps_other_works():
+    # NPNF2 6: traktat Hieronima jest sekcją działu „Treatises.” — import tylko jego
+    from patristics.thml import PassageDraft, WorkDraft
+
+    treatises = WorkDraft(
+        title="Treatises.",
+        author="",
+        passages=[
+            PassageDraft(section="Against Jovinianus. / Book I", page="346", text="a"),
+            PassageDraft(section="The Perpetual Virginity of Blessed Mary. / 9", page="338", text="b", refs=[(1, 2)]),
+            PassageDraft(section="The Perpetual Virginity of Blessed Mary. / 10", page="339", text="c"),
+        ],
+    )  # fmt: skip
+    letters = WorkDraft(title="The Letters of St. Jerome.", author="", passages=[])
+    (w,) = importers.select_works([letters, treatises], "perpetual virginity")
+    assert w.title == "The Perpetual Virginity of Blessed Mary"
+    assert [p.section for p in w.passages] == ["9", "10"] and w.passages[0].refs == [
+        (1, 2)
+    ]
+    assert importers.select_works([letters, treatises], "letters") == [letters]
+
+    importers.save_volume("npnf206", [letters, treatises])
+    importers.save_volume("npnf206", [w], replace_volume=False)
+    titles = set(
+        PatWork.objects.filter(ccel_id="npnf206").values_list("title", flat=True)
+    )
+    assert titles == {
+        "The Letters of St. Jerome.",
+        "Treatises.",
+        "The Perpetual Virginity of Blessed Mary",
+    }
+    work = PatWork.objects.get(title="The Perpetual Virginity of Blessed Mary")
+    assert (
+        work.author == "Jerome"
+        and work.author_pl == "Hieronim"
+        and work.passages.count() == 2
+    )
+    importers.save_volume("npnf206", [w])  # import całego tomu nadal zastępuje tom
+    assert PatWork.objects.filter(ccel_id="npnf206").count() == 1
+
+
+def test_doctrinal_questions_trigger_patristics():
+    assert wants_patristics("Czy Jezus miał rodzeństwo? Kim byli bracia Pańscy?")
+    assert wants_patristics("Na czym opiera się prymat Piotra?")
+    assert wants_patristics("Co Helwidiusz twierdził o Maryi?")

@@ -407,6 +407,11 @@ def test_attach_perspectives_reads_documents():
     assert [h.perspective for h in hits] == ["catholic", ""]
 
 
+def test_system_prompt_forbids_latex_for_greek_and_hebrew():
+    system = service.build_messages("Co znaczy adelfos?", [], [])[0]["content"]
+    assert "nigdy w notacji LaTeX" in system and "ἀδελφός" in system
+
+
 def test_system_prompt_limits_verbatim_quotes():
     system = service.build_messages("Wypisz pełny tekst Dei Verbum", [], [])[0][
         "content"

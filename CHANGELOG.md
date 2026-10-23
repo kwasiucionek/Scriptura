@@ -2,6 +2,11 @@
 
 ## 2026-10-23 — ujęcie źródła i zasada przy kwestiach doktrynalnych
 
+- Moje materiały: język wykrywany z treści (`detect_document`) zamiast stałego „pl” — niemieckie
+  hasło WiBiLex było zapisane jako polskie.
+- Zasada 6: słowa greckie i hebrajskie alfabetem oryginalnym (Unicode), nigdy w notacji LaTeX
+  (model zaczął pisać `$\mu\acute{\eta}\tau\eta\rho$`).
+
 - Moje materiały: indeksowanie w tle (wątek po commicie) — wgranie dłuższego tekstu kończyło się
   błędem Cloudflare 524, bo żądanie czekało na wektory dłużej niż 100 s. Teraz żądanie wraca po
   odczycie i podziale tekstu, lista pokazuje „Indeksowanie w tle…” i odświeża się co 15 s (nie

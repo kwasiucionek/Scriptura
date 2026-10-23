@@ -296,6 +296,19 @@ class TestPersonalPersistence:
         assert doc.index_error == "" and doc.indexed_at is None
         assert Path(doc.source_path).read_bytes() == MD
 
+    def test_upload_detects_language_of_foreign_text(self, personal_owner):
+        de = (
+            "Maria, die Mutter Jesu, wird in den Evangelien mit ihrem Namen genannt. "
+            "Die Geschwister Jesu werden in der Kindheitsgeschichte nicht erwähnt, aber "
+            "nach dem Markusevangelium hatte Jesus vier Brüder und auch Schwestern, und "
+            "die Frage nach ihrer Herkunft ist in der Forschung umstritten.\n"
+        ).encode()
+        doc = ingest_personal(personal_owner, _upload_form(data=de, title="Maria"))
+        assert doc.language == "de"
+        assert (
+            ingest_personal(personal_owner, _upload_form(title="Inny")).language == "pl"
+        )
+
     def test_upload_saves_perspective_and_owner_can_change_it(self, personal_owner):
         doc = ingest_personal(personal_owner, _upload_form(perspective="critical"))
         assert doc.perspective == "critical"

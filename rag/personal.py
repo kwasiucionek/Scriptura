@@ -22,6 +22,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from library.ingest import build_chunks
+from library.langdetect import detect_document
 from library.models import (
     Author,
     Chunk,
@@ -250,7 +251,8 @@ def ingest_personal(user: User, form: UploadForm) -> Document:
                 source_path=str(dest),
                 content_hash=content_hash,
                 chunk_count=len(drafts),
-                language="pl",
+                # język z treści (hasło niemieckiego leksykonu to nie „pl”); brak pewności = pl
+                language=detect_document([d.text for d in drafts]) or "pl",
             )
             doc.authors.add(author)
             Chunk.objects.bulk_create(

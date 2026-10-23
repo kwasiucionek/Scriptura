@@ -60,6 +60,12 @@ class ChurchDocument:
     drop: str = ""  # regex wtrąceń wydawcy do usunięcia (np. numeracja Denzingera)
     source: str = "vatican.va"  # pole journal: vatican.va | Wikiźródła | CCEL
     original_language: str = "la"  # język oryginału przy pełnym przekładzie
+    parts: tuple[
+        str, ...
+    ] = ()  # tekst z kilku stron (rozdziały na Wikiźródłach), łączony
+    # ujęcie (Document.perspective): dokument urzędowy Kościoła katolickiego; starożytne
+    # świadectwa kanonu (Muratori, Atanazy, Kanony Apostolskie, Laodycea) — bez ujęcia
+    perspective: str = "magisterium"
 
     @property
     def url(self) -> str:
@@ -68,6 +74,12 @@ class ChurchDocument:
     @property
     def original_url(self) -> str:
         return absolute(self.latin_path or self.path)
+
+
+# Katechizm Kościoła Katolickiego na vatican.va (IntraText, angielski)
+_CCC = "/archive/ENG0015/"
+# Jan Paweł II: polskie wersje encyklik na vatican.va
+_JP2 = "/content/john-paul-ii/pl/encyclicals/documents/"
 
 
 def absolute(path: str) -> str:
@@ -144,6 +156,56 @@ DOCUMENTS = (
         2010,
         # polska strona na vatican.va jest pusta (PDF też), więc wersja angielska
         "/content/benedict-xvi/en/apost_exhortations/documents/hf_ben-xvi_exh_20100930_verbum-domini.html",
+        "en",
+    ),
+    # --- Maryja, Kościół i prymat: przeciwwaga dla egzegezy historyczno-krytycznej
+    ChurchDocument(
+        "lumen-gentium",
+        "Lumen gentium — konstytucja dogmatyczna o Kościele",
+        ("Sobór Watykański II",),
+        1964,
+        # polskiej wersji na vatican.va brak (404)
+        "/archive/hist_councils/ii_vatican_council/documents/vat-ii_const_19641121_lumen-gentium_en.html",
+        "en",
+    ),
+    ChurchDocument(
+        "redemptoris-mater",
+        "Redemptoris Mater — encyklika o błogosławionej Maryi Dziewicy w życiu pielgrzymującego Kościoła",
+        ("Jan Paweł II",),
+        1987,
+        _JP2 + "hf_jp-ii_enc_25031987_redemptoris-mater.html",
+        "pl",
+    ),
+    ChurchDocument(
+        "ut-unum-sint",
+        "Ut unum sint — encyklika o działalności ekumenicznej",
+        ("Jan Paweł II",),
+        1995,
+        _JP2 + "hf_jp-ii_enc_25051995_ut-unum-sint.html",
+        "pl",
+    ),
+    ChurchDocument(
+        "katechizm-484-511",
+        "Katechizm Kościoła Katolickiego, nr 484–511 — poczęty z Ducha Świętego, narodził się z Maryi Panny",
+        (),
+        1992,
+        _CCC + "__P1K.HTM",
+        "en",
+    ),
+    ChurchDocument(
+        "katechizm-871-945",
+        "Katechizm Kościoła Katolickiego, nr 871–945 — wierni: hierarchia, świeccy, życie konsekrowane",
+        (),
+        1992,
+        _CCC + "__P2A.HTM",
+        "en",
+    ),
+    ChurchDocument(
+        "katechizm-963-975",
+        "Katechizm Kościoła Katolickiego, nr 963–975 — Maryja, Matka Chrystusa, Matka Kościoła",
+        (),
+        1992,
+        _CCC + "__P2C.HTM",
         "en",
     ),
     ChurchDocument(
@@ -243,6 +305,7 @@ DOCUMENTS = (
         start="QUIBUS tamen interfuit",
         end="Catafrygum constitutorem.",
         source="Wikiźródła (Migne, PL 3, 1844)",
+        perspective="",
     ),
     ChurchDocument(
         "synod-w-laodycei-kanony-59-60",
@@ -255,6 +318,7 @@ DOCUMENTS = (
         ccel_div="viii.vii.iii.lxiv",  # kan. 59; kan. 60 — sekcja następna (dołączana niżej)
         original_language="en",
         source="CCEL (NPNF II/14, Percival 1900)",
+        perspective="",
     ),
     ChurchDocument(
         "atanazy-list-39",
@@ -267,6 +331,7 @@ DOCUMENTS = (
         ccel_div="xxv.iii.iii.xxv",
         original_language="en",
         source="CCEL (NPNF II/4, 1892)",
+        perspective="",
     ),
     ChurchDocument(
         "kanony-apostolskie-85",
@@ -281,6 +346,7 @@ DOCUMENTS = (
         end="and the Acts of us the Apostles.",
         original_language="en",
         source="CCEL (ANF 7, 1886)",
+        perspective="",
     ),
     ChurchDocument(
         "synody-afrykanskie-kanon-o-pismach",
@@ -366,6 +432,20 @@ DOCUMENTS = (
         start="[Decretum II: pro lectione Sacrae Scripturae",
         end="omnino arceantur.",
         source="Wikiźródła (Patavii 1738)",
+    ),
+    ChurchDocument(
+        "sobor-watykanski-i-pastor-aeternus",
+        "Sobór Watykański I, Pastor aeternus (1870) — konstytucja dogmatyczna o Kościele Chrystusowym",
+        ("Sobór Watykański I",),
+        1870,
+        _WS + "Pastor_Aeternus",
+        "la",
+        public_domain=True,
+        parts=tuple(
+            _WS + "Pastor_Aeternus/" + part
+            for part in ("Praefatio", "Caput_I", "Caput_II", "Caput_III", "Caput_IV")
+        ),
+        source="Wikiźródła",
     ),
     ChurchDocument(
         "sobor-watykanski-i-dei-filius-2",
@@ -580,6 +660,16 @@ def fetch(url: str) -> str:
 
 def source_text(doc: ChurchDocument, url: str) -> str:
     """Tekst dokumentu z `url` według rodzaju źródła, przycięty do wyciągu start–end."""
+    if doc.parts:
+        # kilka stron (rozdziały): każda osobno, w kolejności, potem wspólny wyciąg
+        text = "\n\n".join(
+            source_text(
+                ChurchDocument(**{**doc.__dict__, "parts": (), "start": "", "end": ""}),
+                part,
+            )
+            for part in doc.parts
+        )
+        return excerpt(text, doc.start, doc.end)
     if doc.ccel_div:
         volume = re.search(r"/schaff/([a-z0-9]+)\.", url).group(1)
         xml, _ = fetch_bytes(f"https://www.ccel.org/ccel/schaff/{volume}.xml")
@@ -621,6 +711,7 @@ def to_entry(doc: ChurchDocument, text: str, out_dir: Path) -> ManifestEntry:
         language=doc.language,
         note=NOTE,
         register="mixed",
+        perspective=doc.perspective,
         local_file=str(dest),
     )
 
@@ -704,6 +795,7 @@ def polish_translation(
         language="pl",
         note=note,
         register="mixed",
+        perspective=doc.perspective,
         local_file=str(dest),
     )
 

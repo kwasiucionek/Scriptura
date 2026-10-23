@@ -6,6 +6,7 @@
     python manage.py harvest openalex --author-id A5012345678 --only-oa --out data/manifests/majewski-oa.jsonl
     python manage.py harvest openalex --journal "Verbum Vitae"                 # kandydaci czasopism (S…)
     python manage.py harvest openalex --journal-id S4210212345 --only-oa --from-year 2015 --out data/manifests/vv.jsonl
+    python manage.py harvest openalex --ids W2796573791 W852704876 --perspective catholic --out data/manifests/x.jsonl
     python manage.py harvest scholar --scholar-id r0NgMwMAAAAJ --out data/manifests/majewski-scholar.jsonl
     python manage.py harvest bibtex --file ~/Pobrane/citations.bib --out data/manifests/majewski-scholar.jsonl
     python manage.py harvest vatican --out data/manifests/vatican.jsonl        # dokumenty Kościoła o Piśmie (vatican.va)
@@ -31,6 +32,7 @@ from library.harvest import (
     vatican,
     youtube,
 )
+from library.models import Perspective
 
 
 class Command(BaseCommand):
@@ -77,6 +79,15 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--from-year", type=int, help="openalex --journal-id: od rocznika"
+        )
+        parser.add_argument(
+            "--ids", nargs="*", help="openalex: wybrane prace po id (W…)"
+        )
+        parser.add_argument(
+            "--perspective",
+            default="",
+            choices=["", *Perspective.values],
+            help="ujęcie wszystkich pozycji manifestu (catholic, critical, protestant…)",
         )
         parser.add_argument(
             "--only-oa",
@@ -363,7 +374,12 @@ class Command(BaseCommand):
             entries = bibtex.parse(Path(o["file"]).read_text(encoding="utf-8"))
 
         else:  # openalex
-            if o["journal_id"]:
+            if o["ids"]:
+                entries = openalex.works_by_ids(o["ids"], mailto)
+                missing = len(set(o["ids"])) - len(entries)
+                if missing:
+                    self.stderr.write(f"nie znaleziono {missing} z podanych id")
+            elif o["journal_id"]:
                 entries = openalex.works_for_source(
                     o["journal_id"], mailto, o["only_oa"], o["from_year"]
                 )
@@ -390,6 +406,9 @@ class Command(BaseCommand):
             else:
                 raise CommandError("openalex wymaga --author lub --author-id")
 
+        if o["perspective"]:
+            for e in entries:
+                e.perspective = o["perspective"]
         out = Path(o["out"]) if o["out"] else settings.MANIFESTS_DIR / f"{source}.jsonl"
         n = manifest.write(out, entries)
         by_access: dict[str, int] = {}

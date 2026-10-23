@@ -111,8 +111,7 @@ class Command(BaseCommand):
                 language=language,
                 register=o["register"]
                 or DEFAULT_REGISTER.get(o["type"], Register.SCIENTIFIC),
-                perspective=o["perspective"]
-                or (Perspective.MAGISTERIUM if o["type"] == DocType.CHURCH else ""),
+                perspective=o["perspective"],
             )
             for name in o["author"]:
                 author, _ = Author.objects.get_or_create(

@@ -571,3 +571,75 @@ def test_harvest_vatican_polish_pd_command(tmp_path, settings):
     assert "/la/" in fetch.call_args.args[0]
     (e,) = manifest.read(out)
     assert e.language == "pl" and "[la] " in open(e.local_file, encoding="utf-8").read()
+
+
+def test_openalex_works_by_ids_keeps_order_and_batches(settings, tmp_path):
+    # wybrane prace (np. z wyszukiwania tematycznego); ujęcie z --perspective trafia do manifestu
+    from django.core.management import call_command
+
+    from library.harvest import manifest
+
+    w = lambda i: {"id": f"https://openalex.org/W{i}", "display_name": f"T{i}"}  # noqa: E731
+    ids = [f"W{i}" for i in range(60)]
+    pages = [{"results": [w(i) for i in reversed(range(50))]}, {"results": [w(55)]}]
+    with mock.patch.object(openalex, "_get", side_effect=pages) as g:
+        out = openalex.works_by_ids(ids + ["https://openalex.org/W3"])
+    assert [e.title for e in out] == [f"T{i}" for i in range(50)] + ["T55"]
+    assert g.call_count == 2
+    assert g.call_args_list[0][0][1]["filter"].startswith("openalex:W0|W1|")
+    path = tmp_path / "m.jsonl"
+    with mock.patch.object(openalex, "_get", return_value={"results": [w(7)]}):
+        call_command(
+            "harvest",
+            "openalex",
+            "--ids",
+            "W7",
+            "--perspective",
+            "catholic",
+            "--out",
+            str(path),
+        )
+    (e,) = manifest.read(path)
+    assert e.perspective == "catholic" and e.source_id.endswith("W7")
+
+
+def test_vatican_parts_joined_and_perspective(tmp_path):
+    # Pastor aeternus: rozdziały z osobnych stron Wikiźródeł, w kolejności
+    from library.harvest import vatican
+
+    doc = _doc("sobor-watykanski-i-pastor-aeternus")
+    pages = {
+        part: f"<div><p>{part.rsplit('/', 1)[-1]} textus.</p></div>"
+        for part in doc.parts
+    }
+    with mock.patch.object(
+        vatican, "fetch", side_effect=lambda url: pages[url.split("?")[0]]
+    ):
+        text = vatican.source_text(doc, doc.original_url)
+    assert text.split("\n\n") == [
+        "Praefatio textus.", "Caput_I textus.", "Caput_II textus.", "Caput_III textus.", "Caput_IV textus.",
+    ]  # fmt: skip
+    assert (
+        vatican.to_entry(_doc("lumen-gentium"), "x", tmp_path).perspective
+        == "magisterium"
+    )
+    assert vatican.to_entry(_doc("kanon-muratoriego"), "x", tmp_path).perspective == ""
+
+
+@pytest.mark.django_db
+def test_ingest_document_saves_perspective(tmp_path, settings):
+    from django.core.management import call_command
+
+    from library.models import Document
+
+    settings.SEARCH_BACKEND = "db"
+    src = tmp_path / "bracia.md"
+    src.write_text(
+        "# Czy Chrystus miał braci?\n\nBracia Pańscy to krewni Jezusa (Mk 6,3).\n",
+        encoding="utf-8",
+    )
+    call_command("ingest_document", "--file", str(src), "--title", "Czy Chrystus miał braci?",
+                 "--perspective", "catholic", "--no-index")  # fmt: skip
+    assert (
+        Document.objects.get(title="Czy Chrystus miał braci?").perspective == "catholic"
+    )

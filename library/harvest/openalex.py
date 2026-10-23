@@ -4,6 +4,7 @@
   /sources?search=<name>            -> kandydaci czasopism (ISSN, wydawca, liczba prac)
   /works?filter=author.id:<A...>    -> prace autora
   /works?filter=primary_location.source.id:<S...>  -> prace czasopisma
+  /works?filter=openalex:<W...>|<W...>             -> wybrane prace (np. z wyszukiwania tematycznego)
                                        (open_access, licencja, pdf_url, DOI, rok, abstrakt)
 Bez klucza; `mailto` w parametrze daje szybszą pulę (polite pool).
 """
@@ -182,3 +183,22 @@ def works_for_source(
     if from_year:
         flt += f",from_publication_date:{int(from_year)}-01-01"
     return _works(flt, mailto)
+
+
+IDS_PER_REQUEST = 50  # OpenAlex: najwyżej 50 wartości w filtrze OR („|”)
+
+
+def works_by_ids(ids: list[str], mailto: str = "") -> list[ManifestEntry]:
+    """Wybrane prace po id (W…), w podanej kolejności; nieznane id po prostu nie wracają."""
+    norm = list(dict.fromkeys(_norm_id(i, "W") for i in ids))
+    found: dict[str, ManifestEntry] = {}
+    for i in range(0, len(norm), IDS_PER_REQUEST):
+        chunk = norm[i : i + IDS_PER_REQUEST]
+        data = _get(
+            "/works",
+            {"filter": "openalex:" + "|".join(chunk), "per-page": IDS_PER_REQUEST},
+            mailto,
+        )
+        for w in data.get("results", []):
+            found[w["id"].rsplit("/", 1)[-1]] = work_to_entry(w)
+    return [found[i] for i in norm if i in found]

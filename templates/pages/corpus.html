@@ -18,6 +18,7 @@
 
 <h2>Literatura</h2>
 <p>Publikacje biblistów: artykuły, monografie, skrypty, recenzje, wpisy i wykłady — z repozytoriów uczelni, całych czasopism w otwartym dostępie (m.in. <em>Verbum Vitae</em>, <em>The Biblical Annals</em>) i stron autorów. Do korpusu publicznego trafiają tylko pozycje z wolną licencją (Creative Commons, open access z prawem do ponownego użycia) albo takie, na które autor wyraził zgodę. Pozostałe — jeśli zostały przygotowane — czekają zamknięte i nie są tu wymieniane z nazwiska. Teksty obcojęzyczne mają polski przekład maszynowy wyłącznie do wyszukiwania; cytowany jest oryginał.</p>
+<p>Skąd pochodzą teksty, widać przy czasopismach: podajemy wydawcę i — gdy nie wynika z nazwy — środowisko. Większość literatury pochodzi z wydziałów teologicznych uczelni katolickich; teologię ewangelicką i prawosławną reprezentują m.in. <em>Rocznik Teologiczny</em> ChAT i <em>Elpis</em>. Przy pojedynczym tekście asystent podaje ujęcie tylko w dwóch przypadkach: przy dokumentach Kościoła i przy tekstach, które wprost bronią stanowiska wyznaniowego — w kwestiach spornych (np. „bracia Pańscy”, prymat Piotra) przypisuje tezy autorom, a nauczanie Kościoła podaje osobno, z dokumentu.</p>
 {% if s.type_rows %}
 <p class="small muted">Wg typu: {% for t in s.type_rows %}{{ t.label }} — {{ t.n }}{% if not forloop.last %} · {% endif %}{% endfor %}.</p>
 {% endif %}
@@ -33,9 +34,9 @@
 {% if s.journals %}
 <details class="more"><summary>Czasopisma i wydawnictwa ({{ s.journals|length }})</summary>
 <table class="stats">
-  <tr><th>Tytuł</th><th class="n">Publikacji</th></tr>
+  <tr><th>Tytuł</th><th>Wydawca</th><th class="n">Publikacji</th></tr>
   {% for j in s.journals %}
-  <tr><td>{{ j.journal }}</td><td class="n">{{ j.n }}</td></tr>
+  <tr><td>{{ j.journal }}</td><td class="muted small">{{ j.publisher|default:"—" }}{% if j.note %} <span class="tag">{{ j.note }}</span>{% endif %}</td><td class="n">{{ j.n }}</td></tr>
   {% endfor %}
 </table></details>
 {% endif %}

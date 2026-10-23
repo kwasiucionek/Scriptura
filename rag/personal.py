@@ -67,7 +67,7 @@ class UploadForm(forms.Form):
         label="Ujęcie",
         choices=[("", "— nieokreślone —"), *Perspective.choices],
         required=False,
-        help_text="model podaje je przy kwestiach doktrynalnych",
+        help_text="tylko gdy tekst wprost broni stanowiska wyznaniowego; większość tekstów — nieokreślone",
     )
     note = forms.CharField(
         label="Uwaga / źródło",

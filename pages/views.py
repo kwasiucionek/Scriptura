@@ -14,6 +14,7 @@ from ane.models import AneLine, AneText
 from corpus.models import Lexeme, Token, Verse, VerseLink
 from corpus.services.text import active_works
 from library.models import Author, DocType, Document
+from library.venues import journal_rows
 from patristics.models import PatPassage, PatRef, PatWork
 from places.models import Place, PlaceLocation, PlaceRef
 from rag.access import access_for_user, document_access_q
@@ -68,11 +69,13 @@ def _corpus_stats(levels: list[str], user_id: int | None = None) -> dict:
         .filter(n_visible__gt=0)
         .order_by("-n_visible", "name")
     )
-    journals = list(
-        literature.exclude(journal="")
-        .values("journal")
-        .annotate(n=Count("id"))
-        .order_by("-n", "journal")
+    journals = journal_rows(
+        list(
+            literature.exclude(journal="")
+            .values("journal")
+            .annotate(n=Count("id"))
+            .order_by("-n", "journal")
+        )
     )
     hidden = shared.exclude(
         access__in=levels

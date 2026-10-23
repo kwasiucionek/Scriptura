@@ -167,7 +167,15 @@ def test_corpus_separates_church_documents_from_literature(client):
     assert [x.name for x in s["authors"]] == [
         "Jan Biblista"
     ]  # autorzy dokumentów Kościoła osobno
-    assert s["journals"] == [{"journal": "Verbum Vitae", "n": 1}]
+    assert s["journals"] == [
+        {
+            "journal": "Verbum Vitae",
+            "n": 1,
+            "publisher": "Katolicki Uniwersytet Lubelski Jana Pawła II",
+            "note": "",
+        }
+    ]
+    assert "Katolicki Uniwersytet Lubelski Jana Pawła II" in r.content.decode()
     forms = {c["doc"].title: c["form"] for c in s["church"]}
     assert forms["Dei Verbum"] == "tekst angielski + fragmenty przekładu roboczego"
     assert (

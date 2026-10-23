@@ -2,6 +2,12 @@
 
 ## 2026-10-23 — ujęcie źródła i zasada przy kwestiach doktrynalnych
 
+- Korpus: przy czasopismach i wydawnictwach kolumna „Wydawca” (z `library/venues.py`, warianty
+  nazw scalone) i środowisko tam, gdzie nie wynika z nazwy (ChAT — uczelnia ekumeniczna, Elpis —
+  teologia prawosławna); akapit o pochodzeniu literatury. Ujęcie przy pojedynczym tekście tylko
+  dla dokumentów Kościoła i tekstów wprost broniących stanowiska wyznaniowego — artykuły
+  egzegetyczne i historyczne zostają bez etykiety.
+
 - `Document.perspective` (ujęcie): akademickie historyczno-krytyczne, katolickie, dokument
   urzędowy Kościoła katolickiego, ewangelickie, prawosławne, żydowskie. Migracja 0011 nadaje
   „dokument urzędowy” dokumentom Kościoła w korpusie (bez starożytnych świadectw kanonu:

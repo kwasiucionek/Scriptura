@@ -540,6 +540,15 @@ def test_church_channel_adds_document_in_place_of_last(settings, monkeypatch):
         user_id=None,
     )
     assert [h.chunk_id for h in short] == [1, 2, 90]
+    # trafienia z indeksu mają chunk_id = 0 — o dublecie decyduje (dokument, kolejność)
+    zero = [_hit(0, doc_id=d) for d in (1, 2)]
+    monkeypatch.setattr(
+        service, "retrieve", lambda q, **kw: [_hit(0, "church", doc_id=90)]
+    )
+    out = service.church_for_question(
+        "Bracia Pańscy?", zero, access=["open"], registers=None, user_id=None
+    )
+    assert [h.document_id for h in out] == [1, 2, 90]
 
 
 def test_church_channel_skipped_when_not_needed(settings, monkeypatch):

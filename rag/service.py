@@ -143,8 +143,13 @@ def church_for_question(
         LAST_TIMINGS.clear()
         LAST_TIMINGS.update(saved)
         LAST_TIMINGS["church_ms"] = int((time.monotonic() - t0) * 1000)
-    have = {h.chunk_id for h in chunks}
-    extra = [h for h in found if h.doc_type == "church" and h.chunk_id not in have][:n]
+    # tożsamość fragmentu = (dokument, kolejność); chunk_id z indeksu bywa pusty (0)
+    have = {(h.document_id, h.order) for h in chunks}
+    extra = [
+        h
+        for h in found
+        if h.doc_type == "church" and (h.document_id, h.order) not in have
+    ][:n]
     if not extra:
         return chunks
     keep = max(0, settings.RAG_TOP_K - len(extra))

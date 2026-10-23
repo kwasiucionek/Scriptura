@@ -608,17 +608,20 @@ def test_vatican_parts_joined_and_perspective(tmp_path):
     from library.harvest import vatican
 
     doc = _doc("sobor-watykanski-i-pastor-aeternus")
+    # nawigacja Wikiźródeł („Caput II”, „Pius IXPastor Aeternus01870”) i „↑” przypisów znikają
     pages = {
-        part: f"<div><p>{part.rsplit('/', 1)[-1]} textus.</p></div>"
+        part: f"<div><p>Caput II</p><p>Pius IXPastor Aeternus01870</p><p>1870</p>"
+        f"<p>{part.rsplit('/', 1)[-1]} textus.</p><ul><li>↑ Cf. S. Bern.</li></ul></div>"
         for part in doc.parts
     }
     with mock.patch.object(
         vatican, "fetch", side_effect=lambda url: pages[url.split("?")[0]]
     ):
         text = vatican.source_text(doc, doc.original_url)
+    parts = ["Praefatio", "Caput_I", "Caput_II", "Caput_III", "Caput_IV"]
     assert text.split("\n\n") == [
-        "Praefatio textus.", "Caput_I textus.", "Caput_II textus.", "Caput_III textus.", "Caput_IV textus.",
-    ]  # fmt: skip
+        x for p in parts for x in (f"{p} textus.", "Cf. S. Bern.")
+    ]
     assert (
         vatican.to_entry(_doc("lumen-gentium"), "x", tmp_path).perspective
         == "magisterium"

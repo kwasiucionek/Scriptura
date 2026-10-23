@@ -80,6 +80,9 @@ class ChurchDocument:
 _CCC = "/archive/ENG0015/"
 # nawigacja IntraText: okruszki na początku („Help … Previous - Next”) i stopka praw na końcu
 _CCC_DROP = r"(?s)\AHelp\b.*?Previous - Next\s*|Previous - Next\s*Copyright\b.*\Z"
+# Wikiźródła, Pastor aeternus: wiersze nawigacji („Caput II”, „Pius IXPastor Aeternus01870”)
+# i znacznik przypisu „- ↑ ” (sam przypis zostaje)
+_WS_NAV = r"(?m)^[ \t]*(?:(?:Pius|IX|Pastor|Aeternus|Caput|Praefatio|[IVX]+|\d+)[ \t]*)+$|^- ↑ "
 # Jan Paweł II: polskie wersje encyklik na vatican.va
 _JP2 = "/content/john-paul-ii/pl/encyclicals/documents/"
 
@@ -450,6 +453,7 @@ DOCUMENTS = (
             _WS + "Pastor_Aeternus/" + part
             for part in ("Praefatio", "Caput_I", "Caput_II", "Caput_III", "Caput_IV")
         ),
+        drop=_WS_NAV,
         source="Wikiźródła",
     ),
     ChurchDocument(
@@ -674,7 +678,7 @@ def source_text(doc: ChurchDocument, url: str) -> str:
             )
             for part in doc.parts
         )
-        return excerpt(text, doc.start, doc.end)
+        return excerpt(re.sub(r"\n\s*\n\s*", "\n\n", text), doc.start, doc.end)
     if doc.ccel_div:
         volume = re.search(r"/schaff/([a-z0-9]+)\.", url).group(1)
         xml, _ = fetch_bytes(f"https://www.ccel.org/ccel/schaff/{volume}.xml")

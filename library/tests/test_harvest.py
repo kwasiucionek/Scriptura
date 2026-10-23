@@ -643,3 +643,21 @@ def test_ingest_document_saves_perspective(tmp_path, settings):
     assert (
         Document.objects.get(title="Czy Chrystus miał braci?").perspective == "catholic"
     )
+
+
+def test_vatican_catechism_drops_intratext_navigation():
+    from library.harvest import vatican
+
+    raw = (
+        "<body><p>Help</p><p>Catechism of the Catholic Church</p><p>IntraText - Text</p>"
+        "<ul><li>PART ONE</li><li>Paragraph 2. CONCEIVED Previous - Next</li></ul>"
+        "<p>Paragraph 2. CONCEIVED</p><p>484 The Annunciation to Mary.</p>"
+        "<p>170 LG 64; cf. 63.</p><p>Previous - NextCopyright © Libreria Editrice Vaticana</p></body>"
+    )
+    doc = _doc("katechizm-484-511")
+    with mock.patch.object(vatican, "fetch", return_value=raw):
+        text = vatican.source_text(doc, doc.url)
+    assert text.startswith("Paragraph 2. CONCEIVED") and text.endswith(
+        "170 LG 64; cf. 63."
+    )
+    assert "Help" not in text and "Copyright" not in text

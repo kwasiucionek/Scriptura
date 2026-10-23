@@ -78,6 +78,8 @@ class ChurchDocument:
 
 # Katechizm Kościoła Katolickiego na vatican.va (IntraText, angielski)
 _CCC = "/archive/ENG0015/"
+# nawigacja IntraText: okruszki na początku („Help … Previous - Next”) i stopka praw na końcu
+_CCC_DROP = r"(?s)\AHelp\b.*?Previous - Next\s*|Previous - Next\s*Copyright\b.*\Z"
 # Jan Paweł II: polskie wersje encyklik na vatican.va
 _JP2 = "/content/john-paul-ii/pl/encyclicals/documents/"
 
@@ -191,6 +193,7 @@ DOCUMENTS = (
         1992,
         _CCC + "__P1K.HTM",
         "en",
+        drop=_CCC_DROP,
     ),
     ChurchDocument(
         "katechizm-871-945",
@@ -199,6 +202,7 @@ DOCUMENTS = (
         1992,
         _CCC + "__P2A.HTM",
         "en",
+        drop=_CCC_DROP,
     ),
     ChurchDocument(
         "katechizm-963-975",
@@ -207,6 +211,7 @@ DOCUMENTS = (
         1992,
         _CCC + "__P2C.HTM",
         "en",
+        drop=_CCC_DROP,
     ),
     ChurchDocument(
         # podpis sekretarza (A. Miller †1963) — status domeny publicznej niepewny, więc jak

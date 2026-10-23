@@ -56,6 +56,6 @@ class Command(BaseCommand):
                 )
         self.stdout.write(
             self.style.SUCCESS(
-                f"przetłumaczono {done}/{total}; teraz: index_patristics --recreate --vectors-file …"
+                f"przetłumaczono {done}/{total}; teraz: index_patristics --missing (całe tomy: --recreate)"
             )
         )

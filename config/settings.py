@@ -322,6 +322,9 @@ LOGOUT_REDIRECT_URL = "/"
 # Materiały osobiste użytkowników (konto -> „Moje materiały")
 PERSONAL_MAX_MB = env("PERSONAL_MAX_MB", 25, int)
 PERSONAL_MAX_DOCS = env("PERSONAL_MAX_DOCS", 50, int)
+# Indeksowanie materiałów własnych w tle (wątek po commicie): żądanie wgrania wraca od razu,
+# bez limitu 100 s Cloudflare; 0 = w żądaniu (testy, środowisko bez proxy)
+PERSONAL_INDEX_ASYNC = env("PERSONAL_INDEX_ASYNC", 1, int)
 
 LOGGING = {
     "version": 1,

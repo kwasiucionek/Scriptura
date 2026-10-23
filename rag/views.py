@@ -34,6 +34,7 @@ from rag.personal import (
     UploadForm,
     delete_personal,
     ingest_personal,
+    request_personal_index,
     retry_personal_index,
     set_personal_perspective,
     share_personal,
@@ -414,6 +415,12 @@ def _saved_index_message(request: HttpRequest, doc, saved: str) -> None:
             f"{saved} Nie udało się zaktualizować indeksu wyszukiwania; "
             "zapis w bazie pozostaje ważny. Możesz ponowić indeksowanie.",
         )
+    elif settings.PERSONAL_INDEX_ASYNC:
+        messages.success(
+            request,
+            f"{saved} Indeksowanie trwa w tle (zwykle 1–3 minuty) — strona odświeży się "
+            "sama, a materiał będzie w odpowiedziach, gdy status zmieni się na aktualny.",
+        )
     else:
         messages.warning(
             request,
@@ -521,7 +528,13 @@ def account(request: HttpRequest) -> HttpResponse:
             # The service repeats the SQL check to handle concurrent mutations.
             get_object_or_404(user.documents, pk=doc_id)
             try:
-                doc = retry_personal_index(user, doc_id)
+                # w tle (Cloudflare zrywa po 100 s) albo od razu
+                start = (
+                    request_personal_index
+                    if settings.PERSONAL_INDEX_ASYNC
+                    else retry_personal_index
+                )
+                doc = start(user, doc_id)
                 _saved_index_message(
                     request, doc, f"Materiał „{doc.title}” pozostaje zapisany w bazie."
                 )
@@ -548,6 +561,8 @@ def account(request: HttpRequest) -> HttpResponse:
             "password_form": password_form,
             "upload_form": upload_form,
             "docs": docs,
+            "index_async": bool(settings.PERSONAL_INDEX_ASYNC),
+            "has_pending": docs.filter(index_status=IndexStatus.PENDING).exists(),
             "access_levels": access_for_user(user),
             "limits": {
                 "mb": settings.PERSONAL_MAX_MB,

@@ -2,6 +2,12 @@
 
 ## 2026-10-23 — ujęcie źródła i zasada przy kwestiach doktrynalnych
 
+- Moje materiały: indeksowanie w tle (wątek po commicie) — wgranie dłuższego tekstu kończyło się
+  błędem Cloudflare 524, bo żądanie czekało na wektory dłużej niż 100 s. Teraz żądanie wraca po
+  odczycie i podziale tekstu, lista pokazuje „Indeksowanie w tle…” i odświeża się co 15 s (nie
+  w trakcie wypełniania formularza); „Ponów indeksowanie” też działa w tle.
+  Nowa zmienna `.env` (opcjonalna): `PERSONAL_INDEX_ASYNC=1` (0 = indeks w żądaniu).
+
 - Zasada 10 rozszerzona po teście w trybie naukowym (bracia Pańscy): każdy argument i wniosek
   z autorem i czasownikiem przypisania, bez podawania wniosków źródeł jak faktów; „Kościół
   uznaje/naucza” tylko z przypisem do dokumentu Kościoła; gdy źródła mają argumenty tylko jednej

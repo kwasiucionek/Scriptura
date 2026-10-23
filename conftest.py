@@ -9,6 +9,7 @@ def _offline_backends(settings):
     settings.RERANKER_BACKEND = "none"
     settings.LLM_BACKEND = "echo"
     settings.DEMO_TOKEN = ""
+    settings.PERSONAL_INDEX_ASYNC = 0  # indeks w żądaniu — testy sprawdzają status od razu
     settings.CACHES = {
         "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
     }

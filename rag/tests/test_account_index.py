@@ -275,7 +275,7 @@ def test_upload_form_shows_progress_indicator(account_client):
     # wgrywanie i indeksowanie trwa do kilku minut: formularz ma wskaźnik pracy
     client, _ = account_client
     page = client.get(reverse("rag:account")).content.decode()
-    assert 'data-progress="Wgrywanie i indeksowanie…"' in page
+    assert 'data-progress="Wgrywanie…"' in page
     assert '<div class="upload-status" hidden>' in page
     assert 'role="status"' in page and "form[data-progress]" in page
 
@@ -300,3 +300,60 @@ def test_account_changes_perspective_of_own_material(account_client):
     )
     other.refresh_from_db()
     assert other.perspective == ""
+
+
+def test_upload_indexes_in_background_and_page_refreshes(
+    account_client, settings, monkeypatch, django_capture_on_commit_callbacks
+):
+    # Cloudflare zrywa żądanie po 100 s: indeks startuje w wątku po commicie, żądanie wraca od razu
+    from rag import personal
+
+    client, user = account_client
+    settings.PERSONAL_INDEX_ASYNC = 1
+    settings.SEARCH_BACKEND = "opensearch"
+    started = []
+
+    class FakeThread:
+        def __init__(self, target, args, daemon, name):
+            started.append((target, args, daemon, name))
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(personal.threading, "Thread", FakeThread)
+    index = Mock()
+    monkeypatch.setattr("library.search.index_document", index)
+    with django_capture_on_commit_callbacks(execute=True):
+        response = post_account(client, operation_data("upload", 0))
+    assert response.status_code == 302
+    doc = Document.objects.get(owner=user)
+    ((target, args, daemon, name),) = started
+    assert target is personal._reindex_in_thread and args[0].pk == doc.pk
+    assert daemon and name == f"index-doc-{doc.pk}"
+    assert not index.called and doc.index_status == IndexStatus.PENDING
+    page = client.get(reverse("rag:account")).content.decode()
+    assert "Indeksowanie w tle…" in page and "location.reload()" in page
+
+
+def test_retry_runs_in_background_when_async(account_client, settings, monkeypatch):
+    from rag import personal
+
+    client, user = account_client
+    settings.PERSONAL_INDEX_ASYNC = 1
+    doc = Document.objects.create(
+        title="Maria", access="personal", owner=user, index_status=IndexStatus.FAILED
+    )
+    other = Document.objects.create(
+        title="Cudzy", access="personal", owner=User.objects.create_user("y")
+    )
+    started = []
+    monkeypatch.setattr(personal, "_run_index", lambda d: started.append(d.pk))
+    response = post_account(client, {"action": "retry_index", "doc_id": doc.pk})
+    assert response.status_code == 302 and started == [doc.pk]
+    notice = str(list(get_messages(response.wsgi_request))[0])
+    assert "trwa w tle" in notice
+    assert (
+        post_account(client, {"action": "retry_index", "doc_id": other.pk}).status_code
+        == 404
+    )
+    assert started == [doc.pk]

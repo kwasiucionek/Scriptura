@@ -8,6 +8,7 @@ import hashlib
 import logging
 import re
 import tempfile
+import threading
 import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
@@ -153,7 +154,37 @@ def _schedule_index(doc: Document) -> None:
     doc.save(
         update_fields=["index_status", "index_error", "indexed_at", "index_revision"]
     )
-    transaction.on_commit(lambda: _reindex(doc))
+    transaction.on_commit(lambda: _run_index(doc))
+
+
+def _run_index(doc: Document) -> None:
+    """Indeks po commicie: w tle (PERSONAL_INDEX_ASYNC), żeby żądanie nie czekało na wektory
+    (Cloudflare zrywa po 100 s); inaczej od razu. Przerwany wątek zostawia status pending —
+    właściciel może ponowić indeksowanie."""
+    if not settings.PERSONAL_INDEX_ASYNC:
+        _reindex(doc)
+        return
+    threading.Thread(
+        target=_reindex_in_thread, args=(doc,), daemon=True, name=f"index-doc-{doc.pk}"
+    ).start()
+
+
+def _reindex_in_thread(doc: Document) -> None:
+    try:
+        _reindex(doc)
+    finally:
+        connection.close()  # wątek ma własne połączenie z bazą
+
+
+def request_personal_index(user: User, doc_id: int) -> Document:
+    """Ponowienie indeksu z konta: w tle (PERSONAL_INDEX_ASYNC) albo od razu. Własność
+    sprawdzana w SQL przed startem; właściwy zapis statusu robi retry_personal_index."""
+    if not settings.PERSONAL_INDEX_ASYNC:
+        return retry_personal_index(user, doc_id)
+    doc = user.documents.get(id=doc_id)
+    _run_index(doc)
+    doc.index_status = IndexStatus.PENDING
+    return doc
 
 
 def ingest_personal(user: User, form: UploadForm) -> Document:

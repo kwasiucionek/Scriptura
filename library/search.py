@@ -134,6 +134,8 @@ class ChunkHit:
     # sam trafiony chunk, zanim expand_with_neighbors dokleił sąsiadów (panel źródeł)
     core_text: str = ""
     core_orig: str = ""
+    # ujęcie dokumentu (Document.perspective) — dociągane z bazy, nie z indeksu
+    perspective: str = ""
 
 
 # --- indeksowanie ---------------------------------------------------------
@@ -376,6 +378,21 @@ def use_working_translations(hits: list[ChunkHit]) -> list[ChunkHit]:
         translated = polish.get((h.document_id, h.order))
         if translated and h.doc_type in WORKING_TRANSLATION_TYPES and not h.text_orig:
             h.text_orig, h.text = h.text, translated
+    return hits
+
+
+def attach_perspectives(hits: list[ChunkHit]) -> list[ChunkHit]:
+    """Ujęcie dokumentu (katolickie, historyczno-krytyczne…) z bazy — bez przebudowy indeksu."""
+    ids = {h.document_id for h in hits}
+    if not ids:
+        return hits
+    by_doc = dict(
+        Document.objects.filter(id__in=ids)
+        .exclude(perspective="")
+        .values_list("id", "perspective")
+    )
+    for h in hits:
+        h.perspective = by_doc.get(h.document_id, "")
     return hits
 
 

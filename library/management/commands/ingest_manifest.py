@@ -189,6 +189,8 @@ class Command(BaseCommand):
                 args += ["--year", str(e.year)]
             if getattr(e, "register", ""):
                 args += ["--register", e.register]
+            if getattr(e, "perspective", ""):
+                args += ["--perspective", e.perspective]
             for a in e.authors:
                 args += ["--author", a]
             if o["no_index"]:

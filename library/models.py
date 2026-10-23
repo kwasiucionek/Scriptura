@@ -30,6 +30,17 @@ class Register(models.TextChoices):
     MIXED = "mixed", "mieszany (podręcznik, skrypt)"
 
 
+class Perspective(models.TextChoices):
+    """Ujęcie źródła — model podaje je przy tezach doktrynalnie wrażliwych (rozdział stanowisk)."""
+
+    CRITICAL = "critical", "akademickie, historyczno-krytyczne"
+    CATHOLIC = "catholic", "katolickie"
+    MAGISTERIUM = "magisterium", "dokument urzędowy Kościoła katolickiego"
+    PROTESTANT = "protestant", "ewangelickie"
+    ORTHODOX = "orthodox", "prawosławne"
+    JEWISH = "jewish", "żydowskie"
+
+
 DEFAULT_REGISTER = {  # domyślny rejestr wg typu dokumentu; nadpisywalny przy ingestii
     DocType.ARTICLE: Register.SCIENTIFIC,
     DocType.BOOK: Register.SCIENTIFIC,
@@ -86,6 +97,10 @@ class Document(TimeStampedModel):
     register = models.CharField(
         max_length=16, choices=Register.choices, default=Register.SCIENTIFIC
     )  # naukowy / popularnonaukowy — steruje trybami odpowiedzi
+    # ujęcie (wyznaniowe / akademickie); puste = nieoznaczone — wtedy model go nie podaje
+    perspective = models.CharField(
+        max_length=16, choices=Perspective.choices, blank=True, default=""
+    )
     source_path = models.CharField(max_length=500, blank=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

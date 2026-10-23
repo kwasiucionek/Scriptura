@@ -39,6 +39,7 @@ class ManifestEntry:
     language: str = "pl"
     note: str = ""
     register: str = ""  # scientific | popular | mixed; puste = wg doc_type
+    perspective: str = ""  # ujęcie (Perspective): catholic | critical | magisterium | …
     abstract: str = ""  # streszczenie (OpenAlex/DSpace) — kontekst dla kuratora
     local_file: str = ""  # gotowy plik tekstowy (.md/.txt) zapisany przez harvest (blog) — bez pobierania
 

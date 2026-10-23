@@ -366,6 +366,46 @@ def test_church_document_marked_in_prompt():
     assert "[2] Recenzja [RECENZJA KSIĄŻKI" in user
 
 
+def test_perspective_marked_in_prompt_and_doctrinal_rule():
+    # ujęcie źródła trafia do nagłówka (poza dokumentami Kościoła, które mają własny opis)
+    from library.search import ChunkHit
+
+    hit = ChunkHit(chunk_id=1, document_id=1, order=0, title="Maria", authors=["Petersen"],
+                   citation="Petersen, Maria (2009)", doc_type="article", year=2009, url="",
+                   section="", text="Die Geschwister Jesu...", sigla=[], score=1.0,
+                   access="personal", register="scientific", perspective="critical")  # fmt: skip
+    church = ChunkHit(**{**hit.__dict__, "doc_type": "church", "citation": "Lumen gentium",
+                         "perspective": "magisterium"})  # fmt: skip
+    msgs = service.build_messages("Czy Jezus miał rodzeństwo?", [hit, church], [])
+    user = msgs[-1]["content"]
+    assert (
+        "[1] Petersen, Maria (2009) — UJĘCIE: akademickie, historyczno-krytyczne"
+        in user
+    )
+    assert (
+        "[2] Lumen gentium [DOKUMENT KOŚCIOŁA" in user
+        and "UJĘCIE: dokument" not in user
+    )
+    system = msgs[0]["content"]
+    assert "Kwestie doktrynalne" in system and "„według X…”" in system
+
+
+def test_attach_perspectives_reads_documents():
+    from library.models import Document
+    from library.search import ChunkHit, attach_perspectives
+
+    doc = Document.objects.create(title="Maryja", perspective="catholic")
+    plain = Document.objects.create(title="Bez ujęcia")
+    hits = [
+        ChunkHit(chunk_id=i, document_id=d.id, order=0, title=d.title, authors=[], citation=d.title,
+                 doc_type="article", year=None, url="", section="", text="t", sigla=[], score=1.0,
+                 access="open", register="scientific")
+        for i, d in enumerate([doc, plain])
+    ]  # fmt: skip
+    attach_perspectives(hits)
+    assert [h.perspective for h in hits] == ["catholic", ""]
+
+
 def test_system_prompt_limits_verbatim_quotes():
     system = service.build_messages("Wypisz pełny tekst Dei Verbum", [], [])[0][
         "content"

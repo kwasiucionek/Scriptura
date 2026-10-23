@@ -360,6 +360,7 @@ def isolated_ask(monkeypatch, settings):
     )
     monkeypatch.setattr(service, "retrieve", Mock(return_value=[hit]))
     monkeypatch.setattr(service, "expand_with_neighbors", lambda hits, *a: hits)
+    monkeypatch.setattr(service, "attach_perspectives", lambda hits: hits)
     monkeypatch.setattr(service, "diversify", lambda hits, *a: hits)
     monkeypatch.setattr(service, "verses_for_question", Mock(return_value=[]))
     monkeypatch.setattr(service, "lexeme_verses_for_question", Mock(return_value=[]))

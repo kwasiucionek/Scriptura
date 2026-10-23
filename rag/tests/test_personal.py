@@ -296,6 +296,25 @@ class TestPersonalPersistence:
         assert doc.index_error == "" and doc.indexed_at is None
         assert Path(doc.source_path).read_bytes() == MD
 
+    def test_upload_saves_perspective_and_owner_can_change_it(self, personal_owner):
+        doc = ingest_personal(personal_owner, _upload_form(perspective="critical"))
+        assert doc.perspective == "critical"
+        assert (
+            personal.set_personal_perspective(
+                personal_owner, doc.id, "catholic"
+            ).perspective
+            == "catholic"
+        )
+        doc.refresh_from_db()
+        assert doc.perspective == "catholic"
+        with pytest.raises(ValidationError):
+            personal.set_personal_perspective(personal_owner, doc.id, "gnostic")
+        stranger = User.objects.create_user("obcy")
+        with pytest.raises(Document.DoesNotExist):
+            personal.set_personal_perspective(stranger, doc.id, "")
+        doc.refresh_from_db()
+        assert doc.perspective == "catholic"
+
     @pytest.mark.parametrize("result", [[], RuntimeError("parser failed")])
     def test_parse_failure_leaves_no_file_or_sql(
         self, personal_owner, settings, monkeypatch, result

@@ -278,3 +278,25 @@ def test_upload_form_shows_progress_indicator(account_client):
     assert 'data-progress="Wgrywanie i indeksowanie…"' in page
     assert '<div class="upload-status" hidden>' in page
     assert 'role="status"' in page and "form[data-progress]" in page
+
+
+def test_account_changes_perspective_of_own_material(account_client):
+    # ujęcie własnego materiału zmienia się bez reindeksacji, tylko u właściciela
+    client, user = account_client
+    doc = Document.objects.create(title="Maria", access="personal", owner=user)
+    page = client.get(reverse("rag:account")).content.decode()
+    assert f'id="persp-{doc.pk}"' in page and 'name="perspective"' in page
+    response = post_account(
+        client, {"action": "perspective", "doc_id": doc.pk, "perspective": "critical"}
+    )
+    assert response.status_code == 302
+    doc.refresh_from_db()
+    assert doc.perspective == "critical"
+    other = Document.objects.create(
+        title="Cudzy", access="personal", owner=User.objects.create_user("x")
+    )
+    post_account(
+        client, {"action": "perspective", "doc_id": other.pk, "perspective": "critical"}
+    )
+    other.refresh_from_db()
+    assert other.perspective == ""

@@ -1,5 +1,21 @@
 # Scriptura — dziennik sprintów (changelog)
 
+## 2026-10-23 — ujęcie źródła i zasada przy kwestiach doktrynalnych
+
+- `Document.perspective` (ujęcie): akademickie historyczno-krytyczne, katolickie, dokument
+  urzędowy Kościoła katolickiego, ewangelickie, prawosławne, żydowskie. Migracja 0011 nadaje
+  „dokument urzędowy” dokumentom Kościoła w korpusie (bez starożytnych świadectw kanonu:
+  Kanon Muratoriego, Atanazy, Kanony Apostolskie, Laodycea).
+- Ujęcie czytane z bazy przy pytaniu (`attach_perspectives`, bez reindeksacji), w nagłówku
+  źródła dla modelu („— UJĘCIE: …”) i jako znaczek w panelu źródeł.
+- Zasada 10 promptu: przy kwestiach doktrynalnych (dziewictwo Maryi i „bracia Pańscy”, prymat
+  Piotra, sakramenty) wniosek egzegezy jako stanowisko autora („według X…”), nauczanie Kościoła
+  osobno i tylko z dokumentu w kontekście, inne wyznania z nazwą tradycji; brak dokumentu
+  Kościoła w źródłach — jedno zdanie zamiast odtwarzania z pamięci.
+- Moje materiały: pole „Ujęcie” przy wgrywaniu i zmiana ujęcia przy każdym materiale (tylko
+  właściciel, bez reindeksacji). `ingest_document --perspective`, pole `perspective`
+  w manifestach.
+
 ## 2026-10-20 — polityka prywatności, regulamin, informacja o AI
 
 - Strony `/prywatnosc/` (RODO art. 13: administrator, dane i podstawy, model w chmurze Ollama,

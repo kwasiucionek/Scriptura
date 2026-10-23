@@ -28,9 +28,10 @@ class DocumentAdmin(admin.ModelAdmin):
         "journal",
         "year",
         "access",
+        "perspective",
         "chunk_count",
     )
-    list_filter = ("doc_type", "access", "authors")
+    list_filter = ("doc_type", "access", "perspective", "authors")
     search_fields = ("title", "journal", "doi")
     filter_horizontal = ("authors",)
     inlines = [ChunkInline]

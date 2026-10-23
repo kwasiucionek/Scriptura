@@ -28,6 +28,7 @@ from library.models import (
     DocType,
     Document,
     IndexStatus,
+    Perspective,
     Register,
 )
 
@@ -61,6 +62,12 @@ class UploadForm(forms.Form):
     )
     register = forms.ChoiceField(
         label="Rejestr", choices=Register.choices, initial=Register.MIXED
+    )
+    perspective = forms.ChoiceField(
+        label="Ujęcie",
+        choices=[("", "— nieokreślone —"), *Perspective.choices],
+        required=False,
+        help_text="model podaje je przy kwestiach doktrynalnych",
     )
     note = forms.CharField(
         label="Uwaga / źródło",
@@ -203,6 +210,7 @@ def ingest_personal(user: User, form: UploadForm) -> Document:
                 title=form.cleaned_data["title"],
                 doc_type=form.cleaned_data["doc_type"],
                 register=form.cleaned_data["register"],
+                perspective=form.cleaned_data.get("perspective", ""),
                 year=form.cleaned_data["year"],
                 note=form.cleaned_data["note"],
                 license="użytek własny",
@@ -319,6 +327,18 @@ def share_personal(user: User, doc_id: int, form: ShareForm) -> Document:
             doc.license = form.cleaned_data["license"]
             doc.save(update_fields=["access", "register", "license"])
         _schedule_index(doc)
+    return doc
+
+
+def set_personal_perspective(user: User, doc_id: int, perspective: str) -> Document:
+    """Zmiana ujęcia własnego materiału — tylko SQL, bez reindeksacji (czytane przy pytaniu)."""
+    if perspective not in {"", *Perspective.values}:
+        raise ValidationError("Nieznane ujęcie.")
+    with _owner_transaction(user):
+        doc = user.documents.get(id=doc_id)
+        if doc.perspective != perspective:
+            doc.perspective = perspective
+            doc.save(update_fields=["perspective"])
     return doc
 
 

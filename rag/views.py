@@ -23,7 +23,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
 from corpus.services import text as corpus_svc
-from library.models import Author, IndexStatus
+from library.models import Author, IndexStatus, Perspective
 from rag import service
 from rag.access import access_for_user, allowed_modes, visible_documents
 from rag.models import Conversation, Message
@@ -35,6 +35,7 @@ from rag.personal import (
     delete_personal,
     ingest_personal,
     retry_personal_index,
+    set_personal_perspective,
     share_personal,
     unshare_personal,
 )
@@ -497,6 +498,18 @@ def account(request: HttpRequest) -> HttpResponse:
             except Exception:  # noqa: BLE001
                 messages.error(request, "Nie znaleziono udostępnionego materiału.")
             return redirect("rag:account")
+        elif action == "perspective":
+            try:
+                doc = set_personal_perspective(
+                    user,
+                    int(request.POST.get("doc_id", 0)),
+                    request.POST.get("perspective", ""),
+                )
+                label = doc.get_perspective_display() or "nieokreślone"
+                messages.success(request, f"Ujęcie „{doc.title}”: {label}.")
+            except Exception:  # noqa: BLE001
+                messages.error(request, "Nie udało się zmienić ujęcia.")
+            return redirect("rag:account")
         elif action == "retry_index":
             try:
                 doc_id = int(request.POST.get("doc_id", ""))
@@ -541,6 +554,7 @@ def account(request: HttpRequest) -> HttpResponse:
                 "docs": settings.PERSONAL_MAX_DOCS,
             },
             "share_form": ShareForm(),
+            "perspectives": Perspective.choices,
             "consent_statement": CONSENT_STATEMENT,
         },
     )

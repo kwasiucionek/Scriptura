@@ -19,6 +19,11 @@
   .acct th { font-size: 11px; color: var(--muted); font-weight: 600; }
   .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 10px; }
   @media (max-width: 760px) { .acct { grid-template-columns: 1fr; } }
+  /* zmiana ujęcia przy materiale: kompaktowo, w kolumnie typu */
+  .acct form.persp { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 6px; }
+  .acct form.persp label { margin: 0; }
+  .acct form.persp select { width: auto; max-width: 190px; padding: 3px 6px; font-size: 12px; }
+  .acct form.persp button { margin: 0; padding: 3px 8px; font-size: 11px; }
   /* wskaźnik pracy przy wgrywaniu i indeksowaniu (orientacyjny, nie rzeczywisty postęp) */
   .acct button.busy:disabled, .acct button.busy:disabled:hover { opacity: 1; background: var(--accent); color: #fff; transform: none; cursor: progress; }
   .acct button.busy::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 7px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -1px; animation: acct-spin .8s linear infinite; }
@@ -71,7 +76,8 @@
         <div><label>{{ upload_form.file.label }}</label>{{ upload_form.file }}{{ upload_form.file.errors }}</div>
         <div><label>{{ upload_form.doc_type.label }}</label>{{ upload_form.doc_type }}</div>
         <div><label>{{ upload_form.register.label }}</label>{{ upload_form.register }}</div>
-        <div style="grid-column:1/-1"><label>{{ upload_form.note.label }}</label>{{ upload_form.note }}</div>
+        <div><label>{{ upload_form.perspective.label }}</label>{{ upload_form.perspective }}</div>
+        <div style="grid-column:2/-1"><label>{{ upload_form.note.label }}</label>{{ upload_form.note }}</div>
       </div>
       <button>Wgraj i zaindeksuj</button>
       <div class="upload-status" hidden>
@@ -89,7 +95,13 @@
       <tr>
         <td>{{ d.title }}{% if d.note %}<div class="muted" style="white-space:normal;margin-top:4px">{{ d.note }}</div>{% endif %}</td>
         <td>{% for a in d.authors.all %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
-        <td><span class="badge">{{ d.get_doc_type_display }}</span> <span class="badge">{{ d.get_register_display }}</span></td>
+        <td><span class="badge">{{ d.get_doc_type_display }}</span> <span class="badge">{{ d.get_register_display }}</span>
+          <form method="post" class="persp">{% csrf_token %}<input type="hidden" name="action" value="perspective"><input type="hidden" name="doc_id" value="{{ d.id }}">
+            <label for="persp-{{ d.id }}">Ujęcie</label>
+            <select id="persp-{{ d.id }}" name="perspective"><option value="">— nieokreślone —</option>{% for v, l in perspectives %}<option value="{{ v }}"{% if d.perspective == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+            <button class="ghost" type="submit">Zapisz</button>
+          </form>
+        </td>
         <td>{{ d.chunk_count }}</td>
         <td class="muted">{{ d.created|date:"Y-m-d" }}</td>
         <td>

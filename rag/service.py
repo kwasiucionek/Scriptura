@@ -24,8 +24,10 @@ from corpus.models import Lexeme, Verse
 from corpus.services import text as corpus_svc
 from corpus.sigla import extract, format_ref, ordinal_range
 from library import llm
+from library.models import Perspective
 from library.search import (
     ChunkHit,
+    attach_perspectives,
     diversify,
     expand_with_neighbors,
     retrieve,
@@ -71,7 +73,11 @@ Zasady:
 6. Nie używasz nagłówków Markdown ani list, chyba że pytanie wymaga wyliczenia.
 7. Ojców Kościoła (sekcja TRADYCJA PATRYSTYCZNA) oznaczasz numerami [P1], [P2]…, a teksty starożytnego Bliskiego Wschodu (sekcja ANE) numerami [A1], [A2]… — zawsze z autorem i dziełem w zdaniu. Nigdy nie piszesz nazw sekcji w nawiasach.
 8. Nie przepisujesz na końcu odpowiedzi sekcji WERSETY ani listy źródeł — czytelnik widzi je obok odpowiedzi.
-9. Z literatury i dokumentów Kościoła cytujesz dosłownie tylko krótkie fragmenty (najwyżej 2–3 zdania), w cudzysłowie i z [n]; resztę streszczasz własnymi słowami. Nie odtwarzasz pełnych tekstów ani dłuższych partii źródeł, także na wyraźną prośbę — wtedy streszczasz najważniejsze myśli i odsyłasz do źródła (link jest w panelu źródeł). Cytat ze źródła obcojęzycznego podajesz po polsku jako przekład roboczy („w przekładzie roboczym”)."""
+9. Z literatury i dokumentów Kościoła cytujesz dosłownie tylko krótkie fragmenty (najwyżej 2–3 zdania), w cudzysłowie i z [n]; resztę streszczasz własnymi słowami. Nie odtwarzasz pełnych tekstów ani dłuższych partii źródeł, także na wyraźną prośbę — wtedy streszczasz najważniejsze myśli i odsyłasz do źródła (link jest w panelu źródeł). Cytat ze źródła obcojęzycznego podajesz po polsku jako przekład roboczy („w przekładzie roboczym”).
+10. Kwestie doktrynalne (np. dziewictwo Maryi i „bracia Pańscy”, prymat Piotra, sakramenty): przy źródle może być podane UJĘCIE. Wniosek egzegezy historyczno-krytycznej przedstawiasz jako stanowisko konkretnego autora („według X…”), nie jako ustalony fakt. Nauczanie Kościoła podajesz osobno, tylko na podstawie dokumentu Kościoła z kontekstu i z jego numerem [n]; stanowiska innych wyznań — z nazwą tradycji. Nie przedstawiasz hipotezy egzegetycznej jako obalenia nauki Kościoła ani dogmatu jako wyniku egzegezy. Gdy w źródłach brak dokumentu Kościoła na ten temat, zaznaczasz to jednym zdaniem zamiast odtwarzać nauczanie z pamięci."""
+
+
+PERSPECTIVE_LABELS = dict(Perspective.choices)
 
 
 @dataclass
@@ -493,8 +499,16 @@ def build_messages(
         kind = SOURCE_KIND_NOTES.get(h.doc_type, "") + (
             WORKING_TRANSLATION_NOTE if getattr(h, "text_orig", "") else ""
         )
-        head = f"[{n}] {h.citation}{kind}" + (
-            f" — sekcja: {h.section}" if h.section else ""
+        # dokument Kościoła ma już opis w SOURCE_KIND_NOTES — ujęcie tylko dla pozostałych
+        perspective = (
+            ""
+            if h.doc_type == "church"
+            else PERSPECTIVE_LABELS.get(getattr(h, "perspective", ""), "")
+        )
+        head = (
+            f"[{n}] {h.citation}{kind}"
+            + (f" — UJĘCIE: {perspective}" if perspective else "")
+            + (f" — sekcja: {h.section}" if h.section else "")
         )
         src_lines.append(f"{head}\n{h.text}")
     verse_lines = [f"{v.ref} ({v.work}): {v.text}" for v in verses]
@@ -806,6 +820,7 @@ def ask(
         chunks = diversify(chunks, settings.RAG_MAX_PER_DOC, settings.RAG_TOP_K)
         chunks = use_working_translations(chunks)
         chunks = expand_with_neighbors(chunks, settings.RAG_CONTEXT_NEIGHBORS)
+        chunks = attach_perspectives(chunks)
         t_v = time.monotonic()
         verses = verses_for_question(question, works, access=access)
         if not verses:  # pytanie bez sigli, ale z terminem (hesed, szalom) -> przykładowe wystąpienia
@@ -850,6 +865,7 @@ def ask(
             "access": h.access,
             "register": h.register,
             "personal": h.access == "personal",
+            "perspective": PERSPECTIVE_LABELS.get(getattr(h, "perspective", ""), ""),
             # pełny tekst jak w promptcie — potrzebny sędziom (faithfulness) w ewaluacji
             **({"text": h.text} if include_chunk_text else {}),
         }

@@ -16,7 +16,15 @@ from django.utils.text import slugify
 from corpus.models import Access
 from library.ingest import build_chunks
 from library.langdetect import detect_document
-from library.models import DEFAULT_REGISTER, Author, Chunk, DocType, Document, Register
+from library.models import (
+    DEFAULT_REGISTER,
+    Author,
+    Chunk,
+    DocType,
+    Document,
+    Perspective,
+    Register,
+)
 
 
 class Command(BaseCommand):
@@ -44,6 +52,12 @@ class Command(BaseCommand):
             "--register",
             choices=[r.value for r in Register],
             help="domyślnie wg --type (artykuł/książka: naukowy)",
+        )
+        parser.add_argument(
+            "--perspective",
+            default="",
+            choices=["", *Perspective.values],
+            help="ujęcie źródła (katolickie, historyczno-krytyczne…); dokumenty Kościoła: magisterium",
         )
         parser.add_argument("--license", default="", dest="license_text")
         parser.add_argument(
@@ -97,6 +111,8 @@ class Command(BaseCommand):
                 language=language,
                 register=o["register"]
                 or DEFAULT_REGISTER.get(o["type"], Register.SCIENTIFIC),
+                perspective=o["perspective"]
+                or (Perspective.MAGISTERIUM if o["type"] == DocType.CHURCH else ""),
             )
             for name in o["author"]:
                 author, _ = Author.objects.get_or_create(

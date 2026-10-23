@@ -101,6 +101,8 @@ class Document(TimeStampedModel):
     perspective = models.CharField(
         max_length=16, choices=Perspective.choices, blank=True, default=""
     )
+    # materiał własny obcojęzyczny: przekład roboczy na polski do wyszukiwania (wybór przy wgraniu)
+    translate_pl = models.BooleanField(default=False)
     source_path = models.CharField(max_length=500, blank=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

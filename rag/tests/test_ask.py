@@ -451,12 +451,27 @@ def test_working_translation_replaces_text_and_keeps_original(church_doc):
                    citation="", doc_type="church", year=1965, url="", section="II",
                    text="Sacred tradition and Sacred Scripture form one deposit.", sigla=[],
                    score=1.0, access="open")  # fmt: skip
-    article = ChunkHit(
-        **{**hit.__dict__, "doc_type": "article", "text": "Oryginał artykułu."}
+    # artykuł na CC BY-ND: przekład tylko do wyszukiwania, w panelu oryginał
+    nd = Document.objects.create(
+        title="Art",
+        doc_type="article",
+        language="en",
+        access="open",
+        license="CC BY-ND",
     )
+    Chunk.objects.create(
+        document=nd,
+        order=0,
+        text="Article original.",
+        text_pl="Przekład artykułu.",
+        sigla=[],
+    )
+    article = ChunkHit(**{**hit.__dict__, "document_id": nd.id, "order": 0, "doc_type": "article",
+                          "text": "Article original."})  # fmt: skip
     use_working_translations([hit, article])
     assert hit.text == "Święta Tradycja i Pismo Święte stanowią jeden depozyt."
     assert hit.text_orig.startswith("Sacred tradition") and article.text_orig == ""
+    assert article.text == "Article original." and article.translation_blocked
     (out,) = expand_with_neighbors([hit], 1)
     # sąsiad z przekładem -> po polsku; sąsiad bez przekładu -> oryginał; oryginały w text_orig
     assert out.text.split("\n") == [

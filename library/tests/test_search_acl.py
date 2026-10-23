@@ -125,3 +125,57 @@ def test_sql_register_and_author_changes_override_index(monkeypatch, settings):
         )
         == []
     )
+
+
+def test_translation_allowed_by_license():
+    from library.search import translation_allowed
+
+    assert translation_allowed("article", "CC BY", "open")
+    assert translation_allowed("article", "CC BY-SA 4.0", "open")
+    assert translation_allowed("article", "CC BY-NC", "open")
+    assert not translation_allowed("article", "CC BY-ND", "open")
+    assert not translation_allowed("article", "CC BY-NC-ND 4.0", "open")
+    assert not translation_allowed("article", "za zgodą autora", "licensed")
+    assert not translation_allowed("article", "", "open")
+    assert translation_allowed("article", "", "personal")  # widzi tylko właściciel
+    assert translation_allowed("church", "© LEV — bez zmian treści", "open")
+    assert translation_allowed("article", "domena publiczna", "open")
+
+
+@pytest.mark.django_db
+def test_working_translation_shown_only_when_license_allows():
+    from library.models import Chunk, Document
+    from library.search import ChunkHit, use_working_translations
+
+    def make(title, license_text, access="open", doc_type="article"):
+        doc = Document.objects.create(
+            title=title,
+            license=license_text,
+            access=access,
+            doc_type=doc_type,
+            language="en",
+        )
+        Chunk.objects.create(
+            document=doc,
+            order=0,
+            text="Mary is named.",
+            text_pl="Maria jest wymieniona.",
+            sigla=[],
+        )
+        return ChunkHit(chunk_id=0, document_id=doc.id, order=0, title=title, authors=[], citation=title,
+                        doc_type=doc_type, year=None, url="", section="", text="Mary is named.", sigla=[],
+                        score=1.0, access=access, register="scientific")  # fmt: skip
+
+    by, nd, own = (
+        make("BY", "CC BY"),
+        make("ND", "CC BY-ND"),
+        make("Own", "użytek własny", "personal"),
+    )
+    use_working_translations([by, nd, own])
+    assert (by.text, by.text_orig) == ("Maria jest wymieniona.", "Mary is named.")
+    assert (nd.text, nd.text_orig, nd.translation_blocked) == (
+        "Mary is named.",
+        "",
+        True,
+    )
+    assert own.text == "Maria jest wymieniona."

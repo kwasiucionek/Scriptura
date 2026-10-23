@@ -223,3 +223,8 @@ def test_chat_page_has_ai_notice_and_legal_links(client):
         "cdnjs.cloudflare.com"
         not in client.get(reverse("corpus:index")).content.decode()
     )
+
+
+def test_privacy_mentions_optional_translation_of_own_materials(client):
+    page = client.get(reverse("pages:privacy")).content.decode()
+    assert "przekład roboczy" in page and "cały tekst" in page

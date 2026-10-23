@@ -309,6 +309,41 @@ class TestPersonalPersistence:
             ingest_personal(personal_owner, _upload_form(title="Inny")).language == "pl"
         )
 
+    def test_translate_personal_only_when_chosen(self, personal_owner, monkeypatch):
+        # przekład roboczy obcojęzycznego materiału: tylko z wyboru przy wgraniu, tylko brakujące
+        calls = []
+
+        def fake_translate(text, src, model, base_url, api_key=""):
+            calls.append(src)
+            return f"PL: {text[:20]}"
+
+        monkeypatch.setattr(
+            "library.management.commands.translate_chunks.translate", fake_translate
+        )
+        de = (
+            "Maria, die Mutter Jesu, wird in den Evangelien mit ihrem Namen genannt. "
+            "Die Geschwister Jesu werden in der Kindheitsgeschichte nicht erwähnt, aber "
+            "nach dem Markusevangelium hatte Jesus vier Brüder und auch Schwestern, und "
+            "die Frage nach ihrer Herkunft ist in der Forschung umstritten.\n"
+        ).encode()
+        doc = ingest_personal(
+            personal_owner, _upload_form(data=de, title="Maria", translate_pl=True)
+        )
+        assert doc.translate_pl and doc.language == "de"
+        assert (
+            doc.chunks.exclude(text_pl="").count() == doc.chunk_count > 0
+        )  # indeks po przekładzie
+        assert set(calls) == {"de"}
+        n = len(calls)
+        assert (
+            personal.translate_personal(doc) == 0 and len(calls) == n
+        )  # nic do dołożenia
+        other = ingest_personal(
+            personal_owner,
+            _upload_form(data=de + b" ", title="Bez", translate_pl=False),
+        )
+        assert not other.translate_pl and not other.chunks.exclude(text_pl="").exists()
+
     def test_upload_saves_perspective_and_owner_can_change_it(self, personal_owner):
         doc = ingest_personal(personal_owner, _upload_form(perspective="critical"))
         assert doc.perspective == "critical"

@@ -5,7 +5,7 @@
 <div class="eyebrow">PRYWATNOŚĆ I COOKIES</div>
 <h1>Polityka <span>prywatności</span></h1>
 <p class="lead">Scriptura zbiera tak mało danych, jak to możliwe: bez konta nie zapisuje Twoich pytań, nie używa ciasteczek reklamowych ani śledzących, a statystyki odwiedzin nie identyfikują osób. Poniżej szczegóły wymagane przez RODO (art. 13).</p>
-<p class="small muted">Obowiązuje od {{ legal_version }}.</p>
+<p class="small muted">Obowiązuje od {{ privacy_version }}.</p>
 
 <h2>1. Administrator danych</h2>
 <p>Administratorem danych osobowych jest {% if site_operator_name %}<strong>{{ site_operator_name }}</strong>{% if site_operator_address %}, {{ site_operator_address }}{% endif %}{% else %}autor serwisu (dane na stronie <a href="{% url 'pages:author' %}">Autor i kontakt</a>){% endif %}{% if site_contact_email %}, e‑mail: <a href="mailto:{{ site_contact_email }}">{{ site_contact_email }}</a>{% endif %}. Scriptura jest prywatnym, niekomercyjnym projektem jednej osoby; nie wyznaczono inspektora ochrony danych.</p>
@@ -16,7 +16,7 @@
   <tr><td>Korzystanie bez konta</td><td>adres IP</td><td>limit pytań na godzinę ({{ rate_anon }}), ochrona przed nadużyciami, logi serwera</td><td>art. 6 ust. 1 lit. f — prawnie uzasadniony interes (bezpieczeństwo usługi)</td></tr>
   <tr><td>Konto</td><td>login, imię i nazwisko, e‑mail (jeśli podany), hasło w postaci skrótu</td><td>logowanie i prowadzenie konta</td><td>art. 6 ust. 1 lit. b — świadczenie usługi wg <a href="{% url 'pages:terms' %}">regulaminu</a></td></tr>
   <tr><td>Historia rozmów</td><td>Twoje pytania, odpowiedzi i listy źródeł</td><td>dostęp do wcześniejszych rozmów — tylko dla Ciebie</td><td>art. 6 ust. 1 lit. b</td></tr>
-  <tr><td>Moje materiały</td><td>wgrane pliki i ich opis</td><td>wyszukiwanie w Twoich materiałach — tylko dla Ciebie</td><td>art. 6 ust. 1 lit. b</td></tr>
+  <tr><td>Moje materiały</td><td>wgrane pliki i ich opis; przy tekstach obcojęzycznych — jeśli to wybierzesz — ich przekład roboczy</td><td>wyszukiwanie w Twoich materiałach — tylko dla Ciebie</td><td>art. 6 ust. 1 lit. b</td></tr>
   <tr><td>Udostępnienie materiału autora</td><td>treść oświadczenia, data, licencja, data wycofania; korespondencja ze zgodą</td><td>dowód zgody autora na włączenie tekstu do wspólnego korpusu</td><td>art. 6 ust. 1 lit. f — wykazanie podstawy korzystania z utworu</td></tr>
   <tr><td>Statystyki odwiedzin</td><td>odsłony stron, kraj i typ przeglądarki — bez ciasteczek i bez identyfikacji osoby; przy pytaniu tylko informacja „zadano pytanie” (tryb, czy było siglum), nigdy treść</td><td>wiedza, jak serwis jest używany</td><td>art. 6 ust. 1 lit. f</td></tr>
   <tr><td>Kontakt e‑mail</td><td>adres i treść wiadomości</td><td>odpowiedź i prowadzenie sprawy</td><td>art. 6 ust. 1 lit. f</td></tr>
@@ -24,7 +24,7 @@
 <p>Treści pytań zadanych bez logowania nie są zapisywane w Scripturze. Nie profilujemy użytkowników i nie podejmujemy wobec nich zautomatyzowanych decyzji (art. 22 RODO). Podanie danych jest dobrowolne; bez konta można korzystać z serwisu w podstawowym zakresie.</p>
 
 <h2>3. Jak powstaje odpowiedź — model językowy w chmurze</h2>
-<p>Wyszukiwanie fragmentów i wektory tekstu są liczone na serwerze Scriptury. Samą odpowiedź pisze model językowy uruchamiany w usłudze <strong>Ollama Cloud</strong> (Ollama Inc., USA): trafia do niego treść pytania i wybrane fragmenty źródeł — także fragmenty Twoich materiałów własnych, jeśli dotyczą pytania. Według polityki prywatności Ollama treść zapytań nie jest przechowywana dłużej, niż wymaga obsługa żądania, i nie służy do trenowania modeli; dane mogą być przetwarzane w Stanach Zjednoczonych. <strong>Nie wpisuj w pytaniach danych osobowych</strong> — swoich ani cudzych.</p>
+<p>Wyszukiwanie fragmentów i wektory tekstu są liczone na serwerze Scriptury. Samą odpowiedź pisze model językowy uruchamiany w usłudze <strong>Ollama Cloud</strong> (Ollama Inc., USA): trafia do niego treść pytania i wybrane fragmenty źródeł — także fragmenty Twoich materiałów własnych, jeśli dotyczą pytania. Gdy przy wgrywaniu materiału obcojęzycznego zaznaczysz <em>przekład roboczy</em>, do tego samego modelu trafia <strong>cały tekst</strong> (fragment po fragmencie), żeby powstał polski przekład do wyszukiwania; przekład zapisujemy tylko na Twoim koncie. Bez tej opcji materiał nie jest tłumaczony. Według polityki prywatności Ollama treść zapytań nie jest przechowywana dłużej, niż wymaga obsługa żądania, i nie służy do trenowania modeli; dane mogą być przetwarzane w Stanach Zjednoczonych. <strong>Nie wpisuj w pytaniach danych osobowych</strong> — swoich ani cudzych.</p>
 
 <h2>4. Komu przekazujemy dane</h2>
 <ul>

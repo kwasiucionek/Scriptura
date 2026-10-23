@@ -136,6 +136,8 @@ class ChunkHit:
     core_orig: str = ""
     # ujęcie dokumentu (Document.perspective) — dociągane z bazy, nie z indeksu
     perspective: str = ""
+    # obcojęzyczny fragment, którego przekładu licencja nie pozwala pokazać (CC BY-ND)
+    translation_blocked: bool = False
 
 
 # --- indeksowanie ---------------------------------------------------------
@@ -358,26 +360,56 @@ def diversify(hits: list[ChunkHit], max_per_doc: int, k: int) -> list[ChunkHit]:
 WORKING_TRANSLATION_TYPES = ("church",)
 
 
+def translation_allowed(doc_type: str, license_text: str, access: str) -> bool:
+    """Czy wolno pokazać (opublikować) polski przekład roboczy fragmentu.
+
+    Dokumenty Kościoła — tak (jak dotąd, z odsyłaczem do tekstu oficjalnego); materiały własne —
+    tak (widzi je tylko właściciel); literatura — gdy licencja pozwala na utwory zależne: CC bez
+    klauzuli ND albo domena publiczna. CC BY-ND, licencje nieznane i zgody autorów (zakres bez
+    przekładu) — tylko oryginał; przekład służy wtedy wyłącznie wyszukiwaniu."""
+    if doc_type in WORKING_TRANSLATION_TYPES or access == "personal":
+        return True
+    lic = (license_text or "").upper()
+    if "DOMENA PUBLICZNA" in lic or "PUBLIC DOMAIN" in lic:
+        return True
+    return lic.startswith("CC") and "ND" not in lic.replace("-", " ").split()
+
+
 def use_working_translations(hits: list[ChunkHit]) -> list[ChunkHit]:
-    """Dokumenty Kościoła: `text` = polski przekład roboczy (Chunk.text_pl), oryginał w `text_orig`.
+    """Fragmenty obcojęzyczne z przekładem roboczym (Chunk.text_pl): `text` = przekład polski,
+    oryginał w `text_orig` — gdy licencja pozwala pokazać przekład (translation_allowed).
+    Inaczej zostaje oryginał, a `translation_blocked` mówi panelowi dlaczego.
     Wywołuj przed expand_with_neighbors — sąsiedzi dostaną wtedy też przekład."""
-    keys = {
-        (h.document_id, h.order)
-        for h in hits
-        if h.doc_type in WORKING_TRANSLATION_TYPES and not getattr(h, "text_orig", "")
-    }
+    keys = {(h.document_id, h.order) for h in hits if not getattr(h, "text_orig", "")}
     if not keys:
         return hits
     rows = (
         Chunk.objects.filter(document_id__in={d for d, _ in keys})
         .exclude(text_pl="")
-        .values_list("document_id", "order", "text_pl")
+        .values_list(
+            "document_id",
+            "order",
+            "text_pl",
+            "document__doc_type",
+            "document__license",
+            "document__access",
+        )
     )
-    polish = {(d, o): t for d, o, t in rows if (d, o) in keys}
+    polish, blocked = {}, set()
+    for d, o, text_pl, doc_type, license_text, access in rows:
+        if (d, o) not in keys:
+            continue
+        if translation_allowed(doc_type, license_text, access):
+            polish[(d, o)] = text_pl
+        else:
+            blocked.add((d, o))
     for h in hits:
-        translated = polish.get((h.document_id, h.order))
-        if translated and h.doc_type in WORKING_TRANSLATION_TYPES and not h.text_orig:
+        key = (h.document_id, h.order)
+        translated = polish.get(key)
+        if translated and not h.text_orig:
             h.text_orig, h.text = h.text, translated
+        elif key in blocked:
+            h.translation_blocked = True
     return hits
 
 

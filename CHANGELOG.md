@@ -2,6 +2,16 @@
 
 ## 2026-10-23 — ujęcie źródła i zasada przy kwestiach doktrynalnych
 
+- Moje materiały obcojęzyczne: opcja „przekład roboczy na polski do wyszukiwania” przy wgraniu
+  (domyślnie zaznaczona; `Document.translate_pl`, migracja 0012). Przekład w tle przed indeksem
+  (`translate_personal`, 2 równoległe żądania), potem wektory i BM25 z polskiego tekstu — pytanie
+  „Maryja matka Jezusa” nie znajdowało niemieckiego hasła „Maria”. Polityka prywatności
+  (wersja z 23.10.2026): przy tej opcji cały tekst przechodzi przez model w chmurze.
+- Przekład roboczy w panelu źródeł także dla literatury, gdy licencja pozwala na utwory zależne
+  (CC BY, BY-SA, BY-NC, domena publiczna; `translation_allowed`) — fragment po polsku, oryginał
+  obok; przy CC BY-ND oryginał z notą, że licencja nie pozwala pokazać przekładu. Materiały własne
+  zawsze z przekładem (widzi je tylko właściciel). Strony Korpus i Dla autorów opisują zasadę.
+
 - Moje materiały: język wykrywany z treści (`detect_document`) zamiast stałego „pl” — niemieckie
   hasło WiBiLex było zapisane jako polskie.
 - Zasada 6: słowa greckie i hebrajskie alfabetem oryginalnym (Unicode), nigdy w notacji LaTeX

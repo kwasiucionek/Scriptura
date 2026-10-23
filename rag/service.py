@@ -944,6 +944,7 @@ def ask(
             "snippet": (getattr(h, "core_text", "") or h.text)[:600],
             # przekład roboczy: polski fragment + oryginał i odsyłacz (url) w panelu
             "translated": bool(getattr(h, "text_orig", "")),
+            "translation_blocked": bool(getattr(h, "translation_blocked", False)),
             "snippet_orig": (
                 getattr(h, "core_orig", "") or getattr(h, "text_orig", "")
             )[:600],

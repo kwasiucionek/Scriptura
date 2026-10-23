@@ -76,6 +76,12 @@ class UploadForm(forms.Form):
         max_length=Document._meta.get_field("note").max_length,
         required=False,
     )
+    translate_pl = forms.BooleanField(
+        label="Tekst obcojęzyczny: przekład roboczy na polski do wyszukiwania",
+        required=False,
+        initial=True,
+        help_text="cały tekst trafia wtedy do modelu językowego w chmurze; przekład widzisz tylko Ty",
+    )
 
     def clean_file(self):
         f = self.cleaned_data["file"]
@@ -253,6 +259,7 @@ def ingest_personal(user: User, form: UploadForm) -> Document:
                 chunk_count=len(drafts),
                 # język z treści (hasło niemieckiego leksykonu to nie „pl”); brak pewności = pl
                 language=detect_document([d.text for d in drafts]) or "pl",
+                translate_pl=bool(form.cleaned_data.get("translate_pl")),
             )
             doc.authors.add(author)
             Chunk.objects.bulk_create(
@@ -437,9 +444,54 @@ def retry_personal_index(user: User, doc_id: int) -> Document:
     return user.documents.get(pk=doc.pk)
 
 
+TRANSLATE_WORKERS = (
+    2  # równoległe żądania do modelu w chmurze (nie zagładzać asystenta)
+)
+
+
+def translate_personal(doc: Document) -> int:
+    """Przekład roboczy na polski fragmentów obcojęzycznego materiału własnego — tylko do
+    wyszukiwania i podglądu właściciela; tylko gdy wybrany przy wgraniu (translate_pl).
+    Brakujące fragmenty (ponowienie dokłada resztę); błąd fragmentu nie zatrzymuje indeksu.
+    Zwraca liczbę przetłumaczonych fragmentów."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from library.management.commands.translate_chunks import translate
+
+    if not doc.translate_pl or doc.language.startswith("pl"):
+        return 0
+    todo = list(doc.chunks.filter(text_pl="").order_by("order"))
+
+    def one(chunk: Chunk) -> str:
+        try:
+            return translate(
+                chunk.text,
+                doc.language,
+                settings.TRANSLATE_MODEL,
+                settings.TRANSLATE_BASE_URL,
+                settings.OLLAMA_API_KEY,
+            ).strip()
+        except Exception:  # noqa: BLE001 — fragment bez przekładu zostaje w oryginale
+            logger.exception("Przekład fragmentu %s nie powiódł się", chunk.pk)
+            return ""
+
+    with ThreadPoolExecutor(max_workers=TRANSLATE_WORKERS) as pool:
+        results = list(pool.map(one, todo))
+    done = 0
+    for chunk, text in zip(todo, results, strict=True):
+        if text:
+            Chunk.objects.filter(pk=chunk.pk).update(text_pl=text)
+            done += 1
+    return done
+
+
 def _reindex(doc: Document) -> None:
     # Sieć i zapis statusu są poza pierwotną transakcją. Nawet awaria zapisu statusu
     # nie może zamienić poprawnie zatwierdzonego uploadu/wycofania w pozorną porażkę.
+    try:
+        translate_personal(doc)  # przed indeksem: wektory i BM25 z polskiego przekładu
+    except Exception:  # noqa: BLE001
+        logger.exception("Przekład roboczy dokumentu %s nie powiódł się", doc.pk)
     try:
         current = retry_personal_index(doc.owner, doc.pk)
     except Document.DoesNotExist:

@@ -217,7 +217,12 @@ async function exportCitations(fmt) {
 // a bez cytatu — sam wyszukany fragment (bez doklejonych akapitów sąsiednich).
 function chunkFragment(c, quotes) {
   if (!c.snippet && !quotes.length) return "";
-  const note = c.translated ? `<div class="muted" style="margin-top:4px">przekład roboczy Scriptury — pełny tekst i wersja oficjalna: ${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">źródło</a>` : "strona źródła"}</div>` : "";
+  const src = c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">źródło</a>` : "strona źródła";
+  const note = c.translated
+    ? `<div class="muted" style="margin-top:4px">przekład roboczy Scriptury (maszynowy) — ${c.doc_type === "church" ? "pełny tekst i wersja oficjalna" : "oryginał niżej, pełny tekst"}: ${src}</div>`
+    : c.translation_blocked
+      ? `<div class="muted" style="margin-top:4px">fragment w oryginale — licencja tekstu (bez utworów zależnych) nie pozwala pokazać przekładu; pełny tekst: ${src}</div>`
+      : "";
   const found = c.snippet ? `<blockquote>${esc(c.snippet)}${c.snippet.length >= 600 ? "…" : ""}</blockquote>` : "";
   const orig = c.translated && c.snippet_orig ? `<details><summary>oryginał</summary><blockquote>${esc(c.snippet_orig)}${c.snippet_orig.length >= 600 ? "…" : ""}</blockquote></details>` : "";
   if (!quotes.length) return `<details><summary>pokaż fragment</summary>${found}${note}${orig}</details>`;

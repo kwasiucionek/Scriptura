@@ -15,6 +15,13 @@
 - Moje materiały: pole „Ujęcie” przy wgrywaniu i zmiana ujęcia przy każdym materiale (tylko
   właściciel, bez reindeksacji). `ingest_document --perspective`, pole `perspective`
   w manifestach.
+- Przeciwwaga katolicka w korpusie (Maryja, „bracia Pańscy”, prymat Piotra): `harvest vatican`
+  — Lumen gentium (en), Redemptoris Mater i Ut unum sint (pl), Katechizm nr 484–511, 871–945,
+  963–975 (en, bez nawigacji IntraText), Pastor aeternus (Wikiźródła, rozdziały łączone przez
+  `parts`, pełny przekład roboczy z łaciny); `harvest openalex --ids … --perspective …` —
+  wybrane artykuły OA (m.in. Grzybek „Czy Chrystus miał braci?”, Slawik o Mt 1,25a, Jankowski
+  o Łk 2,7, Kędziora o Mt 13,53–58, Hieronim i Orygenes o Józefie, Luter o Maryi, prymat
+  u Pawła, w Mt 16,18–19 i w aktach soborów; dwa artykuły prawosławne z „Elpis”).
 
 ## 2026-10-20 — polityka prywatności, regulamin, informacja o AI
 

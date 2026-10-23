@@ -490,3 +490,100 @@ def test_translated_church_source_marked_in_prompt():
         "[1] DV [DOKUMENT KOŚCIOŁA" in user and "przekładzie roboczym Scriptury" in user
     )
     assert "Święta Tradycja…" in user and "Sacred tradition" not in user
+
+
+def _hit(chunk_id, doc_type="article", doc_id=None):
+    from library.search import ChunkHit
+
+    return ChunkHit(chunk_id=chunk_id, document_id=doc_id or chunk_id, order=0, title=f"T{chunk_id}",
+                    authors=[], citation=f"C{chunk_id}", doc_type=doc_type, year=None, url="", section="",
+                    text="t", sigla=[], score=1.0, access="open", register="mixed")  # fmt: skip
+
+
+def test_wants_church_on_disputed_questions():
+    assert service.wants_church("Czy Jezus miał rodzeństwo? Kim byli bracia Pańscy?")
+    assert service.wants_church("Czy Mt 16,18 mówi o prymacie Piotra?")
+    assert service.wants_church("Jak Kościół rozumie natchnienie Pisma?")
+    assert not service.wants_church("Co znaczy miszkan w Wj 40?")
+
+
+def test_church_channel_adds_document_in_place_of_last(settings, monkeypatch):
+    # przy kwestii spornej najtrafniejszy dokument Kościoła zastępuje ostatni fragment
+    from library.search import LAST_TIMINGS
+
+    settings.RAG_TOP_K, settings.RAG_CHURCH_PASSAGES = 3, 1
+    calls = []
+
+    def fake_retrieve(q, **kw):
+        calls.append(kw)
+        LAST_TIMINGS.clear()
+        LAST_TIMINGS["search_ms"] = 999
+        return [_hit(90, "church")]
+
+    monkeypatch.setattr(service, "retrieve", fake_retrieve)
+    LAST_TIMINGS.clear()
+    LAST_TIMINGS["search_ms"] = 5
+    chunks = [_hit(1), _hit(2), _hit(3)]
+    out = service.church_for_question(
+        "Kim byli bracia Pańscy?", chunks, access=["open"], registers=None, user_id=None
+    )
+    assert [h.chunk_id for h in out] == [1, 2, 90]
+    assert calls[0]["doc_types"] == ["church"] and calls[0]["k"] == 1
+    assert (
+        LAST_TIMINGS["search_ms"] == 5 and "church_ms" in LAST_TIMINGS
+    )  # czasy głównego wyszukiwania zostają
+    short = service.church_for_question(
+        "Kim byli bracia Pańscy?",
+        chunks[:2],
+        access=["open"],
+        registers=None,
+        user_id=None,
+    )
+    assert [h.chunk_id for h in short] == [1, 2, 90]
+
+
+def test_church_channel_skipped_when_not_needed(settings, monkeypatch):
+    settings.RAG_TOP_K, settings.RAG_CHURCH_PASSAGES = 3, 1
+    calls = []
+    monkeypatch.setattr(
+        service, "retrieve", lambda q, **kw: calls.append(kw) or [_hit(1)]
+    )
+    chunks = [_hit(1), _hit(2)]
+    kw = {"access": ["open"], "registers": None, "user_id": None}
+    assert service.church_for_question("Co znaczy miszkan?", chunks, **kw) == chunks
+    assert (
+        service.church_for_question(
+            "Bracia Pańscy?", chunks + [_hit(5, "church")], **kw
+        )[-1].chunk_id
+        == 5
+    )
+    assert (
+        service.church_for_question("Bracia Pańscy?", chunks, personal_only=True, **kw)
+        == chunks
+    )
+    assert (
+        service.church_for_question("Bracia Pańscy?", chunks, authors=["X"], **kw)
+        == chunks
+    )
+    assert not calls
+    # wynik spoza dokumentów Kościoła albo już obecny w kontekście nie jest dokładany
+    assert service.church_for_question("Bracia Pańscy?", chunks, **kw) == chunks
+    settings.RAG_CHURCH_PASSAGES = 0
+    assert service.church_for_question("Bracia Pańscy?", chunks, **kw) == chunks
+
+
+def test_retrieve_filters_doc_types_in_db_backend(settings):
+    from library.search import _filters, retrieve
+
+    settings.SEARCH_BACKEND = "db"
+    settings.RERANKER_BACKEND = "none"
+    for title, doc_type in [("Katechizm", "church"), ("Artykuł", "article")]:
+        doc = Document.objects.create(title=title, doc_type=doc_type, access="open")
+        Chunk.objects.create(
+            document=doc, order=0, text="Bracia Pańscy to krewni Jezusa.", sigla=[]
+        )
+    hits = retrieve("bracia Pańscy krewni", k=5, access=["open"], doc_types=["church"])
+    assert [h.title for h in hits] == ["Katechizm"]
+    assert {"terms": {"doc_type": ["church"]}} in _filters(
+        ["open"], None, None, doc_types=["church"]
+    )

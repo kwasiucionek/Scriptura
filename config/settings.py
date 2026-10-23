@@ -278,6 +278,9 @@ RAG_RELATED_VERSES = env(
 RAG_ANE_PASSAGES = env("RAG_ANE_PASSAGES", 3, int)
 # Baza powiązana Ojców Kościoła (ANF/NPNF z CCEL): pasaże w prompcie; 0 = wyłączone
 RAG_PATRISTIC_PASSAGES = env("RAG_PATRISTIC_PASSAGES", 4, int)
+# Kanał dokumentów Kościoła przy kwestiach spornych (DOCTRINAL_TRIGGERS w rag/service.py): ile
+# fragmentów dokumentów Kościoła dołożyć, gdy żaden nie trafił do kontekstu; 0 = wyłączone
+RAG_CHURCH_PASSAGES = env("RAG_CHURCH_PASSAGES", 1, int)
 # Baza powiązana geografii (OpenBible Geocoding): miejsca w panelu „Miejsca" i na mapie; 0 = wyłączone.
 # Nie trafiają do promptu — to warstwa dla czytelnika, nie dla modelu.
 RAG_PLACES = env("RAG_PLACES", 12, int)

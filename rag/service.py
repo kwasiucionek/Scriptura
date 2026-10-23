@@ -79,6 +79,77 @@ Zasady:
 
 PERSPECTIVE_LABELS = dict(Perspective.choices)
 
+# Kwestie sporne i pytania o Pismo w nauczaniu Kościoła: do kontekstu trafia też najtrafniejszy
+# fragment dokumentu Kościoła (kanał jak u Ojców), żeby nauczanie Kościoła szło z dokumentu,
+# a nie z opisu w artykule. Dopasowanie po złożonych (bez znaków diakrytycznych) fragmentach słów.
+DOCTRINAL_TRIGGERS = (
+    "bracia panscy", "braci panskich", "bracia jezusa", "braci jezusa", "rodzenstw",
+    "dziewic", "niepokalan", "wniebowzie", "bogurodzic", "matka boza", "matki bozej", "maryj",
+    "pryma", "nastepca piotra", "nastepcy piotra", "nastepcow piotra", "biskup rzymu",
+    "biskupa rzymu", "papie", "nieomyln", "sukcesj", "magisterium", "nauczanie kosciola",
+    "kosciol naucza", "katechizm", "dogmat", "sakrament", "eucharysti", "czysc",
+    "natchn", "inspiracj", "kanon", "bezbledn", "prawda pisma",
+    "interpretacja pisma", "historyczno-krytyczn",
+)  # fmt: skip
+
+
+def _fold(text: str) -> str:
+    import unicodedata
+
+    t = unicodedata.normalize("NFKD", text.lower().replace("ł", "l"))
+    return "".join(c for c in t if not unicodedata.combining(c))
+
+
+def wants_church(question: str) -> bool:
+    q = _fold(question)
+    return any(t in q for t in DOCTRINAL_TRIGGERS)
+
+
+def church_for_question(
+    question: str,
+    chunks: list[ChunkHit],
+    *,
+    access: list[str] | None,
+    registers: list[str] | None,
+    user_id: int | None,
+    authors: list[str] | None = None,
+    personal_only: bool = False,
+) -> list[ChunkHit]:
+    """Przy kwestii spornej bez dokumentu Kościoła w kontekście dokłada najtrafniejszy fragment
+    dokumentu Kościoła na miejsce ostatniego fragmentu (limit RAG_TOP_K bez zmian). Pomijane przy
+    zawężeniu do autorów lub własnych materiałów; reranker odrzuca dokumenty nie na temat."""
+    n = settings.RAG_CHURCH_PASSAGES
+    if n <= 0 or personal_only or authors or not wants_church(question):
+        return chunks
+    if any(h.doc_type == "church" for h in chunks):
+        return chunks
+    from library.search import LAST_TIMINGS
+
+    saved, t0 = dict(LAST_TIMINGS), time.monotonic()
+    try:
+        found = retrieve(
+            question,
+            k=n,
+            access=access,
+            registers=registers,
+            user_id=user_id,
+            doc_types=["church"],
+        )
+    except Exception:  # noqa: BLE001 — kanał pomocniczy nie zatrzymuje odpowiedzi
+        log.exception("Kanał dokumentów Kościoła nie zadziałał")
+        found = []
+    finally:
+        # drugie wyszukiwanie nie nadpisuje czasów głównego
+        LAST_TIMINGS.clear()
+        LAST_TIMINGS.update(saved)
+        LAST_TIMINGS["church_ms"] = int((time.monotonic() - t0) * 1000)
+    have = {h.chunk_id for h in chunks}
+    extra = [h for h in found if h.doc_type == "church" and h.chunk_id not in have][:n]
+    if not extra:
+        return chunks
+    keep = max(0, settings.RAG_TOP_K - len(extra))
+    return chunks[:keep] + extra
+
 
 @dataclass
 class VerseSource:
@@ -818,6 +889,15 @@ def ask(
             )
         chunks = apply_register_preference(chunks, mode, settings.RAG_TOP_K + 4)
         chunks = diversify(chunks, settings.RAG_MAX_PER_DOC, settings.RAG_TOP_K)
+        chunks = church_for_question(
+            question,
+            chunks,
+            access=access,
+            registers=registers,
+            user_id=user_id,
+            authors=authors,
+            personal_only=personal_only,
+        )
         chunks = use_working_translations(chunks)
         chunks = expand_with_neighbors(chunks, settings.RAG_CONTEXT_NEIGHBORS)
         chunks = attach_perspectives(chunks)

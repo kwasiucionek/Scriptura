@@ -445,6 +445,7 @@ def _filters(
     registers: list[str] | None = None,
     user_id: int | None = None,
     personal_only: bool = False,
+    doc_types: list[str] | None = None,
 ) -> list[dict]:
     """Wstępne ACL indeksu; autorytatywna kontrola następuje w SQL."""
     own = {"term": {"owner_id": user_id or -1}}
@@ -462,6 +463,8 @@ def _filters(
         ]
     if registers:
         f.append({"terms": {"register": registers}})
+    if doc_types:
+        f.append({"terms": {"doc_type": doc_types}})
     if authors:
         f.append({"terms": {"authors": authors}})
     if sigla:
@@ -548,8 +551,10 @@ def retrieve(
     registers: list[str] | None = None,
     user_id: int | None = None,
     personal_only: bool = False,
+    doc_types: list[str] | None = None,
 ) -> list[ChunkHit]:
-    """Hybryda (BM25 + kNN, RRF) -> reranker -> top k. Pula kandydatów = RERANK_TOP_N."""
+    """Hybryda (BM25 + kNN, RRF) -> reranker -> top k. Pula kandydatów = RERANK_TOP_N.
+    `doc_types` zawęża do typów dokumentów (np. ["church"] — kanał dokumentów Kościoła)."""
     import time
 
     from library.rerank import rerank
@@ -560,11 +565,27 @@ def retrieve(
     t = time.monotonic()
     if settings.SEARCH_BACKEND == "opensearch":
         hits = _retrieve_opensearch(
-            query, pool, access, authors, sigla, registers, user_id, personal_only
+            query,
+            pool,
+            access,
+            authors,
+            sigla,
+            registers,
+            user_id,
+            personal_only,
+            doc_types,
         )
     else:
         hits = _retrieve_db(
-            query, pool, access, authors, sigla, registers, user_id, personal_only
+            query,
+            pool,
+            access,
+            authors,
+            sigla,
+            registers,
+            user_id,
+            personal_only,
+            doc_types,
         )
     LAST_TIMINGS["search_ms"] = int((time.monotonic() - t) * 1000) - LAST_TIMINGS.get(
         "embed_ms", 0
@@ -576,7 +597,15 @@ def retrieve(
 
 
 def _retrieve_opensearch(
-    query, k, access, authors, sigla, registers=None, user_id=None, personal_only=False
+    query,
+    k,
+    access,
+    authors,
+    sigla,
+    registers=None,
+    user_id=None,
+    personal_only=False,
+    doc_types=None,
 ) -> list[ChunkHit]:
     from corpus.search.client import get_client, index_name
     from library.embeddings import embed
@@ -586,7 +615,9 @@ def _retrieve_opensearch(
 
     from library.translate import translate_query
 
-    filters = _filters(access, authors, sigla, registers, user_id, personal_only)
+    filters = _filters(
+        access, authors, sigla, registers, user_id, personal_only, doc_types
+    )
     pool = k * 2
     t = time.monotonic()
     query_en = translate_query(query) if HAS_ENGLISH_DOCS() else ""
@@ -672,7 +703,15 @@ _STOPWORDS = {
 
 
 def _retrieve_db(
-    query, k, access, authors, sigla, registers=None, user_id=None, personal_only=False
+    query,
+    k,
+    access,
+    authors,
+    sigla,
+    registers=None,
+    user_id=None,
+    personal_only=False,
+    doc_types=None,
 ) -> list[ChunkHit]:
     """Fallback bez OpenSearch: wynik = trafienia słów zapytania po granicy wyrazu (prefiks),
     filtr po dostępie/autorach w SQL, sigla i punktacja w Pythonie."""
@@ -690,6 +729,8 @@ def _retrieve_db(
         qs = qs.filter(document__authors__name__in=authors)
     if registers:
         qs = qs.filter(document__register__in=registers)
+    if doc_types:
+        qs = qs.filter(document__doc_type__in=doc_types)
     if (
         words and not sigla
     ):  # z siglami słowa tylko punktują; bez sigli są wstępnym filtrem

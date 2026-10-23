@@ -153,4 +153,5 @@ def test_select_works_deeper_level_and_author_from_parent():
 def test_doctrinal_questions_trigger_patristics():
     assert wants_patristics("Czy Jezus miał rodzeństwo? Kim byli bracia Pańscy?")
     assert wants_patristics("Na czym opiera się prymat Piotra?")
+    assert wants_patristics("Czy Mt 16,18 mówi o prymacie Piotra?")
     assert wants_patristics("Co Helwidiusz twierdził o Maryi?")

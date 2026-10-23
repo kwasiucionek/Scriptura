@@ -2,6 +2,14 @@
 
 ## 2026-10-23 — ujęcie źródła i zasada przy kwestiach doktrynalnych
 
+- Kanał dokumentów Kościoła: przy kwestiach spornych i pytaniach o Pismo w nauczaniu Kościoła
+  (`DOCTRINAL_TRIGGERS`: bracia Pańscy, dziewictwo, prymat, papież, sukcesja, natchnienie,
+  kanon…), gdy żaden dokument Kościoła nie trafił do kontekstu, osobne wyszukiwanie tylko wśród
+  nich (`retrieve(doc_types=["church"])`, z rerankerem) dokłada najtrafniejszy fragment na
+  miejsce ostatniego. Powód: przy „braciach Pańskich” osiem miejsc zajmowały artykuły, a nauczanie
+  Kościoła model brał z ich streszczeń, choć Katechizm nr 500 był w indeksie.
+  Nowa zmienna `.env` (opcjonalna): `RAG_CHURCH_PASSAGES=1` (0 = wyłączone).
+
 - Korpus: przy czasopismach i wydawnictwach kolumna „Wydawca” (z `library/venues.py`, warianty
   nazw scalone) i środowisko tam, gdzie nie wynika z nazwy (ChAT — uczelnia ekumeniczna, Elpis —
   teologia prawosławna); akapit o pochodzeniu literatury. Ujęcie przy pojedynczym tekście tylko

@@ -387,7 +387,8 @@ def test_perspective_marked_in_prompt_and_doctrinal_rule():
         and "UJĘCIE: dokument" not in user
     )
     system = msgs[0]["content"]
-    assert "Kwestie doktrynalne" in system and "„według X…”" in system
+    assert "Kwestie sporne i doktrynalne" in system and "„według X…”" in system
+    assert "tylko jednej strony sporu" in system and "z przypisem do artykułu" in system
 
 
 def test_attach_perspectives_reads_documents():

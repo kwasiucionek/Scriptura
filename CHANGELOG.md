@@ -2,6 +2,11 @@
 
 ## 2026-10-23 — ujęcie źródła i zasada przy kwestiach doktrynalnych
 
+- Zasada 10 rozszerzona po teście w trybie naukowym (bracia Pańscy): każdy argument i wniosek
+  z autorem i czasownikiem przypisania, bez podawania wniosków źródeł jak faktów; „Kościół
+  uznaje/naucza” tylko z przypisem do dokumentu Kościoła; gdy źródła mają argumenty tylko jednej
+  strony sporu — jedno zdanie o tym, bez odtwarzania drugiej strony z pamięci.
+
 - Kanał dokumentów Kościoła: przy kwestiach spornych i pytaniach o Pismo w nauczaniu Kościoła
   (`DOCTRINAL_TRIGGERS`: bracia Pańscy, dziewictwo, prymat, papież, sukcesja, natchnienie,
   kanon…), gdy żaden dokument Kościoła nie trafił do kontekstu, osobne wyszukiwanie tylko wśród
